@@ -4,11 +4,12 @@
   .app-shell{margin:2px 4px;min-height:calc(100vh - 4px);border-radius:10px}
   .sidebar{min-height:calc(100vh - 4px)}
   .content{padding:16px 14px 28px 28px}
+  .sidebar-nav a,.sidebar-bottom a,.sidebar-bottom button{font-size:13px}
   .panel-heading h2,.panel h2{font-size:16px}
   .panel-heading p,.panel p{font-size:12px;line-height:1.35}
   .work-table th{font-size:12px}
   .date-cell,.day-name,.total-cell strong,.week-title strong,.balance-summary div{font-size:12px}
-  .week-metrics span,.recent-payment-row,.muted,.hint{font-size:12px}
+  .week-metrics span,.recent-payment-row,.muted,.hint,.save-state,.outline-button,.rail-add-button,.empty-payment,.credit,.salary-summary-grid span,.day-dialog label,.form-grid label,.dialog-delete,.dialog-cancel,.dialog-save,.inline-error,.allocation-tags span,.settings-history span{font-size:12px}
   .kpi span{font-size:12px}
 }
 @media (min-width:1600px) and (max-width:1919px){
