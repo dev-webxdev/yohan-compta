@@ -1,0 +1,37 @@
+<?php
+
+namespace App\Services;
+
+use App\Support\Money;
+
+final class PayrollMath
+{
+    public static function totalWorked(int $drivingMinutes, int $warehouseMinutes): int
+    {
+        $total = max(0, $drivingMinutes) + max(0, $warehouseMinutes);
+        if ($total > 1440) {
+            throw new \InvalidArgumentException('Le total travaillé ne peut pas dépasser 24:00.');
+        }
+
+        return $total;
+    }
+
+    public static function restMinutes(int $workedMinutes): int
+    {
+        return max(0, 1440 - $workedMinutes);
+    }
+
+    public static function mealAllowanceCents(?int $endTimeMinutes, string $mode, ?int $forcedCents, int $thresholdMinutes, int $defaultCents): int
+    {
+        if ($mode === 'forced') {
+            return max(0, (int) $forcedCents);
+        }
+
+        return $endTimeMinutes !== null && $endTimeMinutes >= $thresholdMinutes ? $defaultCents : 0;
+    }
+
+    public static function wageNumerator(int $minutes, int $hourlyRateCents): int
+    {
+        return Money::wageNumerator($minutes, $hourlyRateCents);
+    }
+}

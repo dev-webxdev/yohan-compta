@@ -1,0 +1,41 @@
+<?php
+
+namespace App\Support;
+
+final class Money
+{
+    /**
+     * Returns a rational amount numerator in cent-minutes. Divide by 60 only when displaying/settling.
+     */
+    public static function wageNumerator(int $minutes, int $hourlyRateCents): int
+    {
+        return $minutes * $hourlyRateCents;
+    }
+
+    public static function numeratorToCents(int $numerator): int
+    {
+        if ($numerator <= 0) {
+            return 0;
+        }
+
+        return intdiv($numerator + 30, 60);
+    }
+
+    public static function formatCents(int $cents): string
+    {
+        return number_format($cents / 100, 2, ',', ' ').' €';
+    }
+
+    public static function parseEuros(string|int|float|null $value): int
+    {
+        $normalized = str_replace([' ', '€', ','], ['', '', '.'], trim((string) $value));
+        if ($normalized === '' || !preg_match('/^\d+(?:\.\d{1,2})?$/', $normalized)) {
+            throw new \InvalidArgumentException('Montant invalide.');
+        }
+
+        [$whole, $decimal] = array_pad(explode('.', $normalized, 2), 2, '');
+        $decimal = str_pad($decimal, 2, '0');
+
+        return ((int) $whole * 100) + (int) substr($decimal, 0, 2);
+    }
+}
