@@ -1,5 +1,5 @@
 @extends('layouts.app')
-@php use App\Support\Money; use App\Support\Time; use App\Support\FrenchDate; @endphp
+@php use App\Support\Money; use App\Support\Time; @endphp
 @section('title', 'Paiements d’heures supplémentaires')
 @section('content')
 <div class="two-column-page">
@@ -15,7 +15,7 @@
     </form>
     <p class="hint">Répartition automatique : le montant rembourse d’abord les plus anciennes dettes mensuelles. Un éventuel surplus est conservé comme avance/trop-perçu.</p>
 </section>
-<section class="panel balance-panel">
+<section class="panel balance-panel payment-balance">
     <h2>Solde actuel</h2>
     <div class="big-due">{{ Money::formatCents($balance['remaining']) }}</div><p class="muted">≈ {{ Time::formatDuration($balance['remaining_minutes_indicative']) }} restantes (conversion indicative)</p>
     <div class="balance-line"><span>Heures sup net dues</span><strong>{{ Money::formatCents($balance['generated']) }}</strong></div>

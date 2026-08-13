@@ -28,7 +28,7 @@ final class ReportService
                 ->whereBetween('payment_date', [$base['start']->format('Y-m-d'), $base['end']->format('Y-m-d')])
                 ->sum('amount_cents'),
             'remaining_cents' => $remaining,
-            'remaining_minutes_indicative' => $this->indicativeMinutes($base['overtime_minutes'], $base['overtime_net_cents'], $remaining),
+            'remaining_minutes_indicative' => $allocation['by_month'][$month]['remaining_minutes_indicative'] ?? 0,
         ];
     }
 
@@ -173,7 +173,7 @@ final class ReportService
                     ->whereBetween('payment_date', [$base['start']->format('Y-m-d'), $base['end']->format('Y-m-d')])
                     ->sum('amount_cents'),
                 'remaining_cents' => $remaining,
-                'remaining_minutes_indicative' => $this->indicativeMinutes($base['overtime_minutes'], $base['overtime_net_cents'], $remaining),
+                'remaining_minutes_indicative' => $allocation['by_month'][$key]['remaining_minutes_indicative'] ?? 0,
             ];
             $months[$key] = $item;
             foreach ($totals as $field => $unused) {
@@ -237,15 +237,6 @@ final class ReportService
             ->all();
 
         return PaymentAllocator::allocate($debts, $payments);
-    }
-
-    private function indicativeMinutes(int $generatedMinutes, int $generatedCents, int $remainingCents): int
-    {
-        if ($generatedMinutes <= 0 || $generatedCents <= 0 || $remainingCents <= 0) {
-            return 0;
-        }
-
-        return (int) round($generatedMinutes * ($remainingCents / $generatedCents));
     }
 
     private function workDaysBetween(DateTimeImmutable $start, DateTimeImmutable $end): Collection

@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\OvertimePayment;
-use App\Services\PaymentService;
 use App\Services\ReportService;
 use App\Services\SettingsService;
 use App\Support\Money;
@@ -35,7 +34,7 @@ final class PaymentController
         ]);
     }
 
-    public function store(Request $request, PaymentService $payments): RedirectResponse
+    public function store(Request $request): RedirectResponse
     {
         $data = $request->validate([
             'payment_date' => ['required', 'date'],
@@ -56,13 +55,13 @@ final class PaymentController
             throw ValidationException::withMessages(['amount' => 'Le paiement doit être supérieur à 0 €.']);
         }
 
-        $payments->create(
-            $data['payment_date'],
-            $amountCents,
-            $hoursMinutes,
-            trim((string) ($data['note'] ?? '')) ?: null,
-            trim((string) ($data['period_reference'] ?? '')) ?: null,
-        );
+        OvertimePayment::query()->create([
+            'payment_date' => $data['payment_date'],
+            'amount_cents' => $amountCents,
+            'hours_paid_minutes' => $hoursMinutes,
+            'note' => trim((string) ($data['note'] ?? '')) ?: null,
+            'period_reference' => trim((string) ($data['period_reference'] ?? '')) ?: null,
+        ]);
 
         return redirect()->route('payments.index')->with('status', 'Paiement enregistré. Les soldes nets sont recalculés automatiquement en FIFO.');
     }

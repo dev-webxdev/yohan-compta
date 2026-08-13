@@ -61,7 +61,6 @@ final class MonthController
             'balance' => $reports->balance(),
             'previousMonth' => $current->modify('-1 month')->format('Y-m'),
             'nextMonth' => $current->modify('+1 month')->format('Y-m'),
-            'currentMonth' => now()->format('Y-m'),
             'monthLabel' => FrenchDate::monthYear($current),
             'recentPayments' => OvertimePayment::query()
                 ->whereDate('payment_date', '<=', now()->format('Y-m-d'))

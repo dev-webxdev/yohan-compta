@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Support\Money;
 
 final class PayrollMath
 {
@@ -33,10 +32,5 @@ final class PayrollMath
         }
 
         return $endTimeMinutes !== null && $endTimeMinutes >= $thresholdMinutes ? $defaultCents : 0;
-    }
-
-    public static function wageNumerator(int $minutes, int $hourlyRateCents): int
-    {
-        return Money::wageNumerator($minutes, $hourlyRateCents);
     }
 }

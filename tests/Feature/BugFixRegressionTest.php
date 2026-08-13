@@ -27,6 +27,23 @@ final class BugFixRegressionTest extends TestCase
         $response->assertDontSee('aria-label="Profil"', false);
     }
 
+    public function test_secondary_pages_render_with_their_ui_sections(): void
+    {
+        $this->get('/paiements')
+            ->assertOk()
+            ->assertSee('payment-balance', false)
+            ->assertSee('Historique des paiements');
+
+        $this->get('/annee/2026')
+            ->assertOk()
+            ->assertSee('report-page', false)
+            ->assertSee('Détail mensuel');
+
+        $this->get('/parametres')
+            ->assertOk()
+            ->assertSee('Taux horaire net');
+    }
+
     public function test_future_payment_is_not_shown_as_received_on_dashboard(): void
     {
         OvertimePayment::query()->create([

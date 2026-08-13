@@ -29,7 +29,6 @@
   .app-shell{zoom:1.5;width:calc(66.6667vw - 8px);min-height:66vh;margin:2px auto}
 }
 
-/* Dashboard structure */
 @media (min-width:721px){
   .days-footer{display:none}
   .work-table{min-width:790px}
@@ -48,7 +47,6 @@
 .salary-summary-grid strong{font-size:15px}
 .salary-total{background:#f5f9ff;border-color:#cfe0ff!important}
 
-/* Annual report */
 .report-page{width:100%;max-width:1800px;margin:0 auto}
 .report-panel{overflow:hidden;box-shadow:0 4px 16px #1d2d480c}
 .report-heading{padding:15px 17px 12px;border-bottom:1px solid #edf0f4}
@@ -58,6 +56,18 @@
 .report-table tbody td:first-child a{color:#1768ef;font-weight:650;text-decoration:none}
 .report-table tfoot th{background:#f5f8fc;font-weight:750;border-bottom:0}
 .report-table td strong{color:var(--red)}
+
+.payment-balance{background:linear-gradient(145deg,#fffafa,#fff);border-color:#f1d9da}
+.big-due{margin:12px 0 2px;color:var(--red);font-size:30px;font-weight:780;line-height:1}
+.balance-line{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:10px 0;border-top:1px solid #f0dfe0}
+.balance-line span{color:var(--muted)}
+.balance-line strong{white-space:nowrap}
+.payment-list{margin-top:12px}
+.payment-row:first-child{border-top:0}
+.payment-row>div:first-child small,.payment-amount small{display:block;margin-top:3px;color:var(--muted);font-size:10px;font-weight:400}
+.payment-amount small{white-space:nowrap}
+.danger-link{padding:6px 8px;border-radius:5px;cursor:pointer}
+.danger-link:hover{background:#fff0f0}
 
 @media(max-width:720px){
   .dialog-grid{grid-template-columns:1fr 1fr}
