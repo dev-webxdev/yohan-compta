@@ -8,36 +8,39 @@
     <link rel="stylesheet" href="/app.css">
 </head>
 <body>
-<div class="app-shell">
-    <aside class="sidebar">
-        <div class="brand">⏱ <span>Suivi Heures<br>& Salaire</span></div>
-        <nav>
-            <a class="{{ request()->routeIs('month.*') ? 'active' : '' }}" href="{{ route('month.current') }}">▦ <span>Tableau de bord</span></a>
-            <a class="{{ request()->routeIs('year.*') ? 'active' : '' }}" href="{{ route('year.show', ['year' => now()->year]) }}">▥ <span>Année</span></a>
-            <a class="{{ request()->routeIs('payments.*') ? 'active' : '' }}" href="{{ route('payments.index') }}">€ <span>Paiements</span></a>
-            <a class="{{ request()->routeIs('settings.*') ? 'active' : '' }}" href="{{ route('settings.index') }}">⚙ <span>Paramètres</span></a>
-        </nav>
-        <div class="sidebar-foot">SQLite · local</div>
-    </aside>
-
-    <main class="content">
-        <header class="topbar">
-            <div>
-                <div class="eyebrow">Application personnelle</div>
-                <h1>@yield('title', 'Suivi Heures & Salaire')</h1>
-            </div>
-            <a class="ghost-button" href="{{ route('month.show', ['month' => now()->format('Y-m')]) }}">Aujourd’hui</a>
-        </header>
-
-        @if (session('status'))
-            <div class="flash success">{{ session('status') }}</div>
-        @endif
-        @if ($errors->any())
-            <div class="flash error">{{ $errors->first() }}</div>
-        @endif
-
-        @yield('content')
-    </main>
+<div class="app-shell" id="app-shell">
+<aside class="sidebar" aria-label="Navigation principale">
+    <div class="sidebar-head"><button type="button" class="bare-icon sidebar-toggle" aria-label="Réduire le menu">☰</button></div>
+    <nav class="sidebar-nav">
+        <a class="{{ request()->routeIs('month.*') ? 'active' : '' }}" href="{{ route('month.current') }}"><i>▣</i><span>Tableau de bord</span></a>
+        <a href="{{ route('month.current') }}#days"><i>▦</i><span>Jours du mois</span></a>
+        <a href="{{ route('month.current') }}#weeks"><i>▤</i><span>Semaines</span></a>
+        <a class="{{ request()->routeIs('payments.*') ? 'active' : '' }}" href="{{ route('payments.index') }}"><i>▭</i><span>Paiements</span></a>
+        <a href="{{ route('month.current') }}#balance"><i>€</i><span>Reste dû</span></a>
+        <a class="{{ request()->routeIs('year.*') ? 'active' : '' }}" href="{{ route('year.show', ['year' => now()->year]) }}"><i>▥</i><span>Rapports</span></a>
+        <a class="{{ request()->routeIs('settings.*') ? 'active' : '' }}" href="{{ route('settings.index') }}"><i>⚙</i><span>Paramètres</span></a>
+    </nav>
+    <div class="sidebar-bottom"><a href="#help"><i>?</i><span>Aide</span></a><button type="button" class="sidebar-toggle"><i>«</i><span>Réduire</span></button></div>
+</aside>
+    <div class="app-main">
+<header class="topbar">
+    <div class="mobile-top-menu"><button type="button" class="bare-icon" aria-label="Menu">☰</button></div>
+    <div class="topbar-title">Suivi Heures &amp; Salaire</div>
+    <div class="topbar-actions"><button class="bare-icon desktop-only" aria-label="Apparence">☼</button><button class="bare-icon desktop-only notification-icon" aria-label="Notifications">♢<span class="notification-badge">2</span></button><button class="bare-icon desktop-only" aria-label="Profil">○</button><a class="mobile-calendar" href="{{ route('month.current') }}">▦</a></div>
+</header>
+        <main class="content">
+            @if (session('status'))<div class="flash success">{{ session('status') }}</div>@endif
+            @if ($errors->any())<div class="flash error">{{ $errors->first() }}</div>@endif
+            @yield('content')
+        </main>
+    </div>
+<nav class="mobile-nav" aria-label="Navigation mobile">
+    <a class="{{ request()->routeIs('month.*') ? 'active' : '' }}" href="{{ route('month.current') }}"><i>⌂</i><span>Tableau</span></a>
+    <a href="{{ route('month.current') }}#days"><i>▦</i><span>Jours</span></a>
+    <a href="{{ route('month.current') }}#weeks"><i>▤</i><span>Semaines</span></a>
+    <a class="{{ request()->routeIs('payments.*') ? 'active' : '' }}" href="{{ route('payments.index') }}"><i>▭</i><span>Paiements</span></a>
+    <a href="{{ route('settings.index') }}"><i>•••</i><span>Plus</span></a>
+</nav>
 </div>
 <script src="/app.js" defer></script>
 @stack('scripts')
