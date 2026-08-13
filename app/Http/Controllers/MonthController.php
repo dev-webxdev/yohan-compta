@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\OvertimePayment;
 use App\Services\PayrollMath;
 use App\Services\ReportService;
 use App\Services\SettingsService;
@@ -31,7 +32,13 @@ final class MonthController
                 'work_day' => $workDay,
                 'worked' => $worked,
                 'rest' => PayrollMath::restMinutes($worked),
-                'meal' => $workDay ? PayrollMath::mealAllowanceCents($workDay->end_time_minutes, $workDay->meal_allowance_mode, $workDay->meal_allowance_forced_cents, $setting->meal_allowance_time_minutes, $setting->meal_allowance_cents) : 0,
+                'meal' => $workDay ? PayrollMath::mealAllowanceCents(
+                    $workDay->end_time_minutes,
+                    $workDay->meal_allowance_mode,
+                    $workDay->meal_allowance_forced_cents,
+                    $setting->meal_allowance_time_minutes,
+                    $setting->meal_allowance_cents,
+                ) : 0,
             ];
             $cursor = $cursor->modify('+1 day');
         }
@@ -46,6 +53,7 @@ final class MonthController
             'nextMonth' => $current->modify('+1 month')->format('Y-m'),
             'currentMonth' => now()->format('Y-m'),
             'monthLabel' => FrenchDate::monthYear($current),
+            'recentPayments' => OvertimePayment::query()->orderByDesc('payment_date')->orderByDesc('id')->limit(2)->get(),
         ]);
     }
 }
