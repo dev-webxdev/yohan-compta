@@ -14,6 +14,7 @@ final class PayrollMathTest extends TestCase
         self::assertSame(375, $worked);
         self::assertSame(1065, PayrollMath::restMinutes($worked));
         self::assertSame(1440, PayrollMath::restMinutes(0));
+        self::assertSame(855, PayrollMath::endTimeMinutes(465, 330, 60));
     }
 
     public function test_day_cannot_exceed_24_hours(): void

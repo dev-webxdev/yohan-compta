@@ -16,6 +16,11 @@ final class PayrollMath
         return $total;
     }
 
+    public static function endTimeMinutes(int $startTimeMinutes, int $drivingMinutes, int $warehouseMinutes): int
+    {
+        return max(0, $startTimeMinutes) + self::totalWorked($drivingMinutes, $warehouseMinutes);
+    }
+
     public static function restMinutes(int $workedMinutes): int
     {
         return max(0, 1440 - $workedMinutes);

@@ -4,9 +4,6 @@ namespace App\Support;
 
 final class Money
 {
-    /**
-     * Returns a rational amount numerator in cent-minutes. Divide by 60 only when displaying/settling.
-     */
     public static function wageNumerator(int $minutes, int $hourlyRateCents): int
     {
         return $minutes * $hourlyRateCents;
@@ -28,6 +25,16 @@ final class Money
 
         return $sign.number_format(intdiv($absolute, 100), 0, ',', ' ')
             .','.sprintf('%02d', $absolute % 100).' €';
+    }
+
+    public static function formatInput(int $cents): string
+    {
+        $sign = $cents < 0 ? '-' : '';
+        $absolute = abs($cents);
+        $decimal = $absolute % 100;
+        $value = $sign.(string) intdiv($absolute, 100);
+
+        return $decimal === 0 ? $value : $value.','.rtrim(sprintf('%02d', $decimal), '0');
     }
 
     public static function parseEuros(string|int|float|null $value): int

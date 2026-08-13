@@ -55,6 +55,33 @@
         return `${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}`;
     };
 
+    const parseClock = value => {
+        const match = normalizeTime(value).match(/^(\d{1,2}):([0-5]\d)$/);
+        if (!match || Number(match[1]) > 23) return null;
+        return Number(match[1]) * 60 + Number(match[2]);
+    };
+
+    const parseDuration = value => {
+        const normalized = normalizeTime(value);
+        if (normalized === '') return 0;
+        const match = normalized.match(/^(\d{1,3}):([0-5]\d)$/);
+        return match ? Number(match[1]) * 60 + Number(match[2]) : null;
+    };
+
+    const formatDuration = minutes => `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
+    const formatClock = minutes => formatDuration(((minutes % 1440) + 1440) % 1440);
+    const formatMoney = cents => {
+        const whole = Math.floor(cents / 100);
+        const decimal = cents % 100;
+        if (decimal === 0) return `${whole} €`;
+        return `${whole},${String(decimal).padStart(2, '0').replace(/0$/, '')} €`;
+    };
+    const parseMoney = value => {
+        const normalized = String(value || '').trim().replace(/\s|€/g, '').replace(',', '.');
+        if (!/^\d+(?:\.\d{1,2})?$/.test(normalized)) return 0;
+        return Math.round(Number(normalized) * 100);
+    };
+
     const setState = (text, color) => {
         if (!state) return;
         state.textContent = text;
@@ -74,12 +101,33 @@
         reloadTimer = setTimeout(refreshWhenIdle, 1400);
     };
 
+    const rowValues = row => {
+        const start = parseClock(q('[name="start_time"]', row)?.value || '');
+        const driving = parseDuration(q('[name="driving"]', row)?.value || '');
+        const warehouse = parseDuration(q('[name="warehouse"]', row)?.value || '');
+        if (start === null || driving === null || warehouse === null) return null;
+        return {worked: driving + warehouse, end: start + driving + warehouse};
+    };
+
+    const syncRow = row => {
+        const values = rowValues(row);
+        if (!values) return;
+        q('.total-cell strong', row).textContent = formatDuration(values.worked);
+        q('.rest-cell .value-box', row).textContent = formatDuration(Math.max(0, 1440 - values.worked));
+        q('.end-value', row).textContent = formatClock(values.end);
+
+        const forced = (row.dataset.mealMode || 'auto') === 'forced';
+        const mealCents = forced
+            ? parseMoney(row.dataset.mealAmount)
+            : values.end >= Number(row.dataset.mealThreshold || 0) ? Number(row.dataset.mealDefault || 0) : 0;
+        q('.meal-button', row).textContent = `${formatMoney(mealCents)}⌄`;
+    };
+
     async function saveRow(row, overrides = {}) {
         const body = {
+            start_time: normalizeTime(q('[name="start_time"]', row)?.value || '07:45'),
             driving: normalizeTime(q('[name="driving"]', row)?.value || ''),
             warehouse: normalizeTime(q('[name="warehouse"]', row)?.value || ''),
-            end_time: normalizeTime(q('[name="end_time"]', row)?.value || ''),
-            note: q('[name="note"]', row)?.value || '',
             meal_mode: row.dataset.mealMode || 'auto',
             meal_amount: row.dataset.mealAmount || '',
             ...overrides,
@@ -96,14 +144,22 @@
             setState(message, '#e84b55');
             throw new Error(message);
         }
+        q('[name="start_time"]', row).value = body.start_time;
+        q('[name="driving"]', row).value = body.driving;
+        q('[name="warehouse"]', row).value = body.warehouse;
         row.dataset.mealMode = body.meal_mode;
         row.dataset.mealAmount = body.meal_amount;
+        syncRow(row);
         setState('Enregistré ✓', '#198754');
         scheduleReload();
     }
 
+    qa('.work-row').forEach(syncRow);
     qa('.autosave').forEach(input => {
-        input.addEventListener('input', () => clearTimeout(reloadTimer));
+        input.addEventListener('input', () => {
+            clearTimeout(reloadTimer);
+            syncRow(input.closest('.work-row'));
+        });
         input.addEventListener('change', async () => {
             try { await saveRow(input.closest('.work-row')); } catch (_) {}
         });
@@ -117,7 +173,21 @@
         mealAmount.disabled = !forced;
         if (!forced) mealAmount.value = '';
     };
+    const syncDialogComputed = () => {
+        const start = parseClock(form.elements.start_time.value);
+        const driving = parseDuration(form.elements.driving.value);
+        const warehouse = parseDuration(form.elements.warehouse.value);
+        if (start === null || driving === null || warehouse === null) return;
+        const end = start + driving + warehouse;
+        q('#dialog-end').textContent = formatClock(end);
+        if (activeRow) {
+            const cents = end >= Number(activeRow.dataset.mealThreshold || 0) ? Number(activeRow.dataset.mealDefault || 0) : 0;
+            q('#dialog-auto-amount').textContent = `(${formatMoney(cents)})`;
+        }
+    };
+
     qa('input[name="meal_mode"]', form).forEach(radio => radio.addEventListener('change', syncMealInput));
+    ['start_time', 'driving', 'warehouse'].forEach(name => form.elements[name].addEventListener('input', syncDialogComputed));
 
     function openDialog(row) {
         activeRow = row;
@@ -126,37 +196,25 @@
         const dayName = q('.day-name', row)?.textContent.trim() || '';
         const dayLabel = q('#dialog-day-name');
         if (dayLabel) dayLabel.textContent = dayName ? `(${dayName})` : '';
+        form.elements.start_time.value = q('[name="start_time"]', row)?.value || '07:45';
         form.elements.driving.value = q('[name="driving"]', row)?.value || '';
         form.elements.warehouse.value = q('[name="warehouse"]', row)?.value || '';
-        form.elements.end_time.value = q('[name="end_time"]', row)?.value || '';
-        form.elements.note.value = q('[name="note"]', row)?.value || '';
         form.elements.meal_mode.value = row.dataset.mealMode || 'auto';
         form.elements.meal_amount.value = row.dataset.mealAmount || '';
         errorBox.textContent = '';
         syncMealInput();
+        syncDialogComputed();
         dialog.showModal();
     }
 
     qa('.edit-day').forEach(button => button.addEventListener('click', () => openDialog(button.closest('.work-row'))));
-    q('#add-day')?.addEventListener('click', () => {
-        const emptyRow = qa('.work-row').find(row =>
-            !q('[name="driving"]', row)?.value &&
-            !q('[name="warehouse"]', row)?.value &&
-            !q('[name="end_time"]', row)?.value &&
-            !q('[name="note"]', row)?.value &&
-            (row.dataset.mealMode || 'auto') === 'auto'
-        );
-        openDialog(emptyRow || qa('.work-row')[0]);
-    });
-
     q('#save-day')?.addEventListener('click', async () => {
         if (!activeRow) return;
         errorBox.textContent = '';
         const overrides = {
+            start_time: normalizeTime(form.elements.start_time.value),
             driving: normalizeTime(form.elements.driving.value),
             warehouse: normalizeTime(form.elements.warehouse.value),
-            end_time: normalizeTime(form.elements.end_time.value),
-            note: form.elements.note.value,
             meal_mode: form.elements.meal_mode.value,
             meal_amount: form.elements.meal_amount.value,
         };

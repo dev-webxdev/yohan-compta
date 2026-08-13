@@ -19,20 +19,17 @@
     <div class="sidebar-head"><button type="button" class="bare-icon sidebar-toggle" aria-label="Réduire le menu" aria-expanded="true">☰</button></div>
     <nav class="sidebar-nav">
         <a class="{{ request()->routeIs('month.*') ? 'active' : '' }}" href="{{ $dashboardUrl }}"><i>▣</i><span>Tableau de bord</span></a>
-        <a href="{{ $dashboardUrl }}#days"><i>▦</i><span>Jours du mois</span></a>
-        <a href="{{ $dashboardUrl }}#weeks"><i>▤</i><span>Semaines</span></a>
         <a class="{{ request()->routeIs('payments.*') ? 'active' : '' }}" href="{{ route('payments.index') }}"><i>▭</i><span>Paiements</span></a>
-        <a href="{{ $dashboardUrl }}#balance"><i>€</i><span>Reste dû</span></a>
         <a class="{{ request()->routeIs('year.*') ? 'active' : '' }}" href="{{ route('year.show', ['year' => now()->year]) }}"><i>▥</i><span>Rapports</span></a>
         <a class="{{ request()->routeIs('settings.*') ? 'active' : '' }}" href="{{ route('settings.index') }}"><i>⚙</i><span>Paramètres</span></a>
     </nav>
-    <div class="sidebar-bottom"><a href="#help"><i>?</i><span>Aide</span></a><button type="button" class="sidebar-toggle" aria-expanded="true"><i>«</i><span>Réduire</span></button></div>
+    <div class="sidebar-bottom"><button type="button" class="sidebar-toggle" aria-expanded="true"><i>«</i><span>Réduire</span></button></div>
 </aside>
 <div class="app-main">
 <header class="topbar">
     <div class="mobile-top-menu"><button type="button" class="bare-icon mobile-menu-toggle" aria-label="Ouvrir le menu" aria-expanded="false">☰</button></div>
     <div class="topbar-title">Suivi Heures &amp; Salaire</div>
-    <div class="topbar-actions"><button class="bare-icon desktop-only" aria-label="Apparence">☼</button><button class="bare-icon desktop-only notification-icon" aria-label="Notifications">♢<span class="notification-badge">2</span></button><button class="bare-icon desktop-only" aria-label="Profil">○</button><a class="mobile-calendar" href="{{ $dashboardUrl }}">▦</a></div>
+    <div class="topbar-actions"><a class="mobile-calendar" href="{{ $dashboardUrl }}">▦</a></div>
 </header>
 <main class="content">
     @if (session('status'))<div class="flash success">{{ session('status') }}</div>@endif
@@ -42,10 +39,9 @@
 </div>
 <nav class="mobile-nav" aria-label="Navigation mobile">
     <a class="{{ request()->routeIs('month.*') ? 'active' : '' }}" href="{{ $dashboardUrl }}"><i>⌂</i><span>Tableau</span></a>
-    <a href="{{ $dashboardUrl }}#days"><i>▦</i><span>Jours</span></a>
-    <a href="{{ $dashboardUrl }}#weeks"><i>▤</i><span>Semaines</span></a>
     <a class="{{ request()->routeIs('payments.*') ? 'active' : '' }}" href="{{ route('payments.index') }}"><i>▭</i><span>Paiements</span></a>
-    <a href="{{ route('settings.index') }}"><i>•••</i><span>Plus</span></a>
+    <a class="{{ request()->routeIs('year.*') ? 'active' : '' }}" href="{{ route('year.show', ['year' => now()->year]) }}"><i>▥</i><span>Rapports</span></a>
+    <a class="{{ request()->routeIs('settings.*') ? 'active' : '' }}" href="{{ route('settings.index') }}"><i>⚙</i><span>Paramètres</span></a>
 </nav>
 </div>
 <script src="/app.js" defer></script>

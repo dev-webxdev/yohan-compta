@@ -12,6 +12,8 @@ use Illuminate\View\View;
 
 final class MonthController
 {
+    private const DEFAULT_START_MINUTES = 465;
+
     public function __invoke(ReportService $reports, SettingsService $settings, ?string $month = null): View
     {
         $month ??= now()->format('Y-m');
@@ -26,14 +28,22 @@ final class MonthController
             $date = $cursor->format('Y-m-d');
             $workDay = $report['work_days']->get($date);
             $setting = $settings->forDate($date);
-            $worked = $workDay ? $workDay->driving_minutes + $workDay->warehouse_minutes : 0;
+            $start = $workDay?->start_time_minutes ?? self::DEFAULT_START_MINUTES;
+            $driving = $workDay?->driving_minutes ?? 0;
+            $warehouse = $workDay?->warehouse_minutes ?? 0;
+            $worked = $driving + $warehouse;
+            $end = PayrollMath::endTimeMinutes($start, $driving, $warehouse);
             $calendarDays[] = [
                 'date' => $cursor,
                 'work_day' => $workDay,
+                'start' => $start,
+                'end' => $end,
                 'worked' => $worked,
                 'rest' => PayrollMath::restMinutes($worked),
+                'meal_default' => $setting->meal_allowance_cents,
+                'meal_threshold' => $setting->meal_allowance_time_minutes,
                 'meal' => $workDay ? PayrollMath::mealAllowanceCents(
-                    $workDay->end_time_minutes,
+                    $end,
                     $workDay->meal_allowance_mode,
                     $workDay->meal_allowance_forced_cents,
                     $setting->meal_allowance_time_minutes,

@@ -20,7 +20,7 @@ final class PaymentController
         $payments = OvertimePayment::query()->orderByDesc('payment_date')->orderByDesc('id')->get();
         $paymentHours = [];
         foreach ($payments as $payment) {
-            $rate = $settings->forDate($payment->payment_date->format('Y-m-d'))->hourly_rate_cents;
+            $rate = $settings->forDate($payment->payment_date->format('Y-m-d'))->hourly_net_rate_cents;
             $paymentHours[$payment->id] = [
                 'minutes' => $payment->hours_paid_minutes ?? (int) round($payment->amount_cents * 60 / max(1, $rate)),
                 'indicative' => $payment->hours_paid_minutes === null,
@@ -35,7 +35,7 @@ final class PaymentController
         ]);
     }
 
-    public function store(Request $request, PaymentService $payments, SettingsService $settings): RedirectResponse
+    public function store(Request $request, PaymentService $payments): RedirectResponse
     {
         $data = $request->validate([
             'payment_date' => ['required', 'date'],
@@ -43,7 +43,6 @@ final class PaymentController
             'hours_paid' => ['nullable', 'regex:/^\d{1,3}:[0-5]\d$/'],
             'period_reference' => ['nullable', 'string', 'max:255'],
             'note' => ['nullable', 'string', 'max:2000'],
-            'confirm_mismatch' => ['nullable', 'boolean'],
         ]);
 
         try {
@@ -57,17 +56,15 @@ final class PaymentController
             throw ValidationException::withMessages(['amount' => 'Le paiement doit être supérieur à 0 €.']);
         }
 
-        if ($hoursMinutes !== null && empty($data['confirm_mismatch'])) {
-            $rate = $settings->forDate($data['payment_date'])->hourly_rate_cents;
-            $reference = Money::numeratorToCents($hoursMinutes * $rate);
-            if (abs($reference - $amountCents) > 1) {
-                return back()->withInput()->with('payment_warning', 'Le montant et les heures renseignées ne correspondent pas exactement au taux applicable à cette date. Vérifie puis coche la confirmation pour enregistrer quand même.');
-            }
-        }
+        $payments->create(
+            $data['payment_date'],
+            $amountCents,
+            $hoursMinutes,
+            trim((string) ($data['note'] ?? '')) ?: null,
+            trim((string) ($data['period_reference'] ?? '')) ?: null,
+        );
 
-        $payments->create($data['payment_date'], $amountCents, $hoursMinutes, trim((string) ($data['note'] ?? '')) ?: null, trim((string) ($data['period_reference'] ?? '')) ?: null);
-
-        return redirect()->route('payments.index')->with('status', 'Paiement enregistré. Les soldes sont recalculés automatiquement en FIFO.');
+        return redirect()->route('payments.index')->with('status', 'Paiement enregistré. Les soldes nets sont recalculés automatiquement en FIFO.');
     }
 
     public function destroy(OvertimePayment $payment): RedirectResponse

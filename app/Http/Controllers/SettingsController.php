@@ -22,14 +22,16 @@ final class SettingsController
     {
         $data = $request->validate([
             'effective_from' => ['required', 'date'],
-            'hourly_rate' => ['required', 'string'],
+            'hourly_gross_rate' => ['required', 'string'],
+            'hourly_net_rate' => ['required', 'string'],
             'weekly_threshold' => ['required', 'regex:/^\d{1,3}:[0-5]\d$/'],
             'meal_allowance' => ['required', 'string'],
             'meal_allowance_time' => ['required', 'regex:/^([01]?\d|2[0-3]):[0-5]\d$/'],
         ]);
 
         try {
-            $rate = Money::parseEuros($data['hourly_rate']);
+            $grossRate = Money::parseEuros($data['hourly_gross_rate']);
+            $netRate = Money::parseEuros($data['hourly_net_rate']);
             $threshold = Time::parseDuration($data['weekly_threshold']);
             $meal = Money::parseEuros($data['meal_allowance']);
             $mealTime = Time::parseClock($data['meal_allowance_time']);
@@ -38,7 +40,8 @@ final class SettingsController
         }
 
         SettingPeriod::query()->updateOrCreate(['effective_from' => $data['effective_from']], [
-            'hourly_rate_cents' => $rate,
+            'hourly_gross_rate_cents' => $grossRate,
+            'hourly_net_rate_cents' => $netRate,
             'weekly_threshold_minutes' => $threshold,
             'meal_allowance_cents' => $meal,
             'meal_allowance_time_minutes' => $mealTime,

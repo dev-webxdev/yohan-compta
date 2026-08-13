@@ -12,13 +12,19 @@ final class BugFixRegressionTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_dashboard_links_keep_the_selected_month(): void
+    public function test_navigation_contains_only_real_sections(): void
     {
         $response = $this->get('/mois/2026-08')->assertOk();
 
-        $response->assertSee('/mois/2026-08#days', false);
-        $response->assertSee('/mois/2026-08#weeks', false);
-        $response->assertSee('/mois/2026-08#balance', false);
+        $response->assertDontSee('Jours du mois</span>', false);
+        $response->assertDontSee('Semaines</span>', false);
+        $response->assertDontSee('Reste dû</span>', false);
+        $response->assertSee('Paiements</span>', false);
+        $response->assertSee('Rapports</span>', false);
+        $response->assertDontSee('Ajouter un jour');
+        $response->assertDontSee('aria-label="Apparence"', false);
+        $response->assertDontSee('aria-label="Notifications"', false);
+        $response->assertDontSee('aria-label="Profil"', false);
     }
 
     public function test_future_payment_is_not_shown_as_received_on_dashboard(): void
@@ -48,5 +54,7 @@ final class BugFixRegressionTest extends TestCase
     {
         self::assertSame('12,31 €', Money::formatCents(1231));
         self::assertSame('-0,01 €', Money::formatCents(-1));
+        self::assertSame('16', Money::formatInput(1600));
+        self::assertSame('16,31', Money::formatInput(1631));
     }
 }

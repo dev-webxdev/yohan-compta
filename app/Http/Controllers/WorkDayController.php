@@ -13,25 +13,28 @@ use Illuminate\Validation\ValidationException;
 
 final class WorkDayController
 {
+    private const DEFAULT_START_MINUTES = 465;
+
     public function store(Request $request, string $date): JsonResponse
     {
         $this->assertValidDate($date);
 
         $data = $request->validate([
+            'start_time' => ['required', 'regex:/^([01]?\d|2[0-3]):[0-5]\d$/'],
             'driving' => ['nullable', 'regex:/^\d{1,3}:[0-5]\d$/'],
             'warehouse' => ['nullable', 'regex:/^\d{1,3}:[0-5]\d$/'],
-            'end_time' => ['nullable', 'regex:/^([01]?\d|2[0-3]):[0-5]\d$/'],
             'meal_mode' => ['required', 'in:auto,forced'],
             'meal_amount' => ['nullable', 'string', 'max:30'],
-            'note' => ['nullable', 'string', 'max:2000'],
         ], [
+            'start_time.regex' => 'Début : format HH:MM attendu.',
             'driving.regex' => 'Conduite : format HH:MM attendu.',
             'warehouse.regex' => 'Entrepôt : format HH:MM attendu.',
-            'end_time.regex' => 'Heure de fin : format HH:MM attendu.',
         ]);
 
+        $start = Time::parseClock($data['start_time']) ?? self::DEFAULT_START_MINUTES;
         $driving = Time::parseDuration($data['driving'] ?? '');
         $warehouse = Time::parseDuration($data['warehouse'] ?? '');
+
         try {
             PayrollMath::totalWorked($driving, $warehouse);
         } catch (\InvalidArgumentException $e) {
@@ -47,22 +50,20 @@ final class WorkDayController
             }
         }
 
-        $isEmpty = $driving === 0
+        $isEmpty = $start === self::DEFAULT_START_MINUTES
+            && $driving === 0
             && $warehouse === 0
-            && empty($data['end_time'])
-            && $data['meal_mode'] === 'auto'
-            && trim((string) ($data['note'] ?? '')) === '';
+            && $data['meal_mode'] === 'auto';
 
         if ($isEmpty) {
             WorkDay::query()->whereDate('date', $date)->delete();
         } else {
             WorkDay::query()->updateOrCreate(['date' => $date], [
+                'start_time_minutes' => $start,
                 'driving_minutes' => $driving,
                 'warehouse_minutes' => $warehouse,
-                'end_time_minutes' => Time::parseClock($data['end_time'] ?? ''),
                 'meal_allowance_mode' => $data['meal_mode'],
                 'meal_allowance_forced_cents' => $forcedCents,
-                'note' => trim((string) ($data['note'] ?? '')) ?: null,
             ]);
         }
 

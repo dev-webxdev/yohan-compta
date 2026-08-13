@@ -9,7 +9,7 @@
   .panel-heading p,.panel p{font-size:12px;line-height:1.35}
   .work-table th{font-size:12px}
   .date-cell,.day-name,.total-cell strong,.week-title strong,.balance-summary div{font-size:12px}
-  .week-metrics span,.recent-payment-row,.muted,.hint,.save-state,.outline-button,.rail-add-button,.empty-payment,.credit,.salary-summary-grid span,.day-dialog label,.form-grid label,.dialog-delete,.dialog-cancel,.dialog-save,.inline-error,.allocation-tags span,.settings-history span{font-size:12px}
+  .week-metrics span,.recent-payment-row,.muted,.hint,.save-state,.rail-add-button,.empty-payment,.credit,.salary-summary-grid span,.day-dialog label,.form-grid label,.dialog-delete,.dialog-cancel,.dialog-save,.inline-error,.allocation-tags span,.settings-history span{font-size:12px}
   .kpi span{font-size:12px}
 }
 @media (min-width:1600px) and (max-width:1919px){
@@ -27,4 +27,42 @@
 @media (min-width:3200px){
   body{overflow-x:hidden}
   .app-shell{zoom:1.5;width:calc(66.6667vw - 8px);min-height:66vh;margin:2px auto}
+}
+
+/* Dashboard structure */
+@media (min-width:721px){
+  .days-footer{display:none}
+  .work-table{min-width:790px}
+}
+.kpi small,.salary-summary-grid small{display:block;color:var(--muted);font-size:10px;margin-top:3px;white-space:nowrap}
+.kpi-money strong{font-size:16px}
+.end-value,.dialog-readonly{background:#f5f7fa;color:#47546a;border-color:#e1e5eb;cursor:default}
+.dialog-readonly{min-height:31px;border:1px solid #d9e0e8;border-radius:5px;padding:7px 8px;display:flex;align-items:center;font-weight:650}
+.dialog-grid{grid-template-columns:repeat(4,1fr);gap:12px}
+.meal-fieldset{grid-template-columns:minmax(160px,1fr) 72px 95px}
+.week-card{min-height:98px}
+.week-metrics{grid-template-columns:1fr 1fr;column-gap:14px}
+.week-metrics b{float:none;margin:0 0 0 6px}
+.balance-summary div{grid-template-columns:92px auto}
+.salary-summary-grid>div{display:flex;flex-direction:column;justify-content:center;min-height:72px}
+.salary-summary-grid strong{font-size:15px}
+.salary-total{background:#f5f9ff;border-color:#cfe0ff!important}
+
+/* Annual report */
+.report-page{width:100%;max-width:1800px;margin:0 auto}
+.report-panel{overflow:hidden;box-shadow:0 4px 16px #1d2d480c}
+.report-heading{padding:15px 17px 12px;border-bottom:1px solid #edf0f4}
+.report-table{min-width:1020px}
+.report-table thead th{background:#f8fafc;color:#5a667a;font-weight:650;font-size:11px}
+.report-table tbody tr:hover{background:#fbfdff}
+.report-table tbody td:first-child a{color:#1768ef;font-weight:650;text-decoration:none}
+.report-table tfoot th{background:#f5f8fc;font-weight:750;border-bottom:0}
+.report-table td strong{color:var(--red)}
+
+@media(max-width:720px){
+  .dialog-grid{grid-template-columns:1fr 1fr}
+  .meal-fieldset{grid-template-columns:1fr}
+  .salary-summary-grid{grid-template-columns:1fr 1fr}
+  .salary-total{grid-column:auto}
+  .report-kpis .kpi-due{grid-column:1/-1}
 }
