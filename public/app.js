@@ -110,10 +110,29 @@
     };
 
     const syncRow = row => {
+        const isRest = q('.rest-toggle', row)?.checked ?? row.dataset.isRest === '1';
+        row.dataset.isRest = isRest ? '1' : '0';
+        qa('[name="start_time"], [name="driving"], [name="warehouse"]', row).forEach(input => { input.disabled = isRest; });
+        qa('.edit-day', row).forEach(button => { button.disabled = isRest; });
+
+        const stateLabel = q('.row-state-label', row);
+        row.classList.toggle('row-rest', isRest);
+        if (isRest) {
+            row.classList.remove('row-needs-fill', 'row-filled');
+            if (stateLabel) stateLabel.textContent = 'Repos';
+            q('.total-cell strong', row).textContent = '—';
+            q('.end-value', row).textContent = '—';
+            q('.meal-button', row).textContent = '—';
+            return;
+        }
+
         const values = rowValues(row);
         if (!values) return;
+        const needsFill = values.worked === 0;
+        row.classList.toggle('row-needs-fill', needsFill);
+        row.classList.toggle('row-filled', !needsFill);
+        if (stateLabel) stateLabel.textContent = needsFill ? 'À remplir' : '';
         q('.total-cell strong', row).textContent = formatDuration(values.worked);
-        q('.rest-cell .value-box', row).textContent = formatDuration(Math.max(0, 1440 - values.worked));
         q('.end-value', row).textContent = formatClock(values.end);
 
         const forced = (row.dataset.mealMode || 'auto') === 'forced';
@@ -128,6 +147,7 @@
             start_time: normalizeTime(q('[name="start_time"]', row)?.value || '07:45'),
             driving: normalizeTime(q('[name="driving"]', row)?.value || ''),
             warehouse: normalizeTime(q('[name="warehouse"]', row)?.value || ''),
+            is_rest: q('.rest-toggle', row)?.checked ?? false,
             meal_mode: row.dataset.mealMode || 'auto',
             meal_amount: row.dataset.mealAmount || '',
             ...overrides,
@@ -144,17 +164,34 @@
             setState(message, '#e84b55');
             throw new Error(message);
         }
-        q('[name="start_time"]', row).value = body.start_time;
-        q('[name="driving"]', row).value = body.driving;
-        q('[name="warehouse"]', row).value = body.warehouse;
-        row.dataset.mealMode = body.meal_mode;
-        row.dataset.mealAmount = body.meal_amount;
+        if (body.is_rest) {
+            q('[name="start_time"]', row).value = '07:45';
+            q('[name="driving"]', row).value = '';
+            q('[name="warehouse"]', row).value = '';
+            row.dataset.mealMode = 'auto';
+            row.dataset.mealAmount = '';
+        } else {
+            q('[name="start_time"]', row).value = body.start_time;
+            q('[name="driving"]', row).value = body.driving;
+            q('[name="warehouse"]', row).value = body.warehouse;
+            row.dataset.mealMode = body.meal_mode;
+            row.dataset.mealAmount = body.meal_amount;
+        }
         syncRow(row);
         setState('Enregistré ✓', '#198754');
         scheduleReload();
     }
 
     qa('.work-row').forEach(syncRow);
+    qa('.rest-toggle').forEach(toggle => toggle.addEventListener('change', async () => {
+        const row = toggle.closest('.work-row');
+        const previous = !toggle.checked;
+        syncRow(row);
+        try { await saveRow(row); } catch (_) {
+            toggle.checked = previous;
+            syncRow(row);
+        }
+    }));
     qa('.autosave').forEach(input => {
         input.addEventListener('input', () => {
             clearTimeout(reloadTimer);

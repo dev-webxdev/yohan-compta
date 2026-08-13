@@ -76,3 +76,24 @@
   .salary-total{grid-column:auto}
   .report-kpis .kpi-due{grid-column:1/-1}
 }
+
+.work-table tbody tr.row-needs-fill{background:#fff9e8;box-shadow:inset 3px 0 0 #e5a91d}
+.work-table tbody tr.row-needs-fill:hover{background:#fff6dc}
+.work-table tbody tr.row-rest{background:#f3f5f7;color:#7b8595}
+.work-table tbody tr.row-rest:hover{background:#eef1f4}
+.row-state-label{display:inline-block;margin-left:5px;padding:1px 5px;border-radius:10px;font-size:9px;font-weight:700;vertical-align:1px}
+.row-state-label:empty{display:none}
+.row-needs-fill .row-state-label{background:#fff0bd;color:#936700}
+.row-rest .row-state-label{background:#e2e6eb;color:#687386}
+.rest-check{display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
+.rest-check input{width:15px;height:15px;margin:0;accent-color:#69758a;cursor:pointer}
+.rest-check span{display:none}
+.row-rest .time-input:disabled{background:#eceff2;color:#8b94a2;border-color:#dfe3e8}
+.edit-day:disabled{cursor:default;opacity:.45}
+
+@media(max-width:720px){
+  .work-table .work-row{grid-template-columns:48px 1fr 48px 44px 62px 18px}
+  .work-table td:nth-child(7){display:block}
+  .rest-cell{text-align:center!important}
+  .row-state-label{display:none}
+}

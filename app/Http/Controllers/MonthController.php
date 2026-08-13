@@ -28,21 +28,23 @@ final class MonthController
             $date = $cursor->format('Y-m-d');
             $workDay = $report['work_days']->get($date);
             $setting = $settings->forDate($date);
-            $start = $workDay?->start_time_minutes ?? self::DEFAULT_START_MINUTES;
-            $driving = $workDay?->driving_minutes ?? 0;
-            $warehouse = $workDay?->warehouse_minutes ?? 0;
+            $isRest = $workDay ? $workDay->is_rest : (int) $cursor->format('N') === 7;
+            $start = $isRest ? self::DEFAULT_START_MINUTES : ($workDay?->start_time_minutes ?? self::DEFAULT_START_MINUTES);
+            $driving = $isRest ? 0 : ($workDay?->driving_minutes ?? 0);
+            $warehouse = $isRest ? 0 : ($workDay?->warehouse_minutes ?? 0);
             $worked = $driving + $warehouse;
             $end = PayrollMath::endTimeMinutes($start, $driving, $warehouse);
             $calendarDays[] = [
                 'date' => $cursor,
                 'work_day' => $workDay,
+                'is_rest' => $isRest,
+                'needs_fill' => !$isRest && $worked === 0,
                 'start' => $start,
                 'end' => $end,
                 'worked' => $worked,
-                'rest' => PayrollMath::restMinutes($worked),
                 'meal_default' => $setting->meal_allowance_cents,
                 'meal_threshold' => $setting->meal_allowance_time_minutes,
-                'meal' => $workDay ? PayrollMath::mealAllowanceCents(
+                'meal' => $workDay && !$isRest ? PayrollMath::mealAllowanceCents(
                     $end,
                     $workDay->meal_allowance_mode,
                     $workDay->meal_allowance_forced_cents,

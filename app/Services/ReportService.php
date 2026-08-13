@@ -66,6 +66,10 @@ final class ReportService
         $grossNumerator = 0;
         $netNumerator = 0;
         foreach ($days as $day) {
+            if ($day->is_rest) {
+                continue;
+            }
+
             $date = $day->date->format('Y-m-d');
             $worked = $day->driving_minutes + $day->warehouse_minutes;
             $setting = $this->settings->forDate($date);
@@ -118,7 +122,7 @@ final class ReportService
         for ($cursor = $start; $cursor <= $end; $cursor = $cursor->modify('+1 day')) {
             $date = $cursor->format('Y-m-d');
             $day = $days->get($date);
-            $minutesByDate[$date] = $day ? $day->driving_minutes + $day->warehouse_minutes : 0;
+            $minutesByDate[$date] = $day && !$day->is_rest ? $day->driving_minutes + $day->warehouse_minutes : 0;
         }
 
         $threshold = $this->settings->forDate($weekId)->weekly_threshold_minutes;

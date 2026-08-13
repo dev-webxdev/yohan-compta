@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-
 final class PayrollMath
 {
     public static function totalWorked(int $drivingMinutes, int $warehouseMinutes): int
@@ -18,11 +17,6 @@ final class PayrollMath
     public static function endTimeMinutes(int $startTimeMinutes, int $drivingMinutes, int $warehouseMinutes): int
     {
         return max(0, $startTimeMinutes) + self::totalWorked($drivingMinutes, $warehouseMinutes);
-    }
-
-    public static function restMinutes(int $workedMinutes): int
-    {
-        return max(0, 1440 - $workedMinutes);
     }
 
     public static function mealAllowanceCents(?int $endTimeMinutes, string $mode, ?int $forcedCents, int $thresholdMinutes, int $defaultCents): int

@@ -20,8 +20,6 @@ $assert = static function (bool $condition, string $name) use (&$tests): void {
 
 $worked = PayrollMath::totalWorked(Time::parseDuration('05:15'), Time::parseDuration('01:00'));
 $assert($worked === 375, '05:15 + 01:00 = 06:15');
-$assert(PayrollMath::restMinutes($worked) === 1065, '24:00 - 06:15 = 17:45');
-$assert(PayrollMath::restMinutes(0) === 1440, 'day off rest = 24:00');
 $assert(PayrollMath::mealAllowanceCents(Time::parseClock('14:14'), 'auto', null, 855, 1600) === 0, '14:14 no meal');
 $assert(PayrollMath::mealAllowanceCents(Time::parseClock('14:15'), 'auto', null, 855, 1600) === 1600, '14:15 meal');
 $assert(PayrollMath::mealAllowanceCents(Time::parseClock('14:30'), 'auto', null, 855, 1600) === 1600, '14:30 meal');

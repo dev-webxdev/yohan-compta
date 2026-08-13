@@ -23,6 +23,7 @@ final class WorkDayController
             'start_time' => ['required', 'regex:/^([01]?\d|2[0-3]):[0-5]\d$/'],
             'driving' => ['nullable', 'regex:/^\d{1,3}:[0-5]\d$/'],
             'warehouse' => ['nullable', 'regex:/^\d{1,3}:[0-5]\d$/'],
+            'is_rest' => ['sometimes', 'boolean'],
             'meal_mode' => ['required', 'in:auto,forced'],
             'meal_amount' => ['nullable', 'string', 'max:30'],
         ], [
@@ -30,6 +31,21 @@ final class WorkDayController
             'driving.regex' => 'Conduite : format HH:MM attendu.',
             'warehouse.regex' => 'Entrepôt : format HH:MM attendu.',
         ]);
+
+        $isRest = (bool) ($data['is_rest'] ?? false);
+        $isSunday = (int) (new DateTimeImmutable($date))->format('N') === 7;
+        if ($isRest) {
+            WorkDay::query()->updateOrCreate(['date' => $date], [
+                'start_time_minutes' => self::DEFAULT_START_MINUTES,
+                'driving_minutes' => 0,
+                'warehouse_minutes' => 0,
+                'is_rest' => true,
+                'meal_allowance_mode' => 'auto',
+                'meal_allowance_forced_cents' => null,
+            ]);
+
+            return response()->json(['ok' => true]);
+        }
 
         $start = Time::parseClock($data['start_time']) ?? self::DEFAULT_START_MINUTES;
         $driving = Time::parseDuration($data['driving'] ?? '');
@@ -53,7 +69,8 @@ final class WorkDayController
         $isEmpty = $start === self::DEFAULT_START_MINUTES
             && $driving === 0
             && $warehouse === 0
-            && $data['meal_mode'] === 'auto';
+            && $data['meal_mode'] === 'auto'
+            && !$isSunday;
 
         if ($isEmpty) {
             WorkDay::query()->whereDate('date', $date)->delete();
@@ -62,6 +79,7 @@ final class WorkDayController
                 'start_time_minutes' => $start,
                 'driving_minutes' => $driving,
                 'warehouse_minutes' => $warehouse,
+                'is_rest' => false,
                 'meal_allowance_mode' => $data['meal_mode'],
                 'meal_allowance_forced_cents' => $forcedCents,
             ]);

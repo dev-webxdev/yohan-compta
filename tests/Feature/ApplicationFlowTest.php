@@ -19,11 +19,11 @@ final class ApplicationFlowTest extends TestCase
         $response->assertOk();
         $response->assertSee('30/04/2026');
         $response->assertDontSee('01/05/2026');
-        self::assertSame(30, substr_count($response->getContent(), 'class="work-row"'));
+        self::assertSame(30, substr_count($response->getContent(), '<tr class="work-row'));
 
-        self::assertSame(28, substr_count($this->get('/mois/2026-02')->getContent(), 'class="work-row"'));
-        self::assertSame(29, substr_count($this->get('/mois/2028-02')->getContent(), 'class="work-row"'));
-        self::assertSame(31, substr_count($this->get('/mois/2026-08')->getContent(), 'class="work-row"'));
+        self::assertSame(28, substr_count($this->get('/mois/2026-02')->getContent(), '<tr class="work-row'));
+        self::assertSame(29, substr_count($this->get('/mois/2028-02')->getContent(), '<tr class="work-row'));
+        self::assertSame(31, substr_count($this->get('/mois/2026-08')->getContent(), '<tr class="work-row'));
     }
 
     public function test_month_boundary_resets_weekly_overtime_counter(): void
@@ -140,6 +140,58 @@ final class ApplicationFlowTest extends TestCase
         $payment = OvertimePayment::query()->firstOrFail();
         self::assertSame(1300, $payment->amount_cents);
         self::assertSame(60, $payment->hours_paid_minutes);
+    }
+
+    public function test_rest_days_and_fill_states_are_distinct(): void
+    {
+        $html = $this->get('/mois/2026-08')->assertOk()->getContent();
+        self::assertMatchesRegularExpression('/class="work-row row-rest" data-date="2026-08-02" data-is-rest="1"/', $html);
+        self::assertMatchesRegularExpression('/class="work-row row-needs-fill" data-date="2026-08-03" data-is-rest="0"/', $html);
+
+        $this->putJson('/jours/2026-08-02', [
+            'start_time' => '07:45',
+            'driving' => '',
+            'warehouse' => '',
+            'is_rest' => false,
+            'meal_mode' => 'auto',
+            'meal_amount' => '',
+        ])->assertOk();
+
+        $sunday = WorkDay::query()->whereDate('date', '2026-08-02')->firstOrFail();
+        self::assertFalse($sunday->is_rest);
+        $html = $this->get('/mois/2026-08')->getContent();
+        self::assertMatchesRegularExpression('/class="work-row row-needs-fill" data-date="2026-08-02" data-is-rest="0"/', $html);
+
+        $this->putJson('/jours/2026-08-03', [
+            'start_time' => '09:00',
+            'driving' => '08:00',
+            'warehouse' => '02:00',
+            'is_rest' => true,
+            'meal_mode' => 'forced',
+            'meal_amount' => '25',
+        ])->assertOk();
+
+        $rest = WorkDay::query()->whereDate('date', '2026-08-03')->firstOrFail();
+        self::assertTrue($rest->is_rest);
+        self::assertSame(0, $rest->driving_minutes);
+        self::assertSame(0, $rest->warehouse_minutes);
+        self::assertSame('auto', $rest->meal_allowance_mode);
+        self::assertNull($rest->meal_allowance_forced_cents);
+        self::assertSame(0, app(ReportService::class)->month('2026-08')['worked_minutes']);
+
+        $html = $this->get('/mois/2026-08')->getContent();
+        self::assertMatchesRegularExpression('/class="work-row row-rest" data-date="2026-08-03" data-is-rest="1"/', $html);
+
+        $this->putJson('/jours/2026-08-04', [
+            'start_time' => '07:45',
+            'driving' => '01:00',
+            'warehouse' => '',
+            'is_rest' => false,
+            'meal_mode' => 'auto',
+            'meal_amount' => '',
+        ])->assertOk();
+        $html = $this->get('/mois/2026-08')->getContent();
+        self::assertMatchesRegularExpression('/class="work-row row-filled" data-date="2026-08-04" data-is-rest="0"/', $html);
     }
 
     public function test_delete_day_restores_empty_calendar_day(): void

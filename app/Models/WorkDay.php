@@ -11,6 +11,7 @@ final class WorkDay extends Model
         'start_time_minutes',
         'driving_minutes',
         'warehouse_minutes',
+        'is_rest',
         'meal_allowance_mode',
         'meal_allowance_forced_cents',
     ];
@@ -22,6 +23,7 @@ final class WorkDay extends Model
             'start_time_minutes' => 'integer',
             'driving_minutes' => 'integer',
             'warehouse_minutes' => 'integer',
+            'is_rest' => 'boolean',
             'meal_allowance_forced_cents' => 'integer',
         ];
     }

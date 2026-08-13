@@ -17,8 +17,6 @@ $assert = static function (bool $ok, string $message): void {
 };
 
 $assert(PayrollMath::totalWorked(315, 60) === 375, '05:15 + 01:00');
-$assert(PayrollMath::restMinutes(375) === 1065, 'repos 17:45');
-$assert(PayrollMath::restMinutes(0) === 1440, 'repos 24:00');
 $assert(PayrollMath::mealAllowanceCents(854, 'auto', null, 855, 1600) === 0, 'panier 14:14');
 $assert(PayrollMath::mealAllowanceCents(855, 'auto', null, 855, 1600) === 1600, 'panier 14:15');
 $assert(WeekCalculator::calculate('2026-08-03', ['2026-08-03'=>2400], 2100)['overtime'] === 300, '40h => 5h sup');

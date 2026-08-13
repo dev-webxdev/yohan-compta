@@ -8,12 +8,10 @@ use PHPUnit\Framework\TestCase;
 
 final class PayrollMathTest extends TestCase
 {
-    public function test_simple_day_and_rest(): void
+    public function test_simple_day(): void
     {
         $worked = PayrollMath::totalWorked(315, 60);
         self::assertSame(375, $worked);
-        self::assertSame(1065, PayrollMath::restMinutes($worked));
-        self::assertSame(1440, PayrollMath::restMinutes(0));
         self::assertSame(855, PayrollMath::endTimeMinutes(465, 330, 60));
     }
 
