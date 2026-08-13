@@ -26,7 +26,7 @@ final class ApplicationFlowTest extends TestCase
         self::assertSame(31, substr_count($this->get('/mois/2026-08')->getContent(), 'class="work-row"'));
     }
 
-    public function test_editing_day_recalculates_cross_month_week_and_months_without_duplicate(): void
+    public function test_month_boundary_resets_weekly_overtime_counter(): void
     {
         foreach ([
             '2026-07-27' => '07:00', '2026-07-28' => '07:00', '2026-07-29' => '07:00', '2026-07-30' => '07:00',
@@ -36,15 +36,16 @@ final class ApplicationFlowTest extends TestCase
         }
 
         $reports = app(ReportService::class);
-        $week = $reports->week('2026-07-27');
-        self::assertSame(300, $week['overtime_minutes']);
+        self::assertSame(0, $reports->week('2026-07-27')['overtime_minutes']);
+        self::assertSame(0, $reports->week('2026-08-01')['overtime_minutes']);
         self::assertSame(0, $reports->month('2026-07')['overtime_minutes']);
-        self::assertSame(300, $reports->month('2026-08')['overtime_minutes']);
+        self::assertSame(0, $reports->month('2026-08')['overtime_minutes']);
 
         $this->putJson('/jours/2026-07-31', ['driving' => '09:00', 'warehouse' => '', 'end_time' => '', 'meal_mode' => 'auto', 'meal_amount' => '', 'note' => ''])->assertOk();
-        self::assertSame(540, $reports->week('2026-07-27')['overtime_minutes']);
+        self::assertSame(120, $reports->week('2026-07-27')['overtime_minutes']);
+        self::assertSame(0, $reports->week('2026-08-01')['overtime_minutes']);
         self::assertSame(120, $reports->month('2026-07')['overtime_minutes']);
-        self::assertSame(420, $reports->month('2026-08')['overtime_minutes']);
+        self::assertSame(0, $reports->month('2026-08')['overtime_minutes']);
     }
 
     public function test_meal_validation_and_forced_override(): void

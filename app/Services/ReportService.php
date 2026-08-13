@@ -14,6 +14,7 @@ final class ReportService
     {
     }
 
+    /** @return array<string,mixed> */
     public function month(string $month): array
     {
         $base = $this->monthBase($month);
@@ -22,12 +23,15 @@ final class ReportService
 
         return $base + [
             'paid_allocated_cents' => $paidAllocated,
-            'paid_received_cents' => (int) OvertimePayment::query()->whereBetween('payment_date', [$base['start']->format('Y-m-d'), $base['end']->format('Y-m-d')])->sum('amount_cents'),
+            'paid_received_cents' => (int) OvertimePayment::query()
+                ->whereBetween('payment_date', [$base['start']->format('Y-m-d'), $base['end']->format('Y-m-d')])
+                ->sum('amount_cents'),
             'remaining_cents' => max(0, $base['overtime_cents'] - $paidAllocated),
             'remaining_minutes_indicative' => $this->indicativeMinutes($base['overtime_minutes'], $base['overtime_cents'], max(0, $base['overtime_cents'] - $paidAllocated)),
         ];
     }
 
+    /** @return array<string,mixed> */
     private function monthBase(string $month): array
     {
         $start = new DateTimeImmutable($month.'-01');
@@ -61,7 +65,13 @@ final class ReportService
             $worked = $day->driving_minutes + $day->warehouse_minutes;
             $setting = $this->settings->forDate($date);
             $workedMinutes += $worked;
-            $mealCents += PayrollMath::mealAllowanceCents($day->end_time_minutes, $day->meal_allowance_mode, $day->meal_allowance_forced_cents, $setting->meal_allowance_time_minutes, $setting->meal_allowance_cents);
+            $mealCents += PayrollMath::mealAllowanceCents(
+                $day->end_time_minutes,
+                $day->meal_allowance_mode,
+                $day->meal_allowance_forced_cents,
+                $setting->meal_allowance_time_minutes,
+                $setting->meal_allowance_cents,
+            );
             $wageNumerator += Money::wageNumerator($worked, $setting->hourly_rate_cents);
         }
 
@@ -83,18 +93,20 @@ final class ReportService
         ];
     }
 
+    /** @return array<string,mixed> */
     public function week(string $weekId): array
     {
         $start = new DateTimeImmutable($weekId);
-        $end = $start->modify('+6 days');
+        $end = WeekCalculator::periodEnd($start);
         $days = $this->workDaysBetween($start, $end)->keyBy(fn (WorkDay $day) => $day->date->format('Y-m-d'));
         $minutesByDate = [];
-        for ($i = 0; $i < 7; $i++) {
-            $date = $start->modify("+$i days")->format('Y-m-d');
+        for ($cursor = $start; $cursor <= $end; $cursor = $cursor->modify('+1 day')) {
+            $date = $cursor->format('Y-m-d');
             $day = $days->get($date);
             $minutesByDate[$date] = $day ? $day->driving_minutes + $day->warehouse_minutes : 0;
         }
 
+        // The threshold resets when the month changes; the rule active on the segment start applies.
         $threshold = $this->settings->forDate($weekId)->weekly_threshold_minutes;
         $result = WeekCalculator::calculate($weekId, $minutesByDate, $threshold);
         $numerator = 0;
@@ -115,6 +127,7 @@ final class ReportService
         ];
     }
 
+    /** @return array<string,mixed> */
     public function year(int $year): array
     {
         $allocation = $this->allocationSnapshot();
@@ -135,9 +148,11 @@ final class ReportService
             $paidAllocated = $allocation['by_month'][$key]['paid'] ?? 0;
             $item = $base + [
                 'paid_allocated_cents' => $paidAllocated,
-                'paid_received_cents' => (int) OvertimePayment::query()->whereBetween('payment_date', [$base['start']->format('Y-m-d'), $base['end']->format('Y-m-d')])->sum('amount_cents'),
+                'paid_received_cents' => (int) OvertimePayment::query()
+                    ->whereBetween('payment_date', [$base['start']->format('Y-m-d'), $base['end']->format('Y-m-d')])
+                    ->sum('amount_cents'),
                 'remaining_cents' => max(0, $base['overtime_cents'] - $paidAllocated),
-                'remaining_minutes_indicative' => $this->indicativeMinutes($base['overtime_minutes'], $base['overtime_cents'], max(0, $base['overtime_cents'] - $paidAllocated)),
+            'remaining_minutes_indicative' => $this->indicativeMinutes($base['overtime_minutes'], $base['overtime_cents'], max(0, $base['overtime_cents'] - $paidAllocated)),
             ];
             $months[$key] = $item;
             foreach ($totals as $field => $unused) {
@@ -148,9 +163,11 @@ final class ReportService
         return ['year' => $year, 'months' => $months, 'totals' => $totals];
     }
 
+    /** @return array{generated:int,paid:int,remaining:int,credit:int,by_month:array<string,array<string,int>>} */
     public function balance(): array
     {
         $snapshot = $this->allocationSnapshot();
+
         return [
             'generated' => $snapshot['generated'],
             'paid' => $snapshot['paid'],
@@ -161,16 +178,19 @@ final class ReportService
         ];
     }
 
+    /** @return array<int,array<int,array{month:string,amount_cents:int}>> */
     public function paymentAllocations(): array
     {
         return $this->allocationSnapshot()['by_payment'];
     }
 
+    /** @return array{generated:int,paid:int,by_month:array<string,array{generated:int,paid:int,remaining:int}>,by_payment:array<int,array<int,array{month:string,amount_cents:int}>>} */
     private function allocationSnapshot(): array
     {
         $firstDate = WorkDay::query()->min('date');
         $lastEligibleMonth = now()->format('Y-m');
         $debts = [];
+
         if ($firstDate) {
             $cursor = new DateTimeImmutable(substr((string) $firstDate, 0, 7).'-01');
             $end = new DateTimeImmutable($lastEligibleMonth.'-01');
@@ -178,13 +198,23 @@ final class ReportService
                 $month = $cursor->format('Y-m');
                 $base = $this->monthBase($month);
                 if ($base['overtime_cents'] > 0) {
-                    $debts[$month] = ['generated' => $base['overtime_cents'], 'overtime_minutes' => $base['overtime_minutes']];
+                    $debts[$month] = [
+                        'generated' => $base['overtime_cents'],
+                        'overtime_minutes' => $base['overtime_minutes'],
+                    ];
                 }
                 $cursor = $cursor->modify('+1 month');
             }
         }
 
-        $payments = OvertimePayment::query()->whereDate('payment_date', '<=', now()->format('Y-m-d'))->orderBy('payment_date')->orderBy('id')->get(['id', 'amount_cents'])->map(fn (OvertimePayment $payment) => ['id' => $payment->id, 'amount_cents' => $payment->amount_cents])->all();
+        $payments = OvertimePayment::query()
+            ->whereDate('payment_date', '<=', now()->format('Y-m-d'))
+            ->orderBy('payment_date')
+            ->orderBy('id')
+            ->get(['id', 'amount_cents'])
+            ->map(fn (OvertimePayment $payment) => ['id' => $payment->id, 'amount_cents' => $payment->amount_cents])
+            ->all();
+
         return PaymentAllocator::allocate($debts, $payments);
     }
 
@@ -193,11 +223,15 @@ final class ReportService
         if ($generatedMinutes <= 0 || $generatedCents <= 0 || $remainingCents <= 0) {
             return 0;
         }
+
         return (int) round($generatedMinutes * ($remainingCents / $generatedCents));
     }
 
     private function workDaysBetween(DateTimeImmutable $start, DateTimeImmutable $end): Collection
     {
-        return WorkDay::query()->whereBetween('date', [$start->format('Y-m-d'), $end->format('Y-m-d')])->orderBy('date')->get();
+        return WorkDay::query()
+            ->whereBetween('date', [$start->format('Y-m-d'), $end->format('Y-m-d')])
+            ->orderBy('date')
+            ->get();
     }
 }

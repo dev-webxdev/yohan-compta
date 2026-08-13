@@ -55,7 +55,7 @@ use App\Support\Time;
 
     <aside class="right-column">
         <section class="panel">
-            <div class="panel-heading"><div><h2>Semaines concernées</h2><p>Lundi → dimanche, même entre deux mois.</p></div></div>
+            <div class="panel-heading"><div><h2>Semaines concernées</h2><p>Lundi → dimanche, coupée au changement de mois.</p></div></div>
             <div class="week-list">
             @foreach($report['weeks'] as $week)
                 <article class="week-card">

@@ -24,9 +24,9 @@ Puis ouvrir `http://127.0.0.1:8000`.
 
 ## Principes métier
 
-- semaine réelle : lundi → dimanche ;
-- seuil par défaut : 35:00 ;
-- les heures supplémentaires sont attribuées aux dates réelles où le cumul hebdomadaire dépasse le seuil, afin que chaque portion appartienne à son vrai mois ;
+- semaine : lundi → dimanche, mais coupée au dernier jour du mois ;
+- le compteur repart à zéro au 1er de chaque mois, même au milieu d’une semaine ;
+- seuil par défaut : 35:00 par segment de semaine ainsi obtenu ;
 - aucun double comptage des heures supplémentaires dans le salaire : le salaire du travail est calculé sur toutes les heures travaillées une seule fois ;
 - panier par défaut : 16 € si l'heure de fin est au moins 14:15, avec forçage manuel possible ;
 - paramètres historisés par date d'effet ;

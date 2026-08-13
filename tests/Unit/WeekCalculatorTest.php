@@ -23,18 +23,20 @@ final class WeekCalculatorTest extends TestCase
         return [[1920, 0], [2100, 0], [2400, 300]];
     }
 
-    public function test_cross_month_week_is_stable_and_overtime_is_assigned_to_real_days(): void
+    public function test_week_is_cut_and_reset_at_month_boundary(): void
     {
-        self::assertSame('2026-07-27', WeekCalculator::weekId('2026-08-02'));
-        self::assertSame('2026-12-28', WeekCalculator::weekId('2027-01-03'));
+        self::assertSame('2026-07-27', WeekCalculator::weekId('2026-07-31'));
+        self::assertSame('2026-08-01', WeekCalculator::weekId('2026-08-01'));
+        self::assertSame('2026-08-01', WeekCalculator::weekId('2026-08-02'));
+        self::assertSame('2027-01-01', WeekCalculator::weekId('2027-01-03'));
+        self::assertSame('2026-07-31', WeekCalculator::periodEnd('2026-07-27')->format('Y-m-d'));
+        self::assertSame('2026-08-02', WeekCalculator::periodEnd('2026-08-01')->format('Y-m-d'));
+
         $minutes = [
             '2026-07-27' => 420, '2026-07-28' => 420, '2026-07-29' => 420, '2026-07-30' => 420,
             '2026-07-31' => 300, '2026-08-01' => 180, '2026-08-02' => 240,
         ];
-        $result = WeekCalculator::calculate('2026-07-27', $minutes);
-        self::assertSame(300, $result['overtime']);
-        self::assertSame(0, $result['overtime_by_date']['2026-07-31']);
-        self::assertSame(60, $result['overtime_by_date']['2026-08-01']);
-        self::assertSame(240, $result['overtime_by_date']['2026-08-02']);
+        self::assertSame(0, WeekCalculator::calculate('2026-07-27', $minutes)['overtime']);
+        self::assertSame(0, WeekCalculator::calculate('2026-08-01', $minutes)['overtime']);
     }
 }

@@ -33,12 +33,13 @@ foreach ([[1920,0],[2100,0],[2400,300]] as [$total,$expected]) {
     $assert(WeekCalculator::calculate('2026-08-03',$daily)['overtime'] === $expected, "$total weekly overtime");
 }
 $cross = ['2026-07-27'=>420,'2026-07-28'=>420,'2026-07-29'=>420,'2026-07-30'=>420,'2026-07-31'=>540,'2026-08-01'=>180,'2026-08-02'=>240];
-$result = WeekCalculator::calculate('2026-07-27',$cross);
-$assert(WeekCalculator::weekId('2026-08-02') === '2026-07-27', 'cross-month week id');
-$assert($result['overtime'] === 540, 'cross-month weekly overtime once');
-$assert($result['overtime_by_date']['2026-07-31'] === 120, 'July keeps July overtime');
-$assert($result['overtime_by_date']['2026-08-01'] === 180 && $result['overtime_by_date']['2026-08-02'] === 240, 'August keeps August overtime');
-$assert(WeekCalculator::weekId('2027-01-03') === '2026-12-28', 'cross-year week id');
+$july = WeekCalculator::calculate('2026-07-27',$cross);
+$august = WeekCalculator::calculate('2026-08-01',$cross);
+$assert(WeekCalculator::weekId('2026-08-02') === '2026-08-01', 'month boundary starts new segment');
+$assert($july['overtime'] === 120, 'July segment overtime');
+$assert($august['overtime'] === 0, 'August segment resets threshold');
+$assert(WeekCalculator::periodEnd('2026-07-27')->format('Y-m-d') === '2026-07-31', 'July segment ends at month end');
+$assert(WeekCalculator::weekId('2027-01-03') === '2027-01-01', 'year boundary starts new segment');
 foreach ([['2026-02',28],['2028-02',29],['2026-04',30],['2026-08',31]] as [$month,$expectedDays]) {
     $start = new DateTimeImmutable($month.'-01'); $end = $start->modify('last day of this month');
     $assert((int)$end->format('j') === $expectedDays, "$month exact length");
