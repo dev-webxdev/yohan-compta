@@ -6,6 +6,7 @@ use App\Models\WorkDay;
 use App\Services\PayrollMath;
 use App\Support\Money;
 use App\Support\Time;
+use DateTimeImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -14,10 +15,7 @@ final class WorkDayController
 {
     public function store(Request $request, string $date): JsonResponse
     {
-        $parsedDate = \DateTimeImmutable::createFromFormat('!Y-m-d', $date);
-        if (!$parsedDate || $parsedDate->format('Y-m-d') !== $date || (int) $parsedDate->format('Y') < 2000 || (int) $parsedDate->format('Y') > 2200) {
-            abort(404);
-        }
+        $this->assertValidDate($date);
 
         $data = $request->validate([
             'driving' => ['nullable', 'regex:/^\d{1,3}:[0-5]\d$/'],
@@ -49,7 +47,11 @@ final class WorkDayController
             }
         }
 
-        $isEmpty = $driving === 0 && $warehouse === 0 && empty($data['end_time']) && $data['meal_mode'] === 'auto' && trim((string) ($data['note'] ?? '')) === '';
+        $isEmpty = $driving === 0
+            && $warehouse === 0
+            && empty($data['end_time'])
+            && $data['meal_mode'] === 'auto'
+            && trim((string) ($data['note'] ?? '')) === '';
 
         if ($isEmpty) {
             WorkDay::query()->whereDate('date', $date)->delete();
@@ -69,7 +71,17 @@ final class WorkDayController
 
     public function destroy(string $date): JsonResponse
     {
+        $this->assertValidDate($date);
         WorkDay::query()->whereDate('date', $date)->delete();
+
         return response()->json(['ok' => true]);
+    }
+
+    private function assertValidDate(string $date): void
+    {
+        $parsed = DateTimeImmutable::createFromFormat('!Y-m-d', $date);
+        if (!$parsed || $parsed->format('Y-m-d') !== $date || (int) $parsed->format('Y') < 2000 || (int) $parsed->format('Y') > 2200) {
+            abort(404);
+        }
     }
 }

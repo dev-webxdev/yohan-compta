@@ -53,7 +53,12 @@ final class MonthController
             'nextMonth' => $current->modify('+1 month')->format('Y-m'),
             'currentMonth' => now()->format('Y-m'),
             'monthLabel' => FrenchDate::monthYear($current),
-            'recentPayments' => OvertimePayment::query()->orderByDesc('payment_date')->orderByDesc('id')->limit(2)->get(),
+            'recentPayments' => OvertimePayment::query()
+                ->whereDate('payment_date', '<=', now()->format('Y-m-d'))
+                ->orderByDesc('payment_date')
+                ->orderByDesc('id')
+                ->limit(2)
+                ->get(),
         ]);
     }
 }

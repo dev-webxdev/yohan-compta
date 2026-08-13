@@ -23,7 +23,11 @@ final class Money
 
     public static function formatCents(int $cents): string
     {
-        return number_format($cents / 100, 2, ',', ' ').' €';
+        $sign = $cents < 0 ? '-' : '';
+        $absolute = abs($cents);
+
+        return $sign.number_format(intdiv($absolute, 100), 0, ',', ' ')
+            .','.sprintf('%02d', $absolute % 100).' €';
     }
 
     public static function parseEuros(string|int|float|null $value): int
