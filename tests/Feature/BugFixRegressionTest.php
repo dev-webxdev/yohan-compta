@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Models\OvertimePayment;
 use App\Services\WeekCalculator;
 use App\Support\Money;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -80,15 +79,15 @@ final class BugFixRegressionTest extends TestCase
         self::assertStringNotContainsString("\$week['overtime_gross_cents']", $view);
     }
 
-    public function test_future_payment_is_not_shown_as_received_on_dashboard(): void
+    public function test_dashboard_does_not_duplicate_overtime_payments_panel(): void
     {
-        OvertimePayment::query()->create([
-            'payment_date' => '2026-11-02',
-            'amount_cents' => 5000,
-            'note' => 'futur',
-        ]);
+        $response = $this->get('/mois/2026-08')->assertOk();
+        $controller = file_get_contents(app_path('Http/Controllers/MonthController.php'));
 
-        $this->get('/mois/2026-08')->assertOk()->assertDontSee('02/11/2026');
+        $response->assertDontSee('payments-rail', false);
+        $response->assertDontSee('Paiements heures sup');
+        self::assertStringNotContainsString('recentPayments', $controller);
+        self::assertStringNotContainsString('OvertimePayment', $controller);
     }
 
     public function test_invalid_delete_date_is_rejected(): void

@@ -9,7 +9,7 @@
   .panel-heading p,.panel p{font-size:12px;line-height:1.35}
   .work-table th{font-size:12px}
   .date-cell,.day-name,.total-cell strong,.week-title strong,.balance-summary div{font-size:12px}
-  .week-metrics span,.recent-payment-row,.muted,.hint,.save-state,.rail-add-button,.empty-payment,.credit,.salary-summary-grid span,.day-dialog label,.form-grid label,.dialog-delete,.dialog-cancel,.dialog-save,.inline-error,.allocation-tags span,.settings-history span{font-size:12px}
+  .week-metrics span,.muted,.hint,.save-state,.credit,.salary-summary-grid span,.day-dialog label,.form-grid label,.dialog-delete,.dialog-cancel,.dialog-save,.inline-error,.allocation-tags span{font-size:12px}
   .kpi span{font-size:12px}
 }
 @media (min-width:1600px) and (max-width:1919px){
@@ -41,8 +41,6 @@
 .salary-summary-grid strong{font-size:15px}
 .salary-total{background:#f5f9ff;border-color:#cfe0ff!important}
 .salary-overtime{background:#faf9ff;border-color:#ded9ff!important}
-.rail-add-button{gap:6px}
-.payment-check i{font-size:8px}
 
 @media(min-width:1101px){.week-list{max-height:263px}}
 
