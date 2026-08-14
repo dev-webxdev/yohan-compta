@@ -44,6 +44,7 @@ final class BugFixRegressionTest extends TestCase
             ->assertOk()
             ->assertSee('Taux horaire net')
             ->assertSee('Heure de début par défaut')
+            ->assertDontSee('Taux horaire brut')
             ->assertSee('name="default_start_time" value="07:45"', false)
             ->assertDontSee('<h2>Historique</h2>', false)
             ->assertDontSee('settings-history', false);
@@ -76,7 +77,8 @@ final class BugFixRegressionTest extends TestCase
         $view = file_get_contents(resource_path('views/month.blade.php'));
 
         self::assertStringNotContainsString('.week-metrics b{float:right', $css);
-        self::assertStringContainsString('.week-metrics b{float:none;margin:0}', $css);
+        self::assertStringContainsString('.week-metrics b{float:none;margin:0;font-size:12px;font-weight:650}', $css);
+        self::assertStringContainsString('.week-metrics b{font-size:10px}', $css);
         self::assertStringContainsString("Money::formatCents(\$week['overtime_net_cents']) }} net</b>", $view);
         self::assertStringNotContainsString("\$week['overtime_gross_cents']", $view);
         self::assertStringContainsString('.week-metrics{grid-template-columns:max-content 1fr;', $css);
@@ -139,7 +141,7 @@ final class BugFixRegressionTest extends TestCase
     {
         $css = file_get_contents(public_path('app.css'));
 
-        self::assertStringContainsString('.balance-summary div{grid-template-columns:max-content 1fr}', $css);
+        self::assertStringContainsString('.balance-summary div{grid-template-columns:max-content 1fr;column-gap:8px}', $css);
         self::assertStringContainsString('.balance-summary span{white-space:nowrap}', $css);
         self::assertStringContainsString('.kpi-money{padding-right:12px}', $css);
         self::assertStringContainsString('.kpi-money strong{font-size:14px}', $css);

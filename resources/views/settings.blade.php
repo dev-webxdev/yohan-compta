@@ -7,7 +7,6 @@
 <form method="post" action="{{ route('settings.store') }}" class="form-grid">@csrf
 <label>Date d’effet<input type="date" name="effective_from" value="{{ old('effective_from', now()->format('Y-m-d')) }}" required @error('effective_from') aria-invalid="true" @enderror>@error('effective_from')<span class="field-error">{{ $message }}</span>@enderror</label>
 <label>Heure de début par défaut<input name="default_start_time" value="{{ old('default_start_time', Time::formatClock($current->default_start_time_minutes)) }}" inputmode="numeric" required @error('default_start_time') aria-invalid="true" @enderror>@error('default_start_time')<span class="field-error">{{ $message }}</span>@enderror</label>
-<label>Taux horaire brut (€)<input name="hourly_gross_rate" value="{{ old('hourly_gross_rate', Money::formatInput($current->hourly_gross_rate_cents)) }}" inputmode="decimal" required @error('hourly_gross_rate') aria-invalid="true" @enderror>@error('hourly_gross_rate')<span class="field-error">{{ $message }}</span>@enderror</label>
 <label>Taux horaire net (€)<input name="hourly_net_rate" value="{{ old('hourly_net_rate', Money::formatInput($current->hourly_net_rate_cents)) }}" inputmode="decimal" required @error('hourly_net_rate') aria-invalid="true" @enderror>@error('hourly_net_rate')<span class="field-error">{{ $message }}</span>@enderror</label>
 <label>Seuil hebdomadaire<input name="weekly_threshold" value="{{ old('weekly_threshold', Time::formatDuration($current->weekly_threshold_minutes)) }}" inputmode="numeric" required @error('weekly_threshold') aria-invalid="true" @enderror>@error('weekly_threshold')<span class="field-error">{{ $message }}</span>@enderror</label>
 <label>Montant panier (€)<input name="meal_allowance" value="{{ old('meal_allowance', Money::formatInput($current->meal_allowance_cents)) }}" inputmode="decimal" required @error('meal_allowance') aria-invalid="true" @enderror>@error('meal_allowance')<span class="field-error">{{ $message }}</span>@enderror</label>
@@ -16,7 +15,7 @@
 </form></section>
 
 <section class="panel database-maintenance">
-<div class="panel-heading"><div><h2>Sauvegarde et réinitialisation</h2><p>Gestion de la base SQLite. Les sauvegardes de sécurité sont conservées dans le stockage privé de l’application.</p></div></div>
+<div class="panel-heading"><div><h2>Sauvegarde et restauration</h2><p>Gestion de la base SQLite. Les sauvegardes de sécurité sont conservées dans le stockage privé de l’application.</p></div></div>
 <div class="database-actions">
 <article class="maintenance-card"><div><h3>Sauvegarder la BDD</h3><p>Télécharger une copie complète et cohérente de la base SQLite actuelle.</p></div><a class="primary-button" href="{{ route('settings.database.backup') }}"><i class="fa-solid fa-download"></i> Télécharger la sauvegarde</a></article>
 
@@ -25,36 +24,7 @@
 <input type="file" name="database_file" accept=".sqlite,.db,application/vnd.sqlite3,application/octet-stream" required @error('database_file') aria-invalid="true" @enderror>@error('database_file')<span class="field-error">{{ $message }}</span>@enderror
 <button class="primary-button"><i class="fa-solid fa-upload"></i> Restaurer la BDD</button>
 </form></article>
-
-<article class="maintenance-card danger-card"><div><h3>Réinitialiser complètement le site</h3><p>Supprime les journées, paiements et paramètres personnalisés, puis restaure les paramètres initiaux. Une sauvegarde de sécurité est créée avant l’opération.</p></div><form method="post" action="{{ route('settings.database.reset') }}" data-confirm data-confirm-title="Réinitialiser complètement le site ?" data-confirm-message="Toutes les données seront supprimées après création d’une sauvegarde de sécurité." data-confirm-action="Réinitialiser" data-confirm-danger="1">@csrf @method('DELETE')
-<label class="maintenance-confirm"><input type="checkbox" name="confirmed" value="1" required> Je confirme la suppression complète des données.</label>@error('confirmed')<span class="field-error">{{ $message }}</span>@enderror
-<button class="danger-button"><i class="fa-solid fa-triangle-exclamation"></i> Réinitialiser le site</button>
-</form></article>
-
-<article class="maintenance-card danger-card"><div><h3>Réinitialiser un mois</h3><p>Supprime uniquement les journées et paiements datés du mois sélectionné. Les paramètres restent conservés. Une sauvegarde est créée avant l’opération.</p></div><form method="post" action="{{ route('settings.database.reset-month') }}" class="month-reset-form" data-confirm data-confirm-title="Réinitialiser ce mois ?" data-confirm-message="Les journées et paiements du mois sélectionné seront supprimés après création d’une sauvegarde." data-confirm-action="Réinitialiser" data-confirm-danger="1">@csrf @method('DELETE')
-<input type="hidden" name="confirmed" value="1">
-<label>Année<input type="number" name="year" min="2000" max="2200" value="{{ old('year', now()->year) }}" required @error('year') aria-invalid="true" @enderror>@error('year')<span class="field-error">{{ $message }}</span>@enderror</label>
-<label>Mois<select name="month" required @error('month') aria-invalid="true" @enderror>@for($month=1;$month<=12;$month++)<option value="{{ $month }}" @selected($month === (int)old('month', now()->format('n')))>{{ sprintf('%02d',$month) }}</option>@endfor</select>@error('month')<span class="field-error">{{ $message }}</span>@enderror</label>
-<div class="wide"><button class="danger-button"><i class="fa-solid fa-calendar-xmark"></i> Réinitialiser ce mois</button></div>
-</form></article>
 </div>
-</section>
-
-<section class="panel automatic-backup">
-<div class="panel-heading"><div><h2>Sauvegarde automatique</h2><p>Une seule copie courante est mise à jour après chaque modification des données.</p></div></div>
-@if($automaticBackupHealth['state'] === 'failed')
-<p class="backup-health backup-health-error"><i class="fa-solid fa-circle-exclamation"></i> Dernière sauvegarde automatique échouée{{ $automaticBackupHealth['attempted_at'] ? ' le '.\Illuminate\Support\Carbon::parse($automaticBackupHealth['attempted_at'])->format('d/m/Y H:i:s') : '' }}. Les saisies restent enregistrées.</p>
-@elseif($automaticBackup)
-<p class="backup-health backup-health-ok"><i class="fa-solid fa-circle-check"></i> À jour</p>
-@endif
-@if($automaticBackup)
-<article class="backup-row">
-<div class="backup-info"><strong>Sauvegarde automatique courante</strong><span>Mise à jour le {{ $automaticBackup['created_at'] }} · {{ number_format($automaticBackup['size_bytes'] / 1024, 0, ',', ' ') }} Ko</span></div>
-<div class="backup-actions"><a class="primary-button secondary-button" href="{{ route('settings.database.automatic-backup.download') }}"><i class="fa-solid fa-download"></i> Télécharger</a></div>
-</article>
-@else
-<p class="muted backup-empty">Aucune copie disponible pour le moment. Elle sera créée lors de la prochaine modification réussie.</p>
-@endif
 </section>
 
 <section class="panel backup-library">

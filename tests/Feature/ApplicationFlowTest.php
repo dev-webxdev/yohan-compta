@@ -92,13 +92,12 @@ final class ApplicationFlowTest extends TestCase
     public function test_settings_are_effective_dated_without_rewriting_history(): void
     {
         WorkDay::query()->create(['date' => '2026-08-01', 'driving_minutes' => 60, 'warehouse_minutes' => 0, 'meal_allowance_mode' => 'auto']);
-        $old = app(ReportService::class)->month('2026-08')['work_gross_cents'];
-        self::assertSame(1231, $old);
+        $old = app(ReportService::class)->month('2026-08')['work_net_cents'];
+        self::assertSame(974, $old);
 
-        $this->post('/parametres', ['effective_from' => '2026-08-15', 'default_start_time' => '08:30', 'hourly_gross_rate' => '15', 'hourly_net_rate' => '12', 'weekly_threshold' => '35:00', 'meal_allowance' => '16', 'meal_allowance_time' => '14:15'])->assertRedirect('/parametres');
+        $this->post('/parametres', ['effective_from' => '2026-08-15', 'default_start_time' => '08:30', 'hourly_net_rate' => '12', 'weekly_threshold' => '35:00', 'meal_allowance' => '16', 'meal_allowance_time' => '14:15'])->assertRedirect('/parametres');
         WorkDay::query()->create(['date' => '2026-08-16', 'driving_minutes' => 60, 'warehouse_minutes' => 0, 'meal_allowance_mode' => 'auto']);
         $month = app(ReportService::class)->month('2026-08');
-        self::assertSame(2731, $month['work_gross_cents']);
         self::assertSame(2174, $month['work_net_cents']);
         self::assertSame(2, SettingPeriod::query()->count());
     }
@@ -108,7 +107,6 @@ final class ApplicationFlowTest extends TestCase
         $this->post('/parametres', [
             'effective_from' => '2026-08-01',
             'default_start_time' => '07:45',
-            'hourly_gross_rate' => '12,31',
             'hourly_net_rate' => '9,74',
             'weekly_threshold' => '35:00',
             'meal_allowance' => '16,31',
@@ -135,7 +133,6 @@ final class ApplicationFlowTest extends TestCase
         $this->post('/parametres', [
             'effective_from' => '2026-08-15',
             'default_start_time' => '08:30',
-            'hourly_gross_rate' => '12,31',
             'hourly_net_rate' => '9,74',
             'weekly_threshold' => '35:00',
             'meal_allowance' => '16',
@@ -244,7 +241,6 @@ final class ApplicationFlowTest extends TestCase
         $month = app(ReportService::class)->month('2026-08');
         self::assertGreaterThan(0, $month['overtime_net_cents']);
         self::assertSame($month['normal_net_cents'] + $month['meal_cents'], $month['theoretical_net_cents']);
-        self::assertSame($month['normal_gross_cents'] + $month['meal_cents'], $month['theoretical_gross_cents']);
         self::assertNotSame($month['work_net_cents'] + $month['meal_cents'], $month['theoretical_net_cents']);
 
         $response = $this->get('/mois/2026-08')->assertOk();

@@ -31,89 +31,6 @@ final class DatabaseMaintenanceService
         );
     }
 
-    public function refreshAutomaticBackup(): ?string
-    {
-        $temporary = null;
-        try {
-            $attemptedAt = now()->toIso8601String();
-            $configuredDatabase = (string) config('database.connections.'.$this->connectionName().'.database');
-            if ($configuredDatabase === ':memory:' || $configuredDatabase === '') {
-                return null;
-            }
-
-            $target = $this->automaticBackupPath(false);
-            File::ensureDirectoryExists(dirname($target));
-            $temporary = dirname($target).'/.automatic-'.bin2hex(random_bytes(6)).'.sqlite';
-            $this->createSnapshot($temporary);
-
-            if (!@rename($temporary, $target)) {
-                @unlink($temporary);
-                throw new RuntimeException('Impossible de mettre à jour la sauvegarde automatique.');
-            }
-
-            $this->writeAutomaticBackupHealth('ok', $attemptedAt);
-            return $target;
-        } catch (Throwable $error) {
-            if ($temporary !== null) {
-                @unlink($temporary);
-            }
-            $this->writeAutomaticBackupHealth('failed', isset($attemptedAt) ? $attemptedAt : now()->toIso8601String());
-            try {
-                report($error);
-            } catch (Throwable) {
-            }
-
-            return null;
-        }
-    }
-
-    /** @return array{name:string,created_at:string,size_bytes:int}|null */
-    public function automaticBackup(): ?array
-    {
-        $path = $this->automaticBackupPath(false);
-        if (!is_file($path) || !is_readable($path)) {
-            return null;
-        }
-
-        return [
-            'name' => basename($path),
-            'created_at' => date('d/m/Y H:i:s', filemtime($path) ?: 0),
-            'size_bytes' => (int) (filesize($path) ?: 0),
-        ];
-    }
-
-    /** @return array{state:string,attempted_at:?string} */
-    public function automaticBackupHealth(): array
-    {
-        $path = $this->automaticBackupStatusPath();
-        if (!is_file($path) || !is_readable($path)) {
-            return ['state' => $this->automaticBackup() ? 'ok' : 'missing', 'attempted_at' => null];
-        }
-
-        $status = json_decode((string) file_get_contents($path), true);
-        if (!is_array($status) || !in_array($status['state'] ?? null, ['ok', 'failed'], true)) {
-            return ['state' => $this->automaticBackup() ? 'ok' : 'missing', 'attempted_at' => null];
-        }
-
-        return ['state' => $status['state'], 'attempted_at' => isset($status['attempted_at']) ? (string) $status['attempted_at'] : null];
-    }
-
-    public function automaticBackupPath(bool $mustExist = true): string
-    {
-        $path = (string) config('database.automatic_backup_path');
-        if ($path === '') {
-            throw new RuntimeException('Chemin de sauvegarde automatique non configuré.');
-        }
-        if (!str_starts_with($path, DIRECTORY_SEPARATOR)) {
-            $path = base_path($path);
-        }
-        if ($mustExist && (!is_file($path) || !is_readable($path))) {
-            throw new RuntimeException('Sauvegarde automatique introuvable.');
-        }
-
-        return $path;
-    }
-
     private function createSnapshot(string $path): string
     {
         $this->assertSqliteConnection();
@@ -283,46 +200,6 @@ final class DatabaseMaintenanceService
         return $safetyBackup;
     }
 
-    public function resetAll(): string
-    {
-        $backup = $this->createBackup();
-
-        DB::transaction(function (): void {
-            DB::table('overtime_payments')->delete();
-            DB::table('work_days')->delete();
-            DB::table('setting_periods')->delete();
-            DB::table('setting_periods')->insert([
-                'effective_from' => '2000-01-01',
-                'default_start_time_minutes' => 465,
-                'hourly_gross_rate_cents' => 1231,
-                'hourly_net_rate_cents' => 974,
-                'weekly_threshold_minutes' => 2100,
-                'meal_allowance_cents' => 1600,
-                'meal_allowance_time_minutes' => 855,
-            ]);
-        });
-
-        return $backup;
-    }
-
-    public function resetMonth(int $year, int $month): string
-    {
-        if ($year < 2000 || $year > 2200 || $month < 1 || $month > 12) {
-            throw new RuntimeException('Mois de réinitialisation invalide.');
-        }
-
-        $backup = $this->createBackup();
-        $start = sprintf('%04d-%02d-01', $year, $month);
-        $end = date('Y-m-t', strtotime($start));
-
-        DB::transaction(function () use ($start, $end): void {
-            DB::table('work_days')->whereBetween('date', [$start, $end])->delete();
-            DB::table('overtime_payments')->whereBetween('payment_date', [$start, $end])->delete();
-        });
-
-        return $backup;
-    }
-
     public function validateDatabaseFile(string $path): void
     {
         $this->assertSqliteConnection();
@@ -416,30 +293,6 @@ final class DatabaseMaintenanceService
     private function backupDirectory(): string
     {
         return storage_path(self::BACKUP_DIRECTORY);
-    }
-
-    private function automaticBackupStatusPath(): string
-    {
-        $path = (string) config('database.automatic_backup_status_path');
-        if ($path === '') {
-            return storage_path('app/private/automatic/status.json');
-        }
-
-        return str_starts_with($path, DIRECTORY_SEPARATOR) ? $path : base_path($path);
-    }
-
-    private function writeAutomaticBackupHealth(string $state, string $attemptedAt): void
-    {
-        try {
-            $path = $this->automaticBackupStatusPath();
-            File::ensureDirectoryExists(dirname($path));
-            file_put_contents($path, json_encode([
-                'state' => $state,
-                'attempted_at' => $attemptedAt,
-            ], JSON_THROW_ON_ERROR));
-        } catch (Throwable) {
-            // Status reporting is best effort and must never block application writes.
-        }
     }
 
     private function assertSqliteConnection(): void

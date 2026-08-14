@@ -22,7 +22,6 @@
   .days-footer{display:none}
   .work-table{min-width:790px}
 }
-.kpi small,.salary-summary-grid small{display:block;color:var(--muted);font-size:10px;margin-top:3px;white-space:nowrap}
 .kpi-money strong{font-size:16px}
 .square-control i{font-size:14px}
 .end-value,.dialog-readonly{background:#f5f7fa;color:#47546a;border-color:#e1e5eb;cursor:default}
@@ -32,9 +31,9 @@
 .day-dialog.meal-only .dialog-grid,.day-dialog.meal-only .dialog-delete{display:none}
 .week-card{min-height:90px;grid-template-columns:1fr}
 .weeks-panel,.balance-panel{padding:14px 13px}
-.week-metrics{grid-template-columns:max-content 1fr;column-gap:5px;row-gap:2px;align-items:baseline}
-.week-metrics b{float:none;margin:0}
-.balance-summary div{grid-template-columns:max-content 1fr}
+.week-metrics{grid-template-columns:max-content 1fr;column-gap:7px;row-gap:2px;align-items:baseline}
+.week-metrics b{float:none;margin:0;font-size:12px;font-weight:650}
+.balance-summary div{grid-template-columns:max-content 1fr;column-gap:8px}
 .balance-summary span{white-space:nowrap}
 .salary-summary-grid>div{display:flex;flex-direction:column;justify-content:center;min-height:72px}
 .salary-summary-grid strong{font-size:15px}
@@ -70,11 +69,9 @@
 .maintenance-card{border:1px solid #e2e7ed;border-radius:8px;padding:12px;display:flex;flex-direction:column;justify-content:space-between;gap:12px;min-height:165px}
 .maintenance-card h3{margin:0 0 5px;font-size:13px}.maintenance-card p{margin:0}
 .maintenance-card form{display:grid;gap:9px}.maintenance-card input[type="file"],.maintenance-card select,.maintenance-card input[type="number"]{width:100%;border:1px solid #d9e0e8;border-radius:5px;background:#fff;padding:7px 8px}
-.maintenance-confirm{display:flex!important;flex-direction:row!important;align-items:flex-start;gap:7px!important}.maintenance-confirm input{margin:1px 0 0}
 .primary-button,.danger-button{gap:6px}
 .meal-button,.mobile-more-days{display:inline-flex;align-items:center;justify-content:center;gap:6px}
-.danger-card{border-color:#f0d6d8;background:#fffafa}.danger-button{border:1px solid #e34852;background:#fff;color:#d63540;border-radius:6px;padding:8px 12px;cursor:pointer;font:inherit;display:inline-flex;align-items:center;justify-content:center}.danger-button:hover{background:#fff0f0}
-.month-reset-form{grid-template-columns:1fr 1fr}.month-reset-form .wide{grid-column:1/-1}
+.danger-button{border:1px solid #e34852;background:#fff;color:#d63540;border-radius:6px;padding:8px 12px;cursor:pointer;font:inherit;display:inline-flex;align-items:center;justify-content:center}.danger-button:hover{background:#fff0f0}
 .backup-list{display:grid;gap:9px;margin-top:12px}.backup-row{display:flex;align-items:center;justify-content:space-between;gap:16px;border:1px solid #e2e7ed;border-radius:8px;padding:11px 12px}.backup-info{min-width:0;display:grid;gap:4px}.backup-info strong{overflow-wrap:anywhere}.backup-info span{color:var(--muted);font-size:11px}.backup-actions{display:flex;align-items:center;gap:7px;flex-wrap:wrap}.backup-actions form{margin:0}.backup-actions .primary-button,.backup-actions .danger-button{white-space:nowrap}.secondary-button{background:#fff;color:#26344d}.backup-empty{margin-top:12px!important}
 
 .confirm-dialog{width:min(430px,calc(100vw - 28px));border:0;border-radius:12px;padding:0;background:#fff;color:var(--text);box-shadow:0 20px 60px #17213b38}
@@ -92,9 +89,9 @@
   .meal-fieldset{grid-template-columns:1fr}
   .salary-summary-grid{grid-template-columns:1fr 1fr}
   .report-kpis .kpi-due{grid-column:1/-1}
-  .week-metrics{grid-template-columns:max-content 1fr;padding-left:0;column-gap:5px;row-gap:2px}
+  .week-metrics{grid-template-columns:max-content 1fr;padding-left:0;column-gap:7px;row-gap:2px}
+  .week-metrics b{font-size:10px}
   .database-actions{grid-template-columns:1fr}
-  .month-reset-form{grid-template-columns:1fr}.month-reset-form .wide{grid-column:auto}
   .backup-row{align-items:flex-start;flex-direction:column}.backup-actions{width:100%}
   .confirm-dialog-body{padding:17px 16px 14px}.confirm-dialog-actions{padding:11px 16px 14px}
   .confirm-dialog-actions button{flex:1}
@@ -130,9 +127,6 @@
 .field-error{display:block;color:var(--red);font-size:11px;line-height:1.3}
 [aria-invalid="true"]{border-color:#df3e49!important;box-shadow:0 0 0 2px #df3e4914!important}
 .backup-library>.panel-heading{align-items:flex-start;flex-wrap:wrap}
-.backup-health{display:flex;align-items:center;gap:6px;margin:11px 0!important;padding:8px 10px;border-radius:6px;font-size:11px!important}
-.backup-health-ok{background:#ecf8f1;color:#147a47!important}
-.backup-health-error{background:#fff0f0;color:#b82934!important}
 .row-actions{display:flex;align-items:center;justify-content:center;gap:3px}
 .row-save-state{width:15px;height:15px;display:inline-grid;place-items:center;border-radius:50%;font-size:10px;font-weight:800;line-height:1;color:transparent}
 .row-save-state[data-state="saving"]{color:#69758a;background:#edf0f4}

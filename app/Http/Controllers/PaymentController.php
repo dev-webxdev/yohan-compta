@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\OvertimePayment;
-use App\Services\DatabaseMaintenanceService;
 use App\Services\ReportService;
 use App\Services\SettingsService;
 use App\Support\Money;
@@ -37,27 +36,24 @@ final class PaymentController
         ]);
     }
 
-    public function store(Request $request, ReportService $reports, SettingsService $settings, DatabaseMaintenanceService $database): RedirectResponse
+    public function store(Request $request, ReportService $reports, SettingsService $settings): RedirectResponse
     {
         $payload = $this->paymentPayload($request, $reports, $settings);
         OvertimePayment::query()->create($payload);
-        $database->refreshAutomaticBackup();
 
         return redirect()->route('payments.index')->with('status', 'Paiement enregistré. Les soldes nets sont recalculés automatiquement en FIFO.');
     }
 
-    public function update(Request $request, OvertimePayment $payment, ReportService $reports, SettingsService $settings, DatabaseMaintenanceService $database): RedirectResponse
+    public function update(Request $request, OvertimePayment $payment, ReportService $reports, SettingsService $settings): RedirectResponse
     {
         $payment->update($this->paymentPayload($request, $reports, $settings, $payment));
-        $database->refreshAutomaticBackup();
 
         return redirect()->route('payments.index')->with('status', 'Paiement modifié. Les soldes ont été recalculés automatiquement.');
     }
 
-    public function destroy(OvertimePayment $payment, DatabaseMaintenanceService $database): RedirectResponse
+    public function destroy(OvertimePayment $payment): RedirectResponse
     {
         $payment->delete();
-        $database->refreshAutomaticBackup();
         return redirect()->route('payments.index')->with('status', 'Paiement supprimé. Les soldes ont été recalculés.');
     }
 

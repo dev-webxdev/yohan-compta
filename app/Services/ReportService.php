@@ -45,7 +45,6 @@ final class ReportService
 
         $weeks = [];
         $overtimeMinutesMonth = 0;
-        $overtimeGrossNumerator = 0;
         $overtimeNetNumerator = 0;
         foreach (array_keys($weekIds) as $weekId) {
             $week = $this->week($weekId);
@@ -56,14 +55,12 @@ final class ReportService
                 }
                 $setting = $this->settings->forDate($date);
                 $overtimeMinutesMonth += $minutes;
-                $overtimeGrossNumerator += Money::wageNumerator($minutes, $setting->hourly_gross_rate_cents);
                 $overtimeNetNumerator += Money::wageNumerator($minutes, $setting->hourly_net_rate_cents);
             }
         }
 
         $workedMinutes = 0;
         $mealCents = 0;
-        $grossNumerator = 0;
         $netNumerator = 0;
         foreach ($days as $day) {
             if ($day->is_rest) {
@@ -83,15 +80,11 @@ final class ReportService
                 $setting->meal_allowance_time_minutes,
                 $setting->meal_allowance_cents,
             );
-            $grossNumerator += Money::wageNumerator($worked, $setting->hourly_gross_rate_cents);
             $netNumerator += Money::wageNumerator($worked, $setting->hourly_net_rate_cents);
         }
 
-        $workGross = Money::numeratorToCents($grossNumerator);
         $workNet = Money::numeratorToCents($netNumerator);
-        $overtimeGross = Money::numeratorToCents($overtimeGrossNumerator);
         $overtimeNet = Money::numeratorToCents($overtimeNetNumerator);
-        $normalGross = max(0, $workGross - $overtimeGross);
         $normalNet = max(0, $workNet - $overtimeNet);
 
         return [
@@ -102,14 +95,10 @@ final class ReportService
             'weeks' => $weeks,
             'worked_minutes' => $workedMinutes,
             'overtime_minutes' => $overtimeMinutesMonth,
-            'overtime_gross_cents' => $overtimeGross,
             'overtime_net_cents' => $overtimeNet,
             'meal_cents' => $mealCents,
-            'normal_gross_cents' => $normalGross,
             'normal_net_cents' => $normalNet,
-            'work_gross_cents' => $workGross,
             'work_net_cents' => $workNet,
-            'theoretical_gross_cents' => $normalGross + $mealCents,
             'theoretical_net_cents' => $normalNet + $mealCents,
         ];
     }
@@ -129,14 +118,12 @@ final class ReportService
 
         $threshold = $this->settings->forDate($weekId)->weekly_threshold_minutes;
         $result = WeekCalculator::calculate($weekId, $minutesByDate, $threshold);
-        $grossNumerator = 0;
         $netNumerator = 0;
         foreach ($result['overtime_by_date'] as $date => $minutes) {
             if ($minutes <= 0) {
                 continue;
             }
             $setting = $this->settings->forDate($date);
-            $grossNumerator += Money::wageNumerator($minutes, $setting->hourly_gross_rate_cents);
             $netNumerator += Money::wageNumerator($minutes, $setting->hourly_net_rate_cents);
         }
 
@@ -147,7 +134,6 @@ final class ReportService
             'total_minutes' => $result['total'],
             'overtime_minutes' => $result['overtime'],
             'overtime_by_date' => $result['overtime_by_date'],
-            'overtime_gross_cents' => Money::numeratorToCents($grossNumerator),
             'overtime_net_cents' => Money::numeratorToCents($netNumerator),
         ];
     }
@@ -160,7 +146,6 @@ final class ReportService
         $totals = [
             'worked_minutes' => 0,
             'overtime_minutes' => 0,
-            'overtime_gross_cents' => 0,
             'overtime_net_cents' => 0,
             'meal_cents' => 0,
             'paid_received_cents' => 0,

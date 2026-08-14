@@ -66,8 +66,8 @@ final class ExportController
             fwrite($output, "\xEF\xBB\xBF");
             fputcsv($output, [
                 'Mois', 'Heures travaillées', 'Heures sup effectuées', 'Heures sup restantes',
-                'Montant sup net (€)', 'Montant sup brut (€)', 'Paniers (€)', 'Montant payé (€)',
-                'Montant affecté (€)', 'Montant restant à payer (€)',
+                'Montant sup net (€)', 'Paniers (€)', 'Montant payé (€)', 'Montant affecté (€)',
+                'Montant restant à payer (€)',
             ], ';', '"', '');
 
             foreach ($report['months'] as $month => $item) {
@@ -77,7 +77,6 @@ final class ExportController
                     Time::formatDuration($item['overtime_minutes']),
                     Time::formatDuration($item['remaining_minutes_indicative']),
                     Money::formatInput($item['overtime_net_cents']),
-                    Money::formatInput($item['overtime_gross_cents']),
                     Money::formatInput($item['meal_cents']),
                     Money::formatInput($item['paid_received_cents']),
                     Money::formatInput($item['paid_allocated_cents']),

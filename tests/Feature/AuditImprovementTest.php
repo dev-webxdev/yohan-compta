@@ -17,12 +17,11 @@ final class AuditImprovementTest extends TestCase
         $this->from('/parametres')->post('/parametres', [
             'effective_from' => '2026-08-14',
             'default_start_time' => '07:45',
-            'hourly_gross_rate' => 'abc',
-            'hourly_net_rate' => '9,74',
+            'hourly_net_rate' => 'abc',
             'weekly_threshold' => '35:00',
             'meal_allowance' => '16',
             'meal_allowance_time' => '14:15',
-        ])->assertRedirect('/parametres')->assertSessionHasErrors('hourly_gross_rate');
+        ])->assertRedirect('/parametres')->assertSessionHasErrors('hourly_net_rate');
 
         $this->get('/parametres')
             ->assertOk()
@@ -116,6 +115,7 @@ final class AuditImprovementTest extends TestCase
         $yearCsv = $year->streamedContent();
         self::assertStringContainsString('Mois;"Heures travaillées";', $yearCsv);
         self::assertStringContainsString('"Août 2026";', $yearCsv);
+        self::assertStringNotContainsString('brut', strtolower($yearCsv));
     }
 
     public function test_dashboard_balance_lists_only_months_still_due(): void
@@ -155,8 +155,11 @@ final class AuditImprovementTest extends TestCase
         self::assertStringContainsString('/vendor/fontawesome/css/fontawesome.min.css', $layout);
         self::assertStringNotContainsString('cdnjs.cloudflare.com/ajax/libs/font-awesome', $layout);
         self::assertFileExists(public_path('vendor/fontawesome/webfonts/fa-solid-900.woff2'));
+        self::assertStringNotContainsString('Taux horaire brut', $settings);
+        self::assertStringNotContainsString('Sauvegarde automatique', $settings);
+        self::assertStringNotContainsString('Réinitialiser complètement le site', $settings);
+        self::assertStringNotContainsString('Réinitialiser un mois', $settings);
         self::assertStringNotContainsString('Je confirme la restauration de la base sélectionnée.', $settings);
         self::assertStringNotContainsString('Je confirme la suppression des données de ce mois.', $settings);
-        self::assertStringContainsString('Je confirme la suppression complète des données.', $settings);
     }
 }

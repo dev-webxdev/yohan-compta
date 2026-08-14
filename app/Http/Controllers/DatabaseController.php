@@ -20,17 +20,6 @@ final class DatabaseController
             ->deleteFileAfterSend(true);
     }
 
-    public function downloadAutomaticBackup(DatabaseMaintenanceService $database): BinaryFileResponse
-    {
-        try {
-            $path = $database->automaticBackupPath();
-        } catch (RuntimeException) {
-            abort(404);
-        }
-
-        return response()->download($path, basename($path));
-    }
-
     public function downloadBackup(string $backup, DatabaseMaintenanceService $database): BinaryFileResponse
     {
         try {
@@ -48,7 +37,6 @@ final class DatabaseController
 
         try {
             $database->restoreBackup($backup);
-            $database->refreshAutomaticBackup();
         } catch (RuntimeException $error) {
             throw ValidationException::withMessages(['backup' => $error->getMessage()]);
         }
@@ -94,7 +82,6 @@ final class DatabaseController
 
         try {
             $backup = $database->restoreFrom($data['database_file']->getRealPath());
-            $database->refreshAutomaticBackup();
         } catch (RuntimeException $error) {
             throw ValidationException::withMessages(['database_file' => $error->getMessage()]);
         }
@@ -102,49 +89,6 @@ final class DatabaseController
         return redirect()->route('settings.index')->with(
             'status',
             'Base restaurée. Sauvegarde de sécurité de l’état précédent : '.basename($backup).'.',
-        );
-    }
-
-    public function resetAll(Request $request, DatabaseMaintenanceService $database): RedirectResponse
-    {
-        $request->validate(['confirmed' => ['accepted']]);
-
-        try {
-            $backup = $database->resetAll();
-            $database->refreshAutomaticBackup();
-        } catch (RuntimeException $error) {
-            throw ValidationException::withMessages(['database' => $error->getMessage()]);
-        }
-
-        return redirect()->route('settings.index')->with(
-            'status',
-            'Site réinitialisé. Une sauvegarde de sécurité a été créée : '.basename($backup).'.',
-        );
-    }
-
-    public function resetMonth(Request $request, DatabaseMaintenanceService $database): RedirectResponse
-    {
-        $data = $request->validate([
-            'year' => ['required', 'integer', 'min:2000', 'max:2200'],
-            'month' => ['required', 'integer', 'min:1', 'max:12'],
-            'confirmed' => ['accepted'],
-        ]);
-
-        try {
-            $backup = $database->resetMonth((int) $data['year'], (int) $data['month']);
-            $database->refreshAutomaticBackup();
-        } catch (RuntimeException $error) {
-            throw ValidationException::withMessages(['database' => $error->getMessage()]);
-        }
-
-        return redirect()->route('settings.index')->with(
-            'status',
-            sprintf(
-                'Données de %02d/%04d supprimées. Sauvegarde de sécurité : %s.',
-                $data['month'],
-                $data['year'],
-                basename($backup),
-            ),
         );
     }
 }
