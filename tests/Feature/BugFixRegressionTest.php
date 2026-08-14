@@ -81,6 +81,13 @@ final class BugFixRegressionTest extends TestCase
         self::assertStringContainsString('<span>Total travaillé :</span><b class="blue-value">', $view);
     }
 
+    public function test_week_cards_keep_space_below_overtime_amount(): void
+    {
+        $css = file_get_contents(public_path('app.css'));
+
+        self::assertStringContainsString('.week-card{min-height:83px;grid-template-columns:1fr;padding-bottom:11px}', $css);
+    }
+
     public function test_dashboard_summary_panels_keep_inner_spacing(): void
     {
         $css = file_get_contents(public_path('app.css'));
