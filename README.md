@@ -32,9 +32,10 @@ Puis ouvrir `http://127.0.0.1:8000`.
 - taux par défaut : 12,31 € brut/h et 9,74 € net/h ;
 - panier par défaut : 16 € si l'heure de fin calculée est au moins 14:15, avec forçage manuel possible ;
 - paramètres historisés par date d'effet ;
-- paiements indépendants des journées et répartis FIFO sur les plus anciennes dettes mensuelles nettes ;
+- paiements indépendants des journées, modifiables et répartis FIFO sur les plus anciennes dettes mensuelles nettes ;
 - la dette globale et le détail par mois sont suivis en net ;
 - les données calculées (semaines, totaux, soldes) sont recalculées depuis les données sources ;
+- export CSV disponible pour le détail mensuel et le rapport annuel ;
 - une sauvegarde automatique SQLite courante est rafraîchie après chaque modification, indépendamment des sauvegardes de sécurité créées avant les opérations sensibles.
 
 ## Tests

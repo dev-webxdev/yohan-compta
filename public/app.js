@@ -29,13 +29,17 @@
         }));
 
         const mobileToggle = q('.mobile-menu-toggle');
+        const closeMobileMenu = () => {
+            shell.classList.remove('mobile-menu-open');
+            mobileToggle?.setAttribute('aria-expanded', 'false');
+        };
         mobileToggle?.addEventListener('click', () => {
             const open = shell.classList.toggle('mobile-menu-open');
             mobileToggle.setAttribute('aria-expanded', String(open));
         });
-        qa('.sidebar a').forEach(link => link.addEventListener('click', () => shell.classList.remove('mobile-menu-open')));
+        qa('.sidebar a').forEach(link => link.addEventListener('click', closeMobileMenu));
         document.addEventListener('keydown', event => {
-            if (event.key === 'Escape') shell.classList.remove('mobile-menu-open');
+            if (event.key === 'Escape') closeMobileMenu();
         });
     }
 
@@ -76,6 +80,7 @@
         confirmationSubmit.textContent = action;
         confirmationDialog.classList.toggle('is-danger', danger);
         confirmationDialog.showModal();
+        q('#confirm-dialog-cancel')?.focus();
     });
 
     q('#confirm-dialog-cancel')?.addEventListener('click', () => resolveConfirmation(false));
@@ -109,6 +114,7 @@
 
     const token = q('meta[name="csrf-token"]')?.content;
     const state = q('#save-state');
+    const saveToast = q('#save-toast');
     const form = q('#day-dialog-form');
     const errorBox = q('#dialog-error');
     const mealAmount = form.elements.meal_amount;
@@ -118,6 +124,7 @@
     const saveQueues = new WeakMap();
     const saveVersions = new WeakMap();
     const savedRowStates = new WeakMap();
+    let saveToastTimer = null;
     const clearAutosaveTimer = row => {
         const timer = autosaveTimers.get(row);
         if (timer) clearTimeout(timer);
@@ -155,6 +162,26 @@
         if (!state) return;
         state.textContent = text;
         state.style.color = color;
+    };
+
+    const setRowSaveState = (row, status, message = '') => {
+        const indicator = q('.row-save-state', row);
+        if (!indicator) return;
+        indicator.dataset.state = status;
+        indicator.textContent = status === 'saving' ? '…' : status === 'saved' ? '✓' : status === 'error' ? '!' : '';
+        indicator.title = message;
+        indicator.setAttribute('aria-label', message || 'Aucune modification en attente');
+    };
+
+    const showSaveError = message => {
+        if (!saveToast) return;
+        saveToast.textContent = message;
+        saveToast.hidden = false;
+        if (saveToastTimer) clearTimeout(saveToastTimer);
+        saveToastTimer = setTimeout(() => {
+            saveToast.hidden = true;
+            saveToastTimer = null;
+        }, 5000);
     };
 
     const refreshDashboardSummary = async () => {
@@ -244,6 +271,7 @@
             .catch(() => {})
             .then(async () => {
                 setState('Enregistrement…', '#6d7890');
+                setRowSaveState(row, 'saving', 'Enregistrement en cours');
                 const response = await fetch(`/jours/${row.dataset.date}`, {
                     method: 'PUT',
                     headers: {'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': token},
@@ -252,7 +280,11 @@
                 if (!response.ok) {
                     const data = await response.json().catch(() => ({}));
                     const message = data.errors ? Object.values(data.errors).flat()[0] : 'Erreur lors de l’enregistrement.';
-                    if (saveVersions.get(row) === version) setState(message, '#e84b55');
+                    if (saveVersions.get(row) === version) {
+                        setState(message, '#e84b55');
+                        setRowSaveState(row, 'error', message);
+                        showSaveError(message);
+                    }
                     throw new Error(message);
                 }
                 if (saveVersions.get(row) !== version) return;
@@ -266,6 +298,7 @@
                 syncRow(row);
                 savedRowStates.set(row, JSON.stringify(rowBody(row)));
                 setState('Enregistré ✓', '#198754');
+                setRowSaveState(row, 'saved', 'Enregistré');
                 void refreshDashboardSummary();
             });
         saveQueues.set(row, task);

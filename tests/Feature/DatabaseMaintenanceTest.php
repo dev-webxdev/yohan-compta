@@ -19,7 +19,9 @@ final class DatabaseMaintenanceTest extends TestCase
     /** @var array<int,string> */
     private array $existingBackups = [];
     private mixed $originalAutomaticBackupPath;
+    private mixed $originalAutomaticBackupStatusPath;
     private string $automaticBackupPath;
+    private string $automaticBackupStatusPath;
 
     protected function setUp(): void
     {
@@ -32,12 +34,15 @@ final class DatabaseMaintenanceTest extends TestCase
         }
         $this->databasePath = $directory.'/maintenance-'.bin2hex(random_bytes(6)).'.sqlite';
         $this->automaticBackupPath = $directory.'/automatic-'.bin2hex(random_bytes(6)).'/yohan-compta-automatique.sqlite';
+        $this->automaticBackupStatusPath = $directory.'/automatic-status-'.bin2hex(random_bytes(6)).'.json';
         $this->originalAutomaticBackupPath = config('database.automatic_backup_path');
+        $this->originalAutomaticBackupStatusPath = config('database.automatic_backup_status_path');
         touch($this->databasePath);
 
         config([
             'database.connections.sqlite.database' => $this->databasePath,
             'database.automatic_backup_path' => $this->automaticBackupPath,
+            'database.automatic_backup_status_path' => $this->automaticBackupStatusPath,
         ]);
         DB::purge('sqlite');
         Artisan::call('migrate:fresh', ['--force' => true]);
@@ -54,6 +59,7 @@ final class DatabaseMaintenanceTest extends TestCase
             @unlink($path);
         }
         @unlink($this->automaticBackupPath);
+        @unlink($this->automaticBackupStatusPath);
         @rmdir(dirname($this->automaticBackupPath));
 
         foreach (glob(storage_path('app/private/backups/*.sqlite')) ?: [] as $path) {
@@ -65,6 +71,7 @@ final class DatabaseMaintenanceTest extends TestCase
         config([
             'database.connections.sqlite.database' => $this->originalDatabase,
             'database.automatic_backup_path' => $this->originalAutomaticBackupPath,
+            'database.automatic_backup_status_path' => $this->originalAutomaticBackupStatusPath,
         ]);
         DB::purge('sqlite');
         parent::tearDown();
@@ -162,6 +169,7 @@ final class DatabaseMaintenanceTest extends TestCase
 
         $settings = $this->get('/parametres')->assertOk();
         $settings->assertSee('Sauvegarde automatique courante')
+            ->assertSee('À jour')
             ->assertSee(route('settings.database.automatic-backup.download'), false);
         $this->get(route('settings.database.automatic-backup.download'))
             ->assertOk()
@@ -183,6 +191,8 @@ final class DatabaseMaintenanceTest extends TestCase
 
             self::assertSame(1, OvertimePayment::query()->count());
             self::assertSame(1300, OvertimePayment::query()->firstOrFail()->amount_cents);
+            self::assertSame('failed', app(DatabaseMaintenanceService::class)->automaticBackupHealth()['state']);
+            $this->get('/parametres')->assertOk()->assertSee('Dernière sauvegarde automatique échouée');
         } finally {
             @unlink($blocker);
             config(['database.automatic_backup_path' => $this->automaticBackupPath]);
@@ -208,7 +218,9 @@ final class DatabaseMaintenanceTest extends TestCase
             ->assertSee('Télécharger')
             ->assertSee('Restaurer')
             ->assertSee('Supprimer')
-            ->assertSee('sans créer de nouvelle sauvegarde automatique')
+            ->assertSee('sans créer de nouvelle sauvegarde de sécurité')
+            ->assertSee(route('settings.database.backups.delete-all'), false)
+            ->assertSee('Tout supprimer')
             ->assertSee('data-confirm-title="Supprimer cette sauvegarde ?"', false)
             ->assertSee('data-confirm-danger="1"', false);
 

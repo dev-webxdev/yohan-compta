@@ -20,6 +20,8 @@ final class SettingsController
             'current' => $settings->forDate(now()->format('Y-m-d')),
             'backups' => $database->backups(),
             'automaticBackup' => $database->automaticBackup(),
+            'automaticBackupHealth' => $database->automaticBackupHealth(),
+            'backupSummary' => $database->backupSummary(),
         ]);
     }
 
@@ -35,16 +37,12 @@ final class SettingsController
             'meal_allowance_time' => ['required', 'regex:/^([01]?\d|2[0-3]):[0-5]\d$/'],
         ]);
 
-        try {
-            $defaultStart = Time::parseClock($data['default_start_time']);
-            $grossRate = Money::parseEuros($data['hourly_gross_rate']);
-            $netRate = Money::parseEuros($data['hourly_net_rate']);
-            $threshold = Time::parseDuration($data['weekly_threshold']);
-            $meal = Money::parseEuros($data['meal_allowance']);
-            $mealTime = Time::parseClock($data['meal_allowance_time']);
-        } catch (\InvalidArgumentException $e) {
-            throw ValidationException::withMessages(['settings' => $e->getMessage()]);
-        }
+        $defaultStart = $this->parseField('default_start_time', fn () => Time::parseClock($data['default_start_time']));
+        $grossRate = $this->parseField('hourly_gross_rate', fn () => Money::parseEuros($data['hourly_gross_rate']));
+        $netRate = $this->parseField('hourly_net_rate', fn () => Money::parseEuros($data['hourly_net_rate']));
+        $threshold = $this->parseField('weekly_threshold', fn () => Time::parseDuration($data['weekly_threshold']));
+        $meal = $this->parseField('meal_allowance', fn () => Money::parseEuros($data['meal_allowance']));
+        $mealTime = $this->parseField('meal_allowance_time', fn () => Time::parseClock($data['meal_allowance_time']));
 
         SettingPeriod::query()->updateOrCreate(['effective_from' => $data['effective_from']], [
             'default_start_time_minutes' => $defaultStart,
@@ -57,5 +55,14 @@ final class SettingsController
         $database->refreshAutomaticBackup();
 
         return redirect()->route('settings.index')->with('status', 'Paramètres enregistrés à partir du '.$data['effective_from'].'. L’historique antérieur reste inchangé.');
+    }
+
+    private function parseField(string $field, callable $parser): int
+    {
+        try {
+            return (int) $parser();
+        } catch (\InvalidArgumentException $error) {
+            throw ValidationException::withMessages([$field => $error->getMessage()]);
+        }
     }
 }

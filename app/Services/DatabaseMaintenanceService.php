@@ -33,7 +33,9 @@ final class DatabaseMaintenanceService
 
     public function refreshAutomaticBackup(): ?string
     {
+        $temporary = null;
         try {
+            $attemptedAt = now()->toIso8601String();
             $configuredDatabase = (string) config('database.connections.'.$this->connectionName().'.database');
             if ($configuredDatabase === ':memory:' || $configuredDatabase === '') {
                 return null;
@@ -49,8 +51,13 @@ final class DatabaseMaintenanceService
                 throw new RuntimeException('Impossible de mettre à jour la sauvegarde automatique.');
             }
 
+            $this->writeAutomaticBackupHealth('ok', $attemptedAt);
             return $target;
         } catch (Throwable $error) {
+            if ($temporary !== null) {
+                @unlink($temporary);
+            }
+            $this->writeAutomaticBackupHealth('failed', isset($attemptedAt) ? $attemptedAt : now()->toIso8601String());
             try {
                 report($error);
             } catch (Throwable) {
@@ -73,6 +80,22 @@ final class DatabaseMaintenanceService
             'created_at' => date('d/m/Y H:i:s', filemtime($path) ?: 0),
             'size_bytes' => (int) (filesize($path) ?: 0),
         ];
+    }
+
+    /** @return array{state:string,attempted_at:?string} */
+    public function automaticBackupHealth(): array
+    {
+        $path = $this->automaticBackupStatusPath();
+        if (!is_file($path) || !is_readable($path)) {
+            return ['state' => $this->automaticBackup() ? 'ok' : 'missing', 'attempted_at' => null];
+        }
+
+        $status = json_decode((string) file_get_contents($path), true);
+        if (!is_array($status) || !in_array($status['state'] ?? null, ['ok', 'failed'], true)) {
+            return ['state' => $this->automaticBackup() ? 'ok' : 'missing', 'attempted_at' => null];
+        }
+
+        return ['state' => $status['state'], 'attempted_at' => isset($status['attempted_at']) ? (string) $status['attempted_at'] : null];
     }
 
     public function automaticBackupPath(bool $mustExist = true): string
@@ -136,6 +159,31 @@ final class DatabaseMaintenanceService
 
             return $backup;
         }, $backups);
+    }
+
+    /** @return array{count:int,size_bytes:int} */
+    public function backupSummary(): array
+    {
+        $backups = $this->backups();
+
+        return [
+            'count' => count($backups),
+            'size_bytes' => array_sum(array_column($backups, 'size_bytes')),
+        ];
+    }
+
+    public function deleteAllBackups(): int
+    {
+        $deleted = 0;
+        foreach ($this->backups() as $backup) {
+            $path = $this->backupPath($backup['name']);
+            if (!File::delete($path)) {
+                throw new RuntimeException('Impossible de supprimer toutes les sauvegardes de sécurité.');
+            }
+            $deleted++;
+        }
+
+        return $deleted;
     }
 
     public function backupPath(string $filename): string
@@ -368,6 +416,30 @@ final class DatabaseMaintenanceService
     private function backupDirectory(): string
     {
         return storage_path(self::BACKUP_DIRECTORY);
+    }
+
+    private function automaticBackupStatusPath(): string
+    {
+        $path = (string) config('database.automatic_backup_status_path');
+        if ($path === '') {
+            return storage_path('app/private/automatic/status.json');
+        }
+
+        return str_starts_with($path, DIRECTORY_SEPARATOR) ? $path : base_path($path);
+    }
+
+    private function writeAutomaticBackupHealth(string $state, string $attemptedAt): void
+    {
+        try {
+            $path = $this->automaticBackupStatusPath();
+            File::ensureDirectoryExists(dirname($path));
+            file_put_contents($path, json_encode([
+                'state' => $state,
+                'attempted_at' => $attemptedAt,
+            ], JSON_THROW_ON_ERROR));
+        } catch (Throwable) {
+            // Status reporting is best effort and must never block application writes.
+        }
     }
 
     private function assertSqliteConnection(): void

@@ -72,6 +72,19 @@ final class DatabaseController
         return redirect()->route('settings.index')->with('status', 'Sauvegarde supprimée : '.$backup.'.');
     }
 
+    public function deleteAllBackups(Request $request, DatabaseMaintenanceService $database): RedirectResponse
+    {
+        $request->validate(['confirmed' => ['accepted']]);
+
+        try {
+            $deleted = $database->deleteAllBackups();
+        } catch (RuntimeException $error) {
+            throw ValidationException::withMessages(['backup' => $error->getMessage()]);
+        }
+
+        return redirect()->route('settings.index')->with('status', $deleted.' sauvegarde(s) de sécurité supprimée(s).');
+    }
+
     public function restore(Request $request, DatabaseMaintenanceService $database): RedirectResponse
     {
         $data = $request->validate([

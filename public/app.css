@@ -12,13 +12,10 @@
   .week-metrics span,.muted,.hint,.save-state,.credit,.salary-summary-grid span,.day-dialog label,.form-grid label,.dialog-delete,.dialog-cancel,.dialog-save,.inline-error,.allocation-tags span{font-size:12px}
   .kpi span{font-size:12px}
 }
-@media (min-width:1600px) and (max-width:1919px){
-  body{overflow-x:hidden}
-  .app-shell{zoom:1.08;width:calc(92.5926vw - 8px);min-height:92vh;margin:2px auto}
-}
-@media (min-width:1920px){
-  body{overflow-x:hidden}
-  .app-shell{zoom:1.16;width:calc(86.2069vw - 8px);min-height:85vh;margin:2px auto}
+@media (min-width:1600px){
+  body{overflow-x:hidden;font-size:clamp(13px,calc(12px + .12vw),15px)}
+  .app-shell{width:min(calc(100vw - 8px),2200px);min-height:calc(100vh - 4px);margin:2px auto}
+  .content{padding-left:clamp(28px,1.6vw,40px);padding-right:clamp(20px,1.4vw,36px)}
 }
 
 @media (min-width:721px){
@@ -65,8 +62,6 @@
 .payment-row>div:first-child small,.payment-amount small{display:block;margin-top:3px;color:var(--muted);font-size:10px;font-weight:400}
 .payment-amount small{white-space:nowrap}
 .spacer-top{margin-top:16px}
-.danger-link{padding:6px 8px;border-radius:5px;cursor:pointer}
-.danger-link:hover{background:#fff0f0}
 
 .settings-page{display:grid;gap:16px}
 .settings-page>.panel{padding:15px}
@@ -123,4 +118,50 @@
   .work-table td:nth-child(7){display:block}
   .rest-cell{text-align:center!important}
   .row-state-label{display:none}
+}
+/* UX audit improvements */
+.month-toolbar,.year-nav{position:relative}
+.export-button{position:absolute;right:0;white-space:nowrap}
+.form-actions,.payment-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.payment-row{grid-template-columns:minmax(160px,200px) minmax(180px,1fr) 140px minmax(185px,auto)}
+.payment-actions{justify-content:flex-end}
+.compact-button{min-height:32px;padding:6px 9px}
+.field-error{display:block;color:var(--red);font-size:11px;line-height:1.3}
+[aria-invalid="true"]{border-color:#df3e49!important;box-shadow:0 0 0 2px #df3e4914!important}
+.backup-library>.panel-heading{align-items:flex-start;flex-wrap:wrap}
+.backup-health{display:flex;align-items:center;gap:6px;margin:11px 0!important;padding:8px 10px;border-radius:6px;font-size:11px!important}
+.backup-health-ok{background:#ecf8f1;color:#147a47!important}
+.backup-health-error{background:#fff0f0;color:#b82934!important}
+.row-actions{display:flex;align-items:center;justify-content:center;gap:3px}
+.row-save-state{width:15px;height:15px;display:inline-grid;place-items:center;border-radius:50%;font-size:10px;font-weight:800;line-height:1;color:transparent}
+.row-save-state[data-state="saving"]{color:#69758a;background:#edf0f4}
+.row-save-state[data-state="saved"]{color:#147a47;background:#e6f6ee}
+.row-save-state[data-state="error"]{color:#c83842;background:#fff0f0}
+.save-toast{position:fixed;right:18px;bottom:18px;z-index:90;max-width:min(420px,calc(100vw - 28px));padding:10px 13px;border-radius:8px;background:#b82934;color:#fff;box-shadow:0 12px 32px #17213b30;font-size:12px}
+.more-button,.dialog-close{min-width:32px;min-height:32px;display:inline-grid;place-items:center}
+.rest-check{min-width:32px;min-height:32px}.rest-check input{width:18px;height:18px}
+a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid #2678ff;outline-offset:2px}
+.report-table thead th{position:sticky;top:0;z-index:3}
+.report-table th:first-child,.report-table td:first-child{position:sticky;left:0;z-index:2;background:#fff;box-shadow:1px 0 0 #e8ecf1}
+.report-table thead th:first-child{z-index:4;background:#f8fafc}
+.report-table tfoot th:first-child{background:#f5f8fc}
+@media(max-width:1100px) and (min-width:721px){
+  .right-column{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:720px){
+  .kpi span,.days-heading p,.mobile-more-days,.week-metrics span,.mobile-nav a{font-size:10px}
+  .day-name,.mobile-date,.total-cell strong,.meal-button,.week-title strong{font-size:10px}
+  .work-table .work-row{height:38px;grid-template-columns:48px 1fr 48px 44px 62px 52px}
+  .row-actions{padding:0!important}
+  .row-save-state{width:14px;height:14px;font-size:9px}
+  .mobile-nav{height:62px}
+  .app-shell{padding-bottom:62px}
+  .save-toast{left:10px;right:10px;bottom:72px;max-width:none;font-size:12px}
+  .month-toolbar,.year-nav{padding-right:42px}
+  .export-button{width:34px;height:32px;padding:0;font-size:0}
+  .export-button i{font-size:13px}
+  .report-panel .table-wrap{max-height:calc(100vh - 190px);overflow:auto}
+  .payment-row{grid-template-columns:1fr auto}
+  .payment-actions{grid-column:1/-1;justify-content:flex-start}
+  .compact-button{min-height:36px}
 }
