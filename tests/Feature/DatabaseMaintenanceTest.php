@@ -66,7 +66,8 @@ final class DatabaseMaintenanceTest extends TestCase
             ->assertSee(route('settings.database.backup'), false)
             ->assertSee(route('settings.database.restore'), false)
             ->assertSee(route('settings.database.reset'), false)
-            ->assertSee(route('settings.database.reset-month'), false);
+            ->assertSee(route('settings.database.reset-month'), false)
+            ->assertSee('Sauvegardes de sécurité');
 
         $this->from('/parametres')
             ->delete('/parametres/base', ['confirmed' => ''])
@@ -98,6 +99,80 @@ final class DatabaseMaintenanceTest extends TestCase
         $response = $this->get('/parametres/base/sauvegarde')->assertOk();
         self::assertStringContainsString('attachment;', (string) $response->headers->get('content-disposition'));
         self::assertStringContainsString('.sqlite', (string) $response->headers->get('content-disposition'));
+    }
+
+    public function test_saved_backups_are_listed_downloadable_and_deletable_with_confirmation(): void
+    {
+        WorkDay::query()->create([
+            'date' => '2026-08-14',
+            'driving_minutes' => 480,
+            'warehouse_minutes' => 60,
+            'meal_allowance_mode' => 'auto',
+        ]);
+        $backup = app(DatabaseMaintenanceService::class)->createBackup();
+        $name = basename($backup);
+
+        $response = $this->get('/parametres')->assertOk();
+        $response->assertSee($name)
+            ->assertSee(route('settings.database.backups.download', ['backup' => $name]), false)
+            ->assertSee(route('settings.database.backups.restore', ['backup' => $name]), false)
+            ->assertSee(route('settings.database.backups.delete', ['backup' => $name]), false)
+            ->assertSee('Télécharger')
+            ->assertSee('Restaurer')
+            ->assertSee('Supprimer')
+            ->assertSee("confirm('Restaurer cette sauvegarde ?", false)
+            ->assertSee("confirm('Supprimer définitivement cette sauvegarde ?')", false);
+
+        $this->get(route('settings.database.backups.download', ['backup' => $name]))
+            ->assertOk()
+            ->assertDownload($name);
+        self::assertFileExists($backup);
+
+        $this->from('/parametres')
+            ->delete(route('settings.database.backups.delete', ['backup' => $name]), ['confirmed' => ''])
+            ->assertRedirect('/parametres')
+            ->assertSessionHasErrors('confirmed');
+        self::assertFileExists($backup);
+
+        $this->delete(route('settings.database.backups.delete', ['backup' => $name]), ['confirmed' => '1'])
+            ->assertRedirect('/parametres');
+        self::assertFileDoesNotExist($backup);
+    }
+
+    public function test_saved_backup_can_restore_previous_state_and_keeps_current_state_as_new_backup(): void
+    {
+        WorkDay::query()->create([
+            'date' => '2026-07-01',
+            'driving_minutes' => 420,
+            'warehouse_minutes' => 0,
+            'meal_allowance_mode' => 'auto',
+        ]);
+        $backup = app(DatabaseMaintenanceService::class)->createBackup();
+        $name = basename($backup);
+
+        WorkDay::query()->delete();
+        WorkDay::query()->create([
+            'date' => '2026-08-14',
+            'driving_minutes' => 480,
+            'warehouse_minutes' => 0,
+            'meal_allowance_mode' => 'auto',
+        ]);
+        $before = glob(storage_path('app/private/backups/*.sqlite')) ?: [];
+
+        $this->from('/parametres')
+            ->post(route('settings.database.backups.restore', ['backup' => $name]), ['confirmed' => ''])
+            ->assertRedirect('/parametres')
+            ->assertSessionHasErrors('confirmed');
+        self::assertTrue(WorkDay::query()->whereDate('date', '2026-08-14')->exists());
+
+        $this->post(route('settings.database.backups.restore', ['backup' => $name]), ['confirmed' => '1'])
+            ->assertRedirect('/parametres');
+
+        self::assertTrue(WorkDay::query()->whereDate('date', '2026-07-01')->exists());
+        self::assertFalse(WorkDay::query()->whereDate('date', '2026-08-14')->exists());
+        $after = glob(storage_path('app/private/backups/*.sqlite')) ?: [];
+        self::assertCount(count($before) + 1, $after);
+        self::assertFileExists($backup);
     }
 
     public function test_restore_replaces_database_and_keeps_a_pre_restore_backup(): void

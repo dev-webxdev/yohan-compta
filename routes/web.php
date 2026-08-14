@@ -21,5 +21,8 @@ Route::get('/parametres', [SettingsController::class, 'index'])->name('settings.
 Route::post('/parametres', [SettingsController::class, 'store'])->name('settings.store');
 Route::get('/parametres/base/sauvegarde', [DatabaseController::class, 'backup'])->name('settings.database.backup');
 Route::post('/parametres/base/restauration', [DatabaseController::class, 'restore'])->name('settings.database.restore');
+Route::get('/parametres/base/sauvegardes/{backup}', [DatabaseController::class, 'downloadBackup'])->where('backup', 'yohan-compta-\\d{8}-\\d{6}-[a-f0-9]{6}\\.sqlite')->name('settings.database.backups.download');
+Route::post('/parametres/base/sauvegardes/{backup}/restauration', [DatabaseController::class, 'restoreBackup'])->where('backup', 'yohan-compta-\\d{8}-\\d{6}-[a-f0-9]{6}\\.sqlite')->name('settings.database.backups.restore');
+Route::delete('/parametres/base/sauvegardes/{backup}', [DatabaseController::class, 'deleteBackup'])->where('backup', 'yohan-compta-\\d{8}-\\d{6}-[a-f0-9]{6}\\.sqlite')->name('settings.database.backups.delete');
 Route::delete('/parametres/base', [DatabaseController::class, 'resetAll'])->name('settings.database.reset');
 Route::delete('/parametres/base/mois', [DatabaseController::class, 'resetMonth'])->name('settings.database.reset-month');

@@ -38,5 +38,25 @@
 </form></article>
 </div>
 </section>
+
+<section class="panel backup-library">
+<div class="panel-heading"><div><h2>Sauvegardes de sécurité</h2><p>Les sauvegardes créées automatiquement restent disponibles ici jusqu’à leur suppression.</p></div></div>
+<div class="backup-list">
+@forelse($backups as $backup)
+<article class="backup-row">
+<div class="backup-info"><strong>{{ $backup['name'] }}</strong><span>{{ $backup['created_at'] }} · {{ number_format($backup['size_bytes'] / 1024, 0, ',', ' ') }} Ko</span></div>
+<div class="backup-actions">
+<a class="primary-button secondary-button" href="{{ route('settings.database.backups.download', ['backup' => $backup['name']]) }}"><i class="fa-solid fa-download"></i> Télécharger</a>
+<form method="post" action="{{ route('settings.database.backups.restore', ['backup' => $backup['name']]) }}" onsubmit="return confirm('Restaurer cette sauvegarde ? Une sauvegarde de sécurité de l’état actuel sera créée avant la restauration.')">@csrf
+<input type="hidden" name="confirmed" value="1"><button class="primary-button"><i class="fa-solid fa-clock-rotate-left"></i> Restaurer</button></form>
+<form method="post" action="{{ route('settings.database.backups.delete', ['backup' => $backup['name']]) }}" onsubmit="return confirm('Supprimer définitivement cette sauvegarde ?')">@csrf @method('DELETE')
+<input type="hidden" name="confirmed" value="1"><button class="danger-button"><i class="fa-solid fa-trash"></i> Supprimer</button></form>
+</div>
+</article>
+@empty
+<p class="muted backup-empty">Aucune sauvegarde de sécurité enregistrée.</p>
+@endforelse
+</div>
+</section>
 </div>
 @endsection

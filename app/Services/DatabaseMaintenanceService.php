@@ -12,11 +12,13 @@ use Throwable;
 final class DatabaseMaintenanceService
 {
     private const REQUIRED_TABLES = ['migrations', 'work_days', 'setting_periods', 'overtime_payments'];
+    private const BACKUP_DIRECTORY = 'app/private/backups';
+    private const BACKUP_FILENAME_PATTERN = '/^yohan-compta-\d{8}-\d{6}-[a-f0-9]{6}\.sqlite$/';
 
     public function createBackup(): string
     {
         $this->assertSqliteConnection();
-        $directory = storage_path('app/private/backups');
+        $directory = $this->backupDirectory();
         File::ensureDirectoryExists($directory);
 
         $path = $directory.'/yohan-compta-'.now()->format('Ymd-His').'-'.bin2hex(random_bytes(3)).'.sqlite';
@@ -31,6 +33,64 @@ final class DatabaseMaintenanceService
         $this->validateDatabaseFile($path);
 
         return $path;
+    }
+
+    /** @return array<int,array{name:string,created_at:string,size_bytes:int}> */
+    public function backups(): array
+    {
+        $directory = $this->backupDirectory();
+        File::ensureDirectoryExists($directory);
+
+        $backups = [];
+        foreach (glob($directory.'/yohan-compta-*.sqlite') ?: [] as $path) {
+            $name = basename($path);
+            if (!preg_match(self::BACKUP_FILENAME_PATTERN, $name) || !is_file($path)) {
+                continue;
+            }
+
+            $createdAt = filemtime($path) ?: 0;
+            $backups[] = [
+                'name' => $name,
+                'created_at' => date('d/m/Y H:i:s', $createdAt),
+                'size_bytes' => (int) (filesize($path) ?: 0),
+                '_created_at' => $createdAt,
+            ];
+        }
+
+        usort($backups, static fn (array $left, array $right): int => $right['_created_at'] <=> $left['_created_at']);
+
+        return array_map(static function (array $backup): array {
+            unset($backup['_created_at']);
+
+            return $backup;
+        }, $backups);
+    }
+
+    public function backupPath(string $filename): string
+    {
+        if ($filename !== basename($filename) || !preg_match(self::BACKUP_FILENAME_PATTERN, $filename)) {
+            throw new RuntimeException('Sauvegarde introuvable.');
+        }
+
+        $path = $this->backupDirectory().DIRECTORY_SEPARATOR.$filename;
+        if (!is_file($path) || !is_readable($path)) {
+            throw new RuntimeException('Sauvegarde introuvable.');
+        }
+
+        return $path;
+    }
+
+    public function restoreBackup(string $filename): string
+    {
+        return $this->restoreFrom($this->backupPath($filename));
+    }
+
+    public function deleteBackup(string $filename): void
+    {
+        $path = $this->backupPath($filename);
+        if (!File::delete($path)) {
+            throw new RuntimeException('Impossible de supprimer cette sauvegarde.');
+        }
     }
 
     public function restoreFrom(string $sourcePath): string
@@ -218,6 +278,11 @@ final class DatabaseMaintenanceService
         }
 
         return $database;
+    }
+
+    private function backupDirectory(): string
+    {
+        return storage_path(self::BACKUP_DIRECTORY);
     }
 
     private function assertSqliteConnection(): void

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\SettingPeriod;
+use App\Services\DatabaseMaintenanceService;
 use App\Services\SettingsService;
 use App\Support\Money;
 use App\Support\Time;
@@ -13,9 +14,12 @@ use Illuminate\View\View;
 
 final class SettingsController
 {
-    public function index(SettingsService $settings): View
+    public function index(SettingsService $settings, DatabaseMaintenanceService $database): View
     {
-        return view('settings', ['current' => $settings->forDate(now()->format('Y-m-d'))]);
+        return view('settings', [
+            'current' => $settings->forDate(now()->format('Y-m-d')),
+            'backups' => $database->backups(),
+        ]);
     }
 
     public function store(Request $request): RedirectResponse
