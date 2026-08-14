@@ -34,7 +34,8 @@
 .weeks-panel,.balance-panel{padding:14px 13px}
 .week-metrics{grid-template-columns:max-content 1fr;column-gap:5px;row-gap:2px;align-items:baseline}
 .week-metrics b{float:none;margin:0}
-.balance-summary div{grid-template-columns:80px auto}
+.balance-summary div{grid-template-columns:max-content 1fr}
+.balance-summary span{white-space:nowrap}
 .salary-summary-grid>div{display:flex;flex-direction:column;justify-content:center;min-height:72px}
 .salary-summary-grid strong{font-size:15px}
 .salary-total{background:#f5f9ff;border-color:#cfe0ff!important}
@@ -151,6 +152,8 @@ a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible,
 @media(max-width:720px){
   .kpi span,.days-heading p,.mobile-more-days,.week-metrics span,.mobile-nav a{font-size:10px}
   .day-name,.mobile-date,.total-cell strong,.meal-button,.week-title strong{font-size:10px}
+  .kpi-money{padding-right:12px}
+  .kpi-money strong{font-size:14px}
   .work-table .work-row{height:38px;grid-template-columns:48px 1fr 48px 44px 62px 52px}
   .row-actions{padding:0!important}
   .row-save-state{width:14px;height:14px;font-size:9px}

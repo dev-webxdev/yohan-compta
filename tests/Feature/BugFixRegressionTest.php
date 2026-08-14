@@ -135,6 +135,16 @@ final class BugFixRegressionTest extends TestCase
         self::assertStringContainsString('.spacer-top{margin-top:16px}', $css);
     }
 
+    public function test_mobile_overtime_summary_keeps_readable_spacing(): void
+    {
+        $css = file_get_contents(public_path('app.css'));
+
+        self::assertStringContainsString('.balance-summary div{grid-template-columns:max-content 1fr}', $css);
+        self::assertStringContainsString('.balance-summary span{white-space:nowrap}', $css);
+        self::assertStringContainsString('.kpi-money{padding-right:12px}', $css);
+        self::assertStringContainsString('.kpi-money strong{font-size:14px}', $css);
+    }
+
     public function test_dashboard_does_not_duplicate_overtime_payments_panel(): void
     {
         $response = $this->get('/mois/2026-08')->assertOk();
