@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\DatabaseController;
 use App\Http\Controllers\MonthController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\SettingsController;
@@ -18,3 +19,7 @@ Route::delete('/paiements/{payment}', [PaymentController::class, 'destroy'])->na
 Route::get('/annee/{year?}', YearController::class)->where('year', '\\d{4}')->name('year.show');
 Route::get('/parametres', [SettingsController::class, 'index'])->name('settings.index');
 Route::post('/parametres', [SettingsController::class, 'store'])->name('settings.store');
+Route::get('/parametres/base/sauvegarde', [DatabaseController::class, 'backup'])->name('settings.database.backup');
+Route::post('/parametres/base/restauration', [DatabaseController::class, 'restore'])->name('settings.database.restore');
+Route::delete('/parametres/base', [DatabaseController::class, 'resetAll'])->name('settings.database.reset');
+Route::delete('/parametres/base/mois', [DatabaseController::class, 'resetMonth'])->name('settings.database.reset-month');
