@@ -35,8 +35,7 @@
 .day-dialog.meal-only .dialog-grid,.day-dialog.meal-only .dialog-delete{display:none}
 .week-card{min-height:83px;grid-template-columns:1fr}
 .week-metrics{grid-template-columns:1fr}
-.week-metrics b{float:right;margin-right:18px}
-.week-metrics small{color:var(--muted);font-size:9px;font-weight:500}
+.week-metrics b{float:none;margin-left:4px}
 .balance-summary div{grid-template-columns:80px auto}
 .salary-summary-grid>div{display:flex;flex-direction:column;justify-content:center;min-height:72px}
 .salary-summary-grid strong{font-size:15px}
@@ -75,7 +74,6 @@
   .salary-summary-grid{grid-template-columns:1fr 1fr}
   .report-kpis .kpi-due{grid-column:1/-1}
   .week-metrics{grid-template-columns:repeat(3,1fr);padding-left:0;gap:5px}
-  .week-metrics b{float:none;margin:0}
 }
 
 .work-table tbody tr.row-needs-fill{background:#fff9e8;box-shadow:inset 3px 0 0 #e5a91d}
