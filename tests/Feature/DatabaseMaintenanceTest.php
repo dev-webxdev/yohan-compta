@@ -232,6 +232,7 @@ final class DatabaseMaintenanceTest extends TestCase
         OvertimePayment::query()->create(['payment_date' => '2026-08-14', 'amount_cents' => 5000]);
         SettingPeriod::query()->create([
             'effective_from' => '2026-08-01',
+            'default_start_time_minutes' => 510,
             'hourly_gross_rate_cents' => 1500,
             'hourly_net_rate_cents' => 1200,
             'weekly_threshold_minutes' => 2100,
@@ -247,6 +248,7 @@ final class DatabaseMaintenanceTest extends TestCase
         self::assertSame(1, SettingPeriod::query()->count());
         $default = SettingPeriod::query()->firstOrFail();
         self::assertSame('2000-01-01', $default->effective_from->format('Y-m-d'));
+        self::assertSame(465, $default->default_start_time_minutes);
         self::assertSame(1231, $default->hourly_gross_rate_cents);
         self::assertSame(974, $default->hourly_net_rate_cents);
 

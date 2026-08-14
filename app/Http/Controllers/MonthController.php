@@ -11,8 +11,6 @@ use Illuminate\View\View;
 
 final class MonthController
 {
-    private const DEFAULT_START_MINUTES = 465;
-
     public function __invoke(ReportService $reports, SettingsService $settings, ?string $month = null): View
     {
         $month ??= now()->format('Y-m');
@@ -28,7 +26,7 @@ final class MonthController
             $workDay = $report['work_days']->get($date);
             $setting = $settings->forDate($date);
             $isRest = $workDay ? $workDay->is_rest : (int) $cursor->format('N') === 7;
-            $start = $workDay?->start_time_minutes ?? self::DEFAULT_START_MINUTES;
+            $start = $workDay?->start_time_minutes ?? $setting->default_start_time_minutes;
             $driving = $workDay?->driving_minutes ?? 0;
             $warehouse = $workDay?->warehouse_minutes ?? 0;
             $worked = $driving + $warehouse;

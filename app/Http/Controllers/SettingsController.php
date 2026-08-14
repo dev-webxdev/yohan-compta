@@ -26,6 +26,7 @@ final class SettingsController
     {
         $data = $request->validate([
             'effective_from' => ['required', 'date'],
+            'default_start_time' => ['required', 'regex:/^([01]?\d|2[0-3])(?::[0-5]\d)?$/'],
             'hourly_gross_rate' => ['required', 'string'],
             'hourly_net_rate' => ['required', 'string'],
             'weekly_threshold' => ['required', 'regex:/^\d{1,3}:[0-5]\d$/'],
@@ -34,6 +35,7 @@ final class SettingsController
         ]);
 
         try {
+            $defaultStart = Time::parseClock($data['default_start_time']);
             $grossRate = Money::parseEuros($data['hourly_gross_rate']);
             $netRate = Money::parseEuros($data['hourly_net_rate']);
             $threshold = Time::parseDuration($data['weekly_threshold']);
@@ -44,6 +46,7 @@ final class SettingsController
         }
 
         SettingPeriod::query()->updateOrCreate(['effective_from' => $data['effective_from']], [
+            'default_start_time_minutes' => $defaultStart,
             'hourly_gross_rate_cents' => $grossRate,
             'hourly_net_rate_cents' => $netRate,
             'weekly_threshold_minutes' => $threshold,

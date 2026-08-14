@@ -95,7 +95,7 @@ final class ApplicationFlowTest extends TestCase
         $old = app(ReportService::class)->month('2026-08')['work_gross_cents'];
         self::assertSame(1231, $old);
 
-        $this->post('/parametres', ['effective_from' => '2026-08-15', 'hourly_gross_rate' => '15', 'hourly_net_rate' => '12', 'weekly_threshold' => '35:00', 'meal_allowance' => '16', 'meal_allowance_time' => '14:15'])->assertRedirect('/parametres');
+        $this->post('/parametres', ['effective_from' => '2026-08-15', 'default_start_time' => '08:30', 'hourly_gross_rate' => '15', 'hourly_net_rate' => '12', 'weekly_threshold' => '35:00', 'meal_allowance' => '16', 'meal_allowance_time' => '14:15'])->assertRedirect('/parametres');
         WorkDay::query()->create(['date' => '2026-08-16', 'driving_minutes' => 60, 'warehouse_minutes' => 0, 'meal_allowance_mode' => 'auto']);
         $month = app(ReportService::class)->month('2026-08');
         self::assertSame(2731, $month['work_gross_cents']);
@@ -107,6 +107,7 @@ final class ApplicationFlowTest extends TestCase
     {
         $this->post('/parametres', [
             'effective_from' => '2026-08-01',
+            'default_start_time' => '07:45',
             'hourly_gross_rate' => '12,31',
             'hourly_net_rate' => '9,74',
             'weekly_threshold' => '35:00',
@@ -127,6 +128,34 @@ final class ApplicationFlowTest extends TestCase
         $response = $this->get('/mois/2026-08')->assertOk();
         $response->assertSee('data-meal-default="1631"', false);
         $response->assertDontSee('Automatique (16,00 €)', false);
+    }
+
+    public function test_default_start_time_is_effective_dated_and_used_for_empty_days(): void
+    {
+        $this->post('/parametres', [
+            'effective_from' => '2026-08-15',
+            'default_start_time' => '08:30',
+            'hourly_gross_rate' => '12,31',
+            'hourly_net_rate' => '9,74',
+            'weekly_threshold' => '35:00',
+            'meal_allowance' => '16',
+            'meal_allowance_time' => '14:15',
+        ])->assertRedirect('/parametres');
+
+        $content = $this->get('/mois/2026-08')->assertOk()->getContent();
+        self::assertMatchesRegularExpression('/data-date="2026-08-14".*?name="start_time" value="07:45"/s', $content);
+        self::assertMatchesRegularExpression('/data-date="2026-08-17".*?name="start_time" value="08:30"/s', $content);
+
+        $this->putJson('/jours/2026-08-17', [
+            'start_time' => '08:30',
+            'driving' => '',
+            'warehouse' => '',
+            'meal_mode' => 'auto',
+            'meal_amount' => '',
+        ])->assertOk();
+        self::assertFalse(WorkDay::query()->whereDate('date', '2026-08-17')->exists());
+
+        self::assertSame(510, SettingPeriod::query()->whereDate('effective_from', '2026-08-15')->firstOrFail()->default_start_time_minutes);
     }
 
     public function test_payment_hours_and_amount_can_be_entered_independently(): void

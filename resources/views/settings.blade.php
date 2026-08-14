@@ -6,6 +6,7 @@
 <section class="panel"><div class="panel-heading"><div><h2>Nouveaux paramètres</h2><p>Les valeurs s’appliquent uniquement à partir de la date choisie. L’historique reste intact.</p></div></div>
 <form method="post" action="{{ route('settings.store') }}" class="form-grid">@csrf
 <label>Date d’effet<input type="date" name="effective_from" value="{{ now()->format('Y-m-d') }}" required></label>
+<label>Heure de début par défaut<input name="default_start_time" value="{{ Time::formatClock($current->default_start_time_minutes) }}" inputmode="numeric" required></label>
 <label>Taux horaire brut (€)<input name="hourly_gross_rate" value="{{ Money::formatInput($current->hourly_gross_rate_cents) }}" inputmode="decimal" required></label>
 <label>Taux horaire net (€)<input name="hourly_net_rate" value="{{ Money::formatInput($current->hourly_net_rate_cents) }}" inputmode="decimal" required></label>
 <label>Seuil hebdomadaire<input name="weekly_threshold" value="{{ Time::formatDuration($current->weekly_threshold_minutes) }}" inputmode="numeric" required></label>

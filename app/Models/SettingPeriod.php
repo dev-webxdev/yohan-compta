@@ -10,6 +10,7 @@ final class SettingPeriod extends Model
 
     protected $fillable = [
         'effective_from',
+        'default_start_time_minutes',
         'hourly_gross_rate_cents',
         'hourly_net_rate_cents',
         'weekly_threshold_minutes',
@@ -21,6 +22,7 @@ final class SettingPeriod extends Model
     {
         return [
             'effective_from' => 'date:Y-m-d',
+            'default_start_time_minutes' => 'integer',
             'hourly_gross_rate_cents' => 'integer',
             'hourly_net_rate_cents' => 'integer',
             'weekly_threshold_minutes' => 'integer',

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\WorkDay;
 use App\Services\PayrollMath;
+use App\Services\SettingsService;
 use App\Support\Money;
 use App\Support\Time;
 use DateTimeImmutable;
@@ -13,11 +14,10 @@ use Illuminate\Validation\ValidationException;
 
 final class WorkDayController
 {
-    private const DEFAULT_START_MINUTES = 465;
-
-    public function store(Request $request, string $date): JsonResponse
+    public function store(Request $request, SettingsService $settings, string $date): JsonResponse
     {
         $this->assertValidDate($date);
+        $defaultStart = $settings->forDate($date)->default_start_time_minutes;
 
         $data = $request->validate([
             'start_time' => ['required', 'regex:/^([01]?\d|2[0-3])(?::[0-5]\d)?$/'],
@@ -40,7 +40,7 @@ final class WorkDayController
             return response()->json(['ok' => true]);
         }
 
-        $start = Time::parseClock($data['start_time']) ?? self::DEFAULT_START_MINUTES;
+        $start = Time::parseClock($data['start_time']) ?? $defaultStart;
         $driving = Time::parseDuration($data['driving'] ?? '');
         $warehouse = Time::parseDuration($data['warehouse'] ?? '');
 
@@ -59,7 +59,7 @@ final class WorkDayController
             }
         }
 
-        $isEmpty = $start === self::DEFAULT_START_MINUTES
+        $isEmpty = $start === $defaultStart
             && $driving === 0
             && $warehouse === 0
             && $data['meal_mode'] === 'auto'

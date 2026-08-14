@@ -173,6 +173,7 @@ final class DatabaseMaintenanceService
             DB::table('setting_periods')->delete();
             DB::table('setting_periods')->insert([
                 'effective_from' => '2000-01-01',
+                'default_start_time_minutes' => 465,
                 'hourly_gross_rate_cents' => 1231,
                 'hourly_net_rate_cents' => 974,
                 'weekly_threshold_minutes' => 2100,

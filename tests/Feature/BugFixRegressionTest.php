@@ -43,6 +43,8 @@ final class BugFixRegressionTest extends TestCase
         $this->get('/parametres')
             ->assertOk()
             ->assertSee('Taux horaire net')
+            ->assertSee('Heure de début par défaut')
+            ->assertSee('name="default_start_time" value="07:45"', false)
             ->assertDontSee('<h2>Historique</h2>', false)
             ->assertDontSee('settings-history', false);
     }
