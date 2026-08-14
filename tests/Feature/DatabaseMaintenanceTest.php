@@ -169,6 +169,26 @@ final class DatabaseMaintenanceTest extends TestCase
         self::assertFileExists($path);
     }
 
+    public function test_automatic_backup_failure_does_not_fail_an_already_persisted_payment(): void
+    {
+        $blocker = storage_path('framework/testing/backup-blocker-'.bin2hex(random_bytes(4)));
+        file_put_contents($blocker, 'not a directory');
+        config(['database.automatic_backup_path' => $blocker.'/automatic.sqlite']);
+
+        try {
+            $this->post('/paiements', [
+                'payment_date' => '2026-08-14',
+                'amount' => '13',
+            ])->assertRedirect('/paiements');
+
+            self::assertSame(1, OvertimePayment::query()->count());
+            self::assertSame(1300, OvertimePayment::query()->firstOrFail()->amount_cents);
+        } finally {
+            @unlink($blocker);
+            config(['database.automatic_backup_path' => $this->automaticBackupPath]);
+        }
+    }
+
     public function test_saved_backups_are_listed_downloadable_and_deletable_with_confirmation(): void
     {
         WorkDay::query()->create([

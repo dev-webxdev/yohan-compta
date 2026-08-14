@@ -95,7 +95,8 @@ final class BugFixRegressionTest extends TestCase
     {
         $css = file_get_contents(public_path('app.css'));
 
-        self::assertStringContainsString('.primary-button,.danger-button,.rail-add-button{gap:6px}', $css);
+        self::assertStringContainsString('.primary-button,.danger-button{gap:6px}', $css);
+        self::assertStringNotContainsString('rail-add-button', $css);
         self::assertStringContainsString('.meal-button,.mobile-more-days{display:inline-flex;align-items:center;justify-content:center;gap:6px}', $css);
     }
 
@@ -143,6 +144,8 @@ final class BugFixRegressionTest extends TestCase
         $response->assertDontSee('Paiements heures sup');
         self::assertStringNotContainsString('recentPayments', $controller);
         self::assertStringNotContainsString('OvertimePayment', $controller);
+        self::assertStringNotContainsString('payments-rail', file_get_contents(public_path('app-base.css')));
+        self::assertStringNotContainsString('recent-payment', file_get_contents(public_path('app-base.css')));
     }
 
     public function test_table_edits_refresh_dashboard_data_without_reloading_the_page(): void
@@ -152,7 +155,9 @@ final class BugFixRegressionTest extends TestCase
         self::assertStringContainsString('const refreshDashboardSummary = async () =>', $javascript);
         self::assertStringContainsString("['.dashboard-kpis', '#weeks', '#balance', '.below-fold-summary']", $javascript);
         self::assertStringContainsString('void refreshDashboardSummary();', $javascript);
-        self::assertStringContainsString('autosaveTimers.set(input, setTimeout', $javascript);
+        self::assertStringContainsString('autosaveTimers.set(row, setTimeout', $javascript);
+        self::assertStringContainsString('const saveQueues = new WeakMap();', $javascript);
+        self::assertStringContainsString('(pending || Promise.resolve())', $javascript);
         self::assertStringContainsString('}, 450));', $javascript);
         self::assertStringNotContainsString('scheduleReload', $javascript);
     }

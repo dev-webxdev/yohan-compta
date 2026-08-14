@@ -33,22 +33,31 @@ final class DatabaseMaintenanceService
 
     public function refreshAutomaticBackup(): ?string
     {
-        $configuredDatabase = (string) config('database.connections.'.$this->connectionName().'.database');
-        if ($configuredDatabase === ':memory:' || $configuredDatabase === '') {
+        try {
+            $configuredDatabase = (string) config('database.connections.'.$this->connectionName().'.database');
+            if ($configuredDatabase === ':memory:' || $configuredDatabase === '') {
+                return null;
+            }
+
+            $target = $this->automaticBackupPath(false);
+            File::ensureDirectoryExists(dirname($target));
+            $temporary = dirname($target).'/.automatic-'.bin2hex(random_bytes(6)).'.sqlite';
+            $this->createSnapshot($temporary);
+
+            if (!@rename($temporary, $target)) {
+                @unlink($temporary);
+                throw new RuntimeException('Impossible de mettre à jour la sauvegarde automatique.');
+            }
+
+            return $target;
+        } catch (Throwable $error) {
+            try {
+                report($error);
+            } catch (Throwable) {
+            }
+
             return null;
         }
-
-        $target = $this->automaticBackupPath(false);
-        File::ensureDirectoryExists(dirname($target));
-        $temporary = dirname($target).'/.automatic-'.bin2hex(random_bytes(6)).'.sqlite';
-        $this->createSnapshot($temporary);
-
-        if (!@rename($temporary, $target)) {
-            @unlink($temporary);
-            throw new RuntimeException('Impossible de mettre à jour la sauvegarde automatique.');
-        }
-
-        return $target;
     }
 
     /** @return array{name:string,created_at:string,size_bytes:int}|null */

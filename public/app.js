@@ -115,7 +115,14 @@
     let activeRow = null;
     let summaryRefreshController = null;
     const autosaveTimers = new WeakMap();
+    const saveQueues = new WeakMap();
+    const saveVersions = new WeakMap();
     const savedRowStates = new WeakMap();
+    const clearAutosaveTimer = row => {
+        const timer = autosaveTimers.get(row);
+        if (timer) clearTimeout(timer);
+        autosaveTimers.delete(row);
+    };
 
     const parseClock = value => {
         const match = normalizeTime(value).match(/^(\d{1,2}):([0-5]\d)$/);
@@ -220,36 +227,52 @@
         meal_amount: row.dataset.mealAmount || '',
     });
 
-    async function saveRow(row, overrides = {}) {
+    function saveRow(row, overrides = {}) {
         const body = {
             ...rowBody(row),
             ...overrides,
         };
         const stateSignature = JSON.stringify(body);
-        if (Object.keys(overrides).length === 0 && savedRowStates.get(row) === stateSignature) return;
-        setState('Enregistrement…', '#6d7890');
-        const response = await fetch(`/jours/${row.dataset.date}`, {
-            method: 'PUT',
-            headers: {'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': token},
-            body: JSON.stringify(body),
+        const pending = saveQueues.get(row);
+        if (!pending && Object.keys(overrides).length === 0 && savedRowStates.get(row) === stateSignature) {
+            return Promise.resolve();
+        }
+
+        const version = (saveVersions.get(row) || 0) + 1;
+        saveVersions.set(row, version);
+        const task = (pending || Promise.resolve())
+            .catch(() => {})
+            .then(async () => {
+                setState('Enregistrement…', '#6d7890');
+                const response = await fetch(`/jours/${row.dataset.date}`, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': token},
+                    body: JSON.stringify(body),
+                });
+                if (!response.ok) {
+                    const data = await response.json().catch(() => ({}));
+                    const message = data.errors ? Object.values(data.errors).flat()[0] : 'Erreur lors de l’enregistrement.';
+                    if (saveVersions.get(row) === version) setState(message, '#e84b55');
+                    throw new Error(message);
+                }
+                if (saveVersions.get(row) !== version) return;
+                if (!body.is_rest) {
+                    q('[name="start_time"]', row).value = body.start_time;
+                    q('[name="driving"]', row).value = body.driving;
+                    q('[name="warehouse"]', row).value = body.warehouse;
+                    row.dataset.mealMode = body.meal_mode;
+                    row.dataset.mealAmount = body.meal_amount;
+                }
+                syncRow(row);
+                savedRowStates.set(row, JSON.stringify(rowBody(row)));
+                setState('Enregistré ✓', '#198754');
+                void refreshDashboardSummary();
+            });
+        saveQueues.set(row, task);
+
+        return task.finally(() => {
+            if (saveQueues.get(row) === task) saveQueues.delete(row);
         });
-        if (!response.ok) {
-            const data = await response.json().catch(() => ({}));
-            const message = data.errors ? Object.values(data.errors).flat()[0] : 'Erreur lors de l’enregistrement.';
-            setState(message, '#e84b55');
-            throw new Error(message);
-        }
-        if (!body.is_rest) {
-            q('[name="start_time"]', row).value = body.start_time;
-            q('[name="driving"]', row).value = body.driving;
-            q('[name="warehouse"]', row).value = body.warehouse;
-            row.dataset.mealMode = body.meal_mode;
-            row.dataset.mealAmount = body.meal_amount;
-        }
-        syncRow(row);
-        savedRowStates.set(row, JSON.stringify(rowBody(row)));
-        setState('Enregistré ✓', '#198754');
-        void refreshDashboardSummary();
     }
 
     qa('.work-row').forEach(row => {
@@ -259,6 +282,7 @@
     qa('.rest-toggle').forEach(toggle => toggle.addEventListener('change', async () => {
         const row = toggle.closest('.work-row');
         const previous = !toggle.checked;
+        clearAutosaveTimer(row);
         syncRow(row);
         try { await saveRow(row); } catch (_) {
             toggle.checked = previous;
@@ -266,24 +290,20 @@
         }
     }));
     qa('.autosave').forEach(input => {
-        const clearQueuedSave = () => {
-            const timer = autosaveTimers.get(input);
-            if (timer) clearTimeout(timer);
-            autosaveTimers.delete(input);
-        };
         input.addEventListener('input', () => {
             const row = input.closest('.work-row');
-            clearQueuedSave();
+            clearAutosaveTimer(row);
             syncRow(row);
             if (!rowValues(row)) return;
-            autosaveTimers.set(input, setTimeout(async () => {
-                autosaveTimers.delete(input);
+            autosaveTimers.set(row, setTimeout(async () => {
+                autosaveTimers.delete(row);
                 try { await saveRow(row); } catch (_) {}
             }, 450));
         });
         input.addEventListener('change', async () => {
-            clearQueuedSave();
-            try { await saveRow(input.closest('.work-row')); } catch (_) {}
+            const row = input.closest('.work-row');
+            clearAutosaveTimer(row);
+            try { await saveRow(row); } catch (_) {}
         });
         input.addEventListener('keydown', event => {
             if (event.key === 'Enter') { event.preventDefault(); input.blur(); }
@@ -312,6 +332,7 @@
     ['start_time', 'driving', 'warehouse'].forEach(name => form.elements[name].addEventListener('input', syncDialogComputed));
 
     function openDialog(row, mode = 'day') {
+        clearAutosaveTimer(row);
         activeRow = row;
         dialog.dataset.mode = mode;
         dialog.classList.toggle('meal-only', mode === 'meal');
@@ -365,6 +386,8 @@
             danger: true,
         });
         if (!accepted) return;
+        clearAutosaveTimer(activeRow);
+        await (saveQueues.get(activeRow) || Promise.resolve()).catch(() => {});
         const response = await fetch(`/jours/${activeRow.dataset.date}`, {
             method: 'DELETE',
             headers: {Accept: 'application/json', 'X-CSRF-TOKEN': token},

@@ -13,9 +13,4 @@ final class SettingsService
             ->orderByDesc('effective_from')
             ->firstOrFail();
     }
-
-    public function all(): \Illuminate\Database\Eloquent\Collection
-    {
-        return SettingPeriod::query()->orderByDesc('effective_from')->get();
-    }
 }
