@@ -74,9 +74,11 @@ final class BugFixRegressionTest extends TestCase
         $view = file_get_contents(resource_path('views/month.blade.php'));
 
         self::assertStringNotContainsString('.week-metrics b{float:right', $css);
-        self::assertStringContainsString('.week-metrics b{float:none;margin-left:4px}', $css);
+        self::assertStringContainsString('.week-metrics b{float:none;margin:0}', $css);
         self::assertStringContainsString("Money::formatCents(\$week['overtime_net_cents']) }} net</b>", $view);
         self::assertStringNotContainsString("\$week['overtime_gross_cents']", $view);
+        self::assertStringContainsString('.week-metrics{grid-template-columns:max-content 1fr;', $css);
+        self::assertStringContainsString('<span>Total travaillé :</span><b class="blue-value">', $view);
     }
 
     public function test_dashboard_does_not_duplicate_overtime_payments_panel(): void
