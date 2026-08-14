@@ -40,6 +40,7 @@
 .dialog-readonly{min-height:31px;border:1px solid #d9e0e8;border-radius:5px;padding:7px 8px;display:flex;align-items:center;font-weight:650}
 .dialog-grid{grid-template-columns:repeat(4,1fr);gap:12px}
 .meal-fieldset{grid-template-columns:minmax(160px,1fr) 72px 95px}
+.day-dialog.meal-only .dialog-grid,.day-dialog.meal-only .dialog-delete{display:none}
 .week-card{min-height:83px;grid-template-columns:1fr}
 .week-metrics{grid-template-columns:1fr}
 .week-metrics b{float:right;margin-right:18px}

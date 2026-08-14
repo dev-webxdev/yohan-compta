@@ -44,6 +44,16 @@ final class BugFixRegressionTest extends TestCase
             ->assertSee('Taux horaire net');
     }
 
+    public function test_meal_and_full_day_editing_use_distinct_triggers(): void
+    {
+        $response = $this->get('/mois/2026-08')->assertOk();
+
+        $response->assertSee('class="meal-button edit-meal"', false);
+        $response->assertSee('class="more-button edit-day"', false);
+        $response->assertSee('id="dialog-heading-prefix"', false);
+        self::assertStringContainsString("openDialog(button.closest('.work-row'), 'meal')", file_get_contents(public_path('app.js')));
+    }
+
     public function test_future_payment_is_not_shown_as_received_on_dashboard(): void
     {
         OvertimePayment::query()->create([

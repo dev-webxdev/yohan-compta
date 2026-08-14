@@ -113,7 +113,7 @@
         const isRest = q('.rest-toggle', row)?.checked ?? row.dataset.isRest === '1';
         row.dataset.isRest = isRest ? '1' : '0';
         qa('[name="start_time"], [name="driving"], [name="warehouse"]', row).forEach(input => { input.disabled = isRest; });
-        qa('.edit-day', row).forEach(button => { button.disabled = isRest; });
+        qa('.edit-day, .edit-meal', row).forEach(button => { button.disabled = isRest; });
 
         const stateLabel = q('.row-state-label', row);
         row.classList.toggle('row-rest', isRest);
@@ -220,9 +220,12 @@
     qa('input[name="meal_mode"]', form).forEach(radio => radio.addEventListener('change', syncMealInput));
     ['start_time', 'driving', 'warehouse'].forEach(name => form.elements[name].addEventListener('input', syncDialogComputed));
 
-    function openDialog(row) {
+    function openDialog(row, mode = 'day') {
         activeRow = row;
+        dialog.dataset.mode = mode;
+        dialog.classList.toggle('meal-only', mode === 'meal');
         const date = row.dataset.date;
+        q('#dialog-heading-prefix').textContent = mode === 'meal' ? 'Panier du' : 'Édition du';
         q('#dialog-title').textContent = date.split('-').reverse().join('/');
         const dayName = q('.day-name', row)?.textContent.trim() || '';
         const dayLabel = q('#dialog-day-name');
@@ -238,17 +241,22 @@
         dialog.showModal();
     }
 
-    qa('.edit-day').forEach(button => button.addEventListener('click', () => openDialog(button.closest('.work-row'))));
+    qa('.edit-meal').forEach(button => button.addEventListener('click', () => openDialog(button.closest('.work-row'), 'meal')));
+    qa('.edit-day').forEach(button => button.addEventListener('click', () => openDialog(button.closest('.work-row'), 'day')));
     q('#save-day')?.addEventListener('click', async () => {
         if (!activeRow) return;
         errorBox.textContent = '';
         const overrides = {
-            start_time: normalizeTime(form.elements.start_time.value),
-            driving: normalizeTime(form.elements.driving.value),
-            warehouse: normalizeTime(form.elements.warehouse.value),
             meal_mode: form.elements.meal_mode.value,
             meal_amount: form.elements.meal_amount.value,
         };
+        if (dialog.dataset.mode !== 'meal') {
+            Object.assign(overrides, {
+                start_time: normalizeTime(form.elements.start_time.value),
+                driving: normalizeTime(form.elements.driving.value),
+                warehouse: normalizeTime(form.elements.warehouse.value),
+            });
+        }
         try {
             await saveRow(activeRow, overrides);
             dialog.close();
