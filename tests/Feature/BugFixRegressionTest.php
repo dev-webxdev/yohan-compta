@@ -116,6 +116,16 @@ final class BugFixRegressionTest extends TestCase
         self::assertStringContainsString("qa('[data-time-normalize]')", $javascript);
     }
 
+    public function test_dashboard_overtime_balance_labels_are_explicit(): void
+    {
+        $response = $this->get('/mois/2026-08')->assertOk();
+
+        $response->assertSee('Heures sup à payer');
+        $response->assertSee('Heures sup restantes à payer');
+        $response->assertDontSee('€ encore dus');
+        $response->assertDontSee('<h2>Reste dû</h2>', false);
+    }
+
     public function test_invalid_delete_date_is_rejected(): void
     {
         $this->deleteJson('/jours/2026-99-99')->assertNotFound();
