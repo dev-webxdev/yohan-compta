@@ -34,7 +34,7 @@ final class PaymentController
         ]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request, ReportService $reports): RedirectResponse
     {
         $data = $request->validate([
             'payment_date' => ['required', 'date'],
@@ -53,6 +53,15 @@ final class PaymentController
 
         if ($amountCents <= 0) {
             throw ValidationException::withMessages(['amount' => 'Le paiement doit être supérieur à 0 €.']);
+        }
+
+        if ($hoursMinutes !== null) {
+            $remainingMinutes = (int) $reports->balance()['remaining_minutes_indicative'];
+            if ($hoursMinutes > $remainingMinutes) {
+                throw ValidationException::withMessages([
+                    'hours_paid' => 'Les heures payées ne peuvent pas dépasser les '.Time::formatDuration($remainingMinutes).' d’heures supplémentaires restantes.',
+                ]);
+            }
         }
 
         OvertimePayment::query()->create([

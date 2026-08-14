@@ -131,6 +131,9 @@ final class ApplicationFlowTest extends TestCase
 
     public function test_payment_hours_and_amount_can_be_entered_independently(): void
     {
+        foreach (['2026-08-03','2026-08-04','2026-08-05','2026-08-06','2026-08-07'] as $date) {
+            WorkDay::query()->create(['date' => $date, 'driving_minutes' => 480, 'warehouse_minutes' => 0, 'meal_allowance_mode' => 'auto']);
+        }
         $this->post('/paiements', [
             'payment_date' => '2026-08-13',
             'amount' => '13',
@@ -140,6 +143,31 @@ final class ApplicationFlowTest extends TestCase
         $payment = OvertimePayment::query()->firstOrFail();
         self::assertSame(1300, $payment->amount_cents);
         self::assertSame(60, $payment->hours_paid_minutes);
+    }
+
+    public function test_payment_hours_cannot_exceed_remaining_overtime(): void
+    {
+        foreach (['2026-08-03','2026-08-04','2026-08-05','2026-08-06','2026-08-07'] as $date) {
+            WorkDay::query()->create(['date' => $date, 'driving_minutes' => 480, 'warehouse_minutes' => 0, 'meal_allowance_mode' => 'auto']);
+        }
+
+        self::assertSame(300, app(ReportService::class)->balance()['remaining_minutes_indicative']);
+
+        $this->from('/paiements')->post('/paiements', [
+            'payment_date' => '2026-08-13',
+            'amount' => '13',
+            'hours_paid' => '05:01',
+        ])->assertRedirect('/paiements')->assertSessionHasErrors([
+            'hours_paid' => 'Les heures payées ne peuvent pas dépasser les 05:00 d’heures supplémentaires restantes.',
+        ]);
+        self::assertSame(0, OvertimePayment::query()->count());
+
+        $this->post('/paiements', [
+            'payment_date' => '2026-08-13',
+            'amount' => '13',
+            'hours_paid' => '05:00',
+        ])->assertRedirect('/paiements');
+        self::assertSame(1, OvertimePayment::query()->count());
     }
 
     public function test_month_total_excludes_overtime_but_keeps_it_visible_separately(): void

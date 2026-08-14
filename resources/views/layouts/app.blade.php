@@ -20,7 +20,7 @@
     <div class="sidebar-head"><button type="button" class="bare-icon sidebar-toggle" aria-label="Réduire le menu" aria-expanded="true"><i class="fa-solid fa-bars"></i></button></div>
     <nav class="sidebar-nav">
         <a class="{{ request()->routeIs('month.*') ? 'active' : '' }}" href="{{ $dashboardUrl }}"><i class="fa-solid fa-table-columns"></i><span>Tableau de bord</span></a>
-        <a class="{{ request()->routeIs('payments.*') ? 'active' : '' }}" href="{{ route('payments.index') }}"><i class="fa-solid fa-money-check-dollar"></i><span>Paiements</span></a>
+        <a class="{{ request()->routeIs('payments.*') ? 'active' : '' }}" href="{{ route('payments.index') }}"><i class="fa-solid fa-money-check-dollar"></i><span>Heures supplémentaires</span></a>
         <a class="{{ request()->routeIs('year.*') ? 'active' : '' }}" href="{{ route('year.show', ['year' => now()->year]) }}"><i class="fa-solid fa-chart-column"></i><span>Rapports</span></a>
         <a class="{{ request()->routeIs('settings.*') ? 'active' : '' }}" href="{{ route('settings.index') }}"><i class="fa-solid fa-gear"></i><span>Paramètres</span></a>
     </nav>
@@ -40,7 +40,7 @@
 </div>
 <nav class="mobile-nav" aria-label="Navigation mobile">
     <a class="{{ request()->routeIs('month.*') ? 'active' : '' }}" href="{{ $dashboardUrl }}"><i class="fa-solid fa-house"></i><span>Tableau</span></a>
-    <a class="{{ request()->routeIs('payments.*') ? 'active' : '' }}" href="{{ route('payments.index') }}"><i class="fa-solid fa-money-check-dollar"></i><span>Paiements</span></a>
+    <a class="{{ request()->routeIs('payments.*') ? 'active' : '' }}" href="{{ route('payments.index') }}"><i class="fa-solid fa-money-check-dollar"></i><span>Heures sup</span></a>
     <a class="{{ request()->routeIs('year.*') ? 'active' : '' }}" href="{{ route('year.show', ['year' => now()->year]) }}"><i class="fa-solid fa-chart-column"></i><span>Rapports</span></a>
     <a class="{{ request()->routeIs('settings.*') ? 'active' : '' }}" href="{{ route('settings.index') }}"><i class="fa-solid fa-gear"></i><span>Paramètres</span></a>
 </nav>

@@ -19,7 +19,8 @@ final class BugFixRegressionTest extends TestCase
         $response->assertDontSee('Jours du mois</span>', false);
         $response->assertDontSee('Semaines</span>', false);
         $response->assertDontSee('Reste dû</span>', false);
-        $response->assertSee('Paiements</span>', false);
+        $response->assertSee('Heures supplémentaires</span>', false);
+        $response->assertSee('Heures sup</span>', false);
         $response->assertSee('Rapports</span>', false);
         $response->assertDontSee('Ajouter un jour');
         $response->assertDontSee('aria-label="Apparence"', false);
@@ -32,7 +33,8 @@ final class BugFixRegressionTest extends TestCase
         $this->get('/paiements')
             ->assertOk()
             ->assertSee('payment-balance', false)
-            ->assertSee('Historique des paiements');
+            ->assertSee('Ajouter un paiement d’heures supplémentaires')
+            ->assertSee('Historique des paiements d’heures supplémentaires');
 
         $this->get('/annee/2026')
             ->assertOk()
