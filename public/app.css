@@ -33,7 +33,7 @@
 .dialog-grid{grid-template-columns:repeat(4,1fr);gap:12px}
 .meal-fieldset{grid-template-columns:minmax(160px,1fr) 72px 95px}
 .day-dialog.meal-only .dialog-grid,.day-dialog.meal-only .dialog-delete{display:none}
-.week-card{min-height:83px;grid-template-columns:1fr;padding-bottom:11px}
+.week-card{min-height:90px;grid-template-columns:1fr}
 .weeks-panel,.balance-panel{padding:14px 13px}
 .week-metrics{grid-template-columns:max-content 1fr;column-gap:5px;row-gap:2px;align-items:baseline}
 .week-metrics b{float:none;margin:0}
