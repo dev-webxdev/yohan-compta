@@ -36,14 +36,14 @@ final class DatabaseController
         $request->validate(['confirmed' => ['accepted']]);
 
         try {
-            $safetyBackup = $database->restoreBackup($backup);
+            $database->restoreBackup($backup);
         } catch (RuntimeException $error) {
             throw ValidationException::withMessages(['backup' => $error->getMessage()]);
         }
 
         return redirect()->route('settings.index')->with(
             'status',
-            'Sauvegarde restaurée : '.$backup.'. Une sauvegarde de sécurité de l’état précédent a été créée : '.basename($safetyBackup).'.',
+            'Sauvegarde restaurée : '.$backup.'.',
         );
     }
 

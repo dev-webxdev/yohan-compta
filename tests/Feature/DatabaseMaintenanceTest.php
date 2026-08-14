@@ -120,7 +120,7 @@ final class DatabaseMaintenanceTest extends TestCase
             ->assertSee('Télécharger')
             ->assertSee('Restaurer')
             ->assertSee('Supprimer')
-            ->assertSee("confirm('Restaurer cette sauvegarde ?", false)
+            ->assertSee('sans créer de nouvelle sauvegarde automatique')
             ->assertSee("confirm('Supprimer définitivement cette sauvegarde ?')", false);
 
         $this->get(route('settings.database.backups.download', ['backup' => $name]))
@@ -139,7 +139,7 @@ final class DatabaseMaintenanceTest extends TestCase
         self::assertFileDoesNotExist($backup);
     }
 
-    public function test_saved_backup_can_restore_previous_state_and_keeps_current_state_as_new_backup(): void
+    public function test_saved_backup_can_restore_previous_state_without_creating_another_backup(): void
     {
         WorkDay::query()->create([
             'date' => '2026-07-01',
@@ -171,7 +171,7 @@ final class DatabaseMaintenanceTest extends TestCase
         self::assertTrue(WorkDay::query()->whereDate('date', '2026-07-01')->exists());
         self::assertFalse(WorkDay::query()->whereDate('date', '2026-08-14')->exists());
         $after = glob(storage_path('app/private/backups/*.sqlite')) ?: [];
-        self::assertCount(count($before) + 1, $after);
+        self::assertCount(count($before), $after);
         self::assertFileExists($backup);
     }
 

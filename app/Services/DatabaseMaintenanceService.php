@@ -80,9 +80,9 @@ final class DatabaseMaintenanceService
         return $path;
     }
 
-    public function restoreBackup(string $filename): string
+    public function restoreBackup(string $filename): void
     {
-        return $this->restoreFrom($this->backupPath($filename));
+        $this->restoreDatabase($this->backupPath($filename), false);
     }
 
     public function deleteBackup(string $filename): void
@@ -95,8 +95,18 @@ final class DatabaseMaintenanceService
 
     public function restoreFrom(string $sourcePath): string
     {
+        $backup = $this->restoreDatabase($sourcePath, true);
+        if ($backup === null) {
+            throw new RuntimeException('La sauvegarde de sécurité avant restauration n’a pas pu être créée.');
+        }
+
+        return $backup;
+    }
+
+    private function restoreDatabase(string $sourcePath, bool $createSafetyBackup): ?string
+    {
         $this->validateDatabaseFile($sourcePath);
-        $safetyBackup = $this->createBackup();
+        $safetyBackup = $createSafetyBackup ? $this->createBackup() : null;
         $databasePath = $this->databasePath();
         $replacementPath = $databasePath.'.restore-'.bin2hex(random_bytes(4));
         $rollbackPath = $databasePath.'.rollback-'.bin2hex(random_bytes(4));
@@ -142,7 +152,9 @@ final class DatabaseMaintenanceService
             DB::purge($this->connectionName());
 
             throw new RuntimeException(
-                'La restauration a échoué. La base précédente a été conservée et sa sauvegarde automatique est disponible.',
+                $createSafetyBackup
+                    ? 'La restauration a échoué. La base précédente a été conservée et sa sauvegarde automatique est disponible.'
+                    : 'La restauration a échoué. La base précédente a été conservée.',
                 0,
                 $error,
             );
