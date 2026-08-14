@@ -18,6 +18,8 @@ final class DatabaseMaintenanceTest extends TestCase
     private string $originalDatabase;
     /** @var array<int,string> */
     private array $existingBackups = [];
+    private mixed $originalAutomaticBackupPath;
+    private string $automaticBackupPath;
 
     protected function setUp(): void
     {
@@ -29,9 +31,14 @@ final class DatabaseMaintenanceTest extends TestCase
             mkdir($directory, 0775, true);
         }
         $this->databasePath = $directory.'/maintenance-'.bin2hex(random_bytes(6)).'.sqlite';
+        $this->automaticBackupPath = $directory.'/automatic-'.bin2hex(random_bytes(6)).'/yohan-compta-automatique.sqlite';
+        $this->originalAutomaticBackupPath = config('database.automatic_backup_path');
         touch($this->databasePath);
 
-        config(['database.connections.sqlite.database' => $this->databasePath]);
+        config([
+            'database.connections.sqlite.database' => $this->databasePath,
+            'database.automatic_backup_path' => $this->automaticBackupPath,
+        ]);
         DB::purge('sqlite');
         Artisan::call('migrate:fresh', ['--force' => true]);
         $this->existingBackups = glob(storage_path('app/private/backups/*.sqlite')) ?: [];
@@ -43,6 +50,11 @@ final class DatabaseMaintenanceTest extends TestCase
         foreach (glob($this->databasePath.'*') ?: [] as $path) {
             @unlink($path);
         }
+        foreach (glob(dirname($this->automaticBackupPath).'/.automatic-*.sqlite') ?: [] as $path) {
+            @unlink($path);
+        }
+        @unlink($this->automaticBackupPath);
+        @rmdir(dirname($this->automaticBackupPath));
 
         foreach (glob(storage_path('app/private/backups/*.sqlite')) ?: [] as $path) {
             if (!in_array($path, $this->existingBackups, true)) {
@@ -50,7 +62,10 @@ final class DatabaseMaintenanceTest extends TestCase
             }
         }
 
-        config(['database.connections.sqlite.database' => $this->originalDatabase]);
+        config([
+            'database.connections.sqlite.database' => $this->originalDatabase,
+            'database.automatic_backup_path' => $this->originalAutomaticBackupPath,
+        ]);
         DB::purge('sqlite');
         parent::tearDown();
     }
@@ -96,9 +111,62 @@ final class DatabaseMaintenanceTest extends TestCase
         self::assertSame(1, (int) $pdo->query("SELECT COUNT(*) FROM work_days WHERE date = '2026-08-14'")->fetchColumn());
         self::assertSame('ok', $pdo->query('PRAGMA integrity_check')->fetchColumn());
 
+        $beforeDownload = app(DatabaseMaintenanceService::class)->backups();
         $response = $this->get('/parametres/base/sauvegarde')->assertOk();
         self::assertStringContainsString('attachment;', (string) $response->headers->get('content-disposition'));
         self::assertStringContainsString('.sqlite', (string) $response->headers->get('content-disposition'));
+        self::assertCount(count($beforeDownload), app(DatabaseMaintenanceService::class)->backups());
+    }
+
+    public function test_automatic_backup_is_single_current_snapshot_refreshed_after_data_changes(): void
+    {
+        $database = app(DatabaseMaintenanceService::class);
+        $safetyBackupCount = count($database->backups());
+        self::assertNull($database->automaticBackup());
+
+        $this->putJson('/jours/2026-08-14', [
+            'start_time' => '07:45',
+            'driving' => '01:00',
+            'warehouse' => '',
+            'meal_mode' => 'auto',
+            'meal_amount' => '',
+        ])->assertOk();
+
+        $path = $database->automaticBackupPath();
+        self::assertSame($this->automaticBackupPath, $path);
+        self::assertFileExists($path);
+        $pdo = new PDO('sqlite:'.$path);
+        self::assertSame(60, (int) $pdo->query("SELECT driving_minutes FROM work_days WHERE date = '2026-08-14'")->fetchColumn());
+
+        $this->post('/parametres', [
+            'effective_from' => '2026-08-14',
+            'default_start_time' => '08:00',
+            'hourly_gross_rate' => '12,31',
+            'hourly_net_rate' => '9,74',
+            'weekly_threshold' => '35:00',
+            'meal_allowance' => '16',
+            'meal_allowance_time' => '14:15',
+        ])->assertRedirect('/parametres');
+        $pdo = new PDO('sqlite:'.$path);
+        self::assertSame(480, (int) $pdo->query("SELECT default_start_time_minutes FROM setting_periods WHERE effective_from = '2026-08-14'")->fetchColumn());
+
+        $this->post('/paiements', [
+            'payment_date' => '2026-08-14',
+            'amount' => '13',
+        ])->assertRedirect('/paiements');
+        $pdo = new PDO('sqlite:'.$path);
+        self::assertSame(1, (int) $pdo->query('SELECT COUNT(*) FROM overtime_payments')->fetchColumn());
+        self::assertFileExists($path);
+        self::assertEmpty(glob(dirname($path).'/.automatic-*.sqlite') ?: []);
+        self::assertCount($safetyBackupCount, $database->backups());
+
+        $settings = $this->get('/parametres')->assertOk();
+        $settings->assertSee('Sauvegarde automatique courante')
+            ->assertSee(route('settings.database.automatic-backup.download'), false);
+        $this->get(route('settings.database.automatic-backup.download'))
+            ->assertOk()
+            ->assertDownload(basename($path));
+        self::assertFileExists($path);
     }
 
     public function test_saved_backups_are_listed_downloadable_and_deletable_with_confirmation(): void

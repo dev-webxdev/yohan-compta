@@ -20,6 +20,7 @@ Route::get('/annee/{year?}', YearController::class)->where('year', '\\d{4}')->na
 Route::get('/parametres', [SettingsController::class, 'index'])->name('settings.index');
 Route::post('/parametres', [SettingsController::class, 'store'])->name('settings.store');
 Route::get('/parametres/base/sauvegarde', [DatabaseController::class, 'backup'])->name('settings.database.backup');
+Route::get('/parametres/base/sauvegarde-automatique', [DatabaseController::class, 'downloadAutomaticBackup'])->name('settings.database.automatic-backup.download');
 Route::post('/parametres/base/restauration', [DatabaseController::class, 'restore'])->name('settings.database.restore');
 Route::get('/parametres/base/sauvegardes/{backup}', [DatabaseController::class, 'downloadBackup'])->where('backup', 'yohan-compta-\\d{8}-\\d{6}-[a-f0-9]{6}\\.sqlite')->name('settings.database.backups.download');
 Route::post('/parametres/base/sauvegardes/{backup}/restauration', [DatabaseController::class, 'restoreBackup'])->where('backup', 'yohan-compta-\\d{8}-\\d{6}-[a-f0-9]{6}\\.sqlite')->name('settings.database.backups.restore');

@@ -19,10 +19,11 @@ final class SettingsController
         return view('settings', [
             'current' => $settings->forDate(now()->format('Y-m-d')),
             'backups' => $database->backups(),
+            'automaticBackup' => $database->automaticBackup(),
         ]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request, DatabaseMaintenanceService $database): RedirectResponse
     {
         $data = $request->validate([
             'effective_from' => ['required', 'date'],
@@ -53,6 +54,7 @@ final class SettingsController
             'meal_allowance_cents' => $meal,
             'meal_allowance_time_minutes' => $mealTime,
         ]);
+        $database->refreshAutomaticBackup();
 
         return redirect()->route('settings.index')->with('status', 'Paramètres enregistrés à partir du '.$data['effective_from'].'. L’historique antérieur reste inchangé.');
     }

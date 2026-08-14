@@ -16,7 +16,7 @@
 </form></section>
 
 <section class="panel database-maintenance">
-<div class="panel-heading"><div><h2>Sauvegarde et réinitialisation</h2><p>Gestion de la base SQLite. Les sauvegardes automatiques sont conservées dans le stockage privé de l’application.</p></div></div>
+<div class="panel-heading"><div><h2>Sauvegarde et réinitialisation</h2><p>Gestion de la base SQLite. Les sauvegardes de sécurité sont conservées dans le stockage privé de l’application.</p></div></div>
 <div class="database-actions">
 <article class="maintenance-card"><div><h3>Sauvegarder la BDD</h3><p>Télécharger une copie complète et cohérente de la base SQLite actuelle.</p></div><a class="primary-button" href="{{ route('settings.database.backup') }}"><i class="fa-solid fa-download"></i> Télécharger la sauvegarde</a></article>
 
@@ -40,8 +40,20 @@
 </div>
 </section>
 
+<section class="panel automatic-backup">
+<div class="panel-heading"><div><h2>Sauvegarde automatique</h2><p>Une seule copie courante est mise à jour après chaque modification des données.</p></div></div>
+@if($automaticBackup)
+<article class="backup-row">
+<div class="backup-info"><strong>Sauvegarde automatique courante</strong><span>Mise à jour le {{ $automaticBackup['created_at'] }} · {{ number_format($automaticBackup['size_bytes'] / 1024, 0, ',', ' ') }} Ko</span></div>
+<div class="backup-actions"><a class="primary-button secondary-button" href="{{ route('settings.database.automatic-backup.download') }}"><i class="fa-solid fa-download"></i> Télécharger</a></div>
+</article>
+@else
+<p class="muted backup-empty">Elle sera créée lors de la prochaine modification.</p>
+@endif
+</section>
+
 <section class="panel backup-library">
-<div class="panel-heading"><div><h2>Sauvegardes de sécurité</h2><p>Les sauvegardes créées automatiquement restent disponibles ici jusqu’à leur suppression.</p></div></div>
+<div class="panel-heading"><div><h2>Sauvegardes de sécurité</h2><p>Les sauvegardes de sécurité créées avant les opérations sensibles restent disponibles ici jusqu’à leur suppression.</p></div></div>
 <div class="backup-list">
 @forelse($backups as $backup)
 <article class="backup-row">

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\OvertimePayment;
+use App\Services\DatabaseMaintenanceService;
 use App\Services\ReportService;
 use App\Services\SettingsService;
 use App\Support\Money;
@@ -34,7 +35,7 @@ final class PaymentController
         ]);
     }
 
-    public function store(Request $request, ReportService $reports): RedirectResponse
+    public function store(Request $request, ReportService $reports, DatabaseMaintenanceService $database): RedirectResponse
     {
         $data = $request->validate([
             'payment_date' => ['required', 'date'],
@@ -71,13 +72,15 @@ final class PaymentController
             'note' => trim((string) ($data['note'] ?? '')) ?: null,
             'period_reference' => trim((string) ($data['period_reference'] ?? '')) ?: null,
         ]);
+        $database->refreshAutomaticBackup();
 
         return redirect()->route('payments.index')->with('status', 'Paiement enregistré. Les soldes nets sont recalculés automatiquement en FIFO.');
     }
 
-    public function destroy(OvertimePayment $payment): RedirectResponse
+    public function destroy(OvertimePayment $payment, DatabaseMaintenanceService $database): RedirectResponse
     {
         $payment->delete();
+        $database->refreshAutomaticBackup();
         return redirect()->route('payments.index')->with('status', 'Paiement supprimé. Les soldes ont été recalculés.');
     }
 }

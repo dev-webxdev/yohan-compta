@@ -17,11 +17,74 @@ final class DatabaseMaintenanceService
 
     public function createBackup(): string
     {
-        $this->assertSqliteConnection();
         $directory = $this->backupDirectory();
         File::ensureDirectoryExists($directory);
 
         $path = $directory.'/yohan-compta-'.now()->format('Ymd-His').'-'.bin2hex(random_bytes(3)).'.sqlite';
+        return $this->createSnapshot($path);
+    }
+
+    public function createDownloadCopy(): string
+    {
+        return $this->createSnapshot(
+            rtrim(sys_get_temp_dir(), DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR.'yohan-compta-download-'.bin2hex(random_bytes(6)).'.sqlite',
+        );
+    }
+
+    public function refreshAutomaticBackup(): ?string
+    {
+        $configuredDatabase = (string) config('database.connections.'.$this->connectionName().'.database');
+        if ($configuredDatabase === ':memory:' || $configuredDatabase === '') {
+            return null;
+        }
+
+        $target = $this->automaticBackupPath(false);
+        File::ensureDirectoryExists(dirname($target));
+        $temporary = dirname($target).'/.automatic-'.bin2hex(random_bytes(6)).'.sqlite';
+        $this->createSnapshot($temporary);
+
+        if (!@rename($temporary, $target)) {
+            @unlink($temporary);
+            throw new RuntimeException('Impossible de mettre à jour la sauvegarde automatique.');
+        }
+
+        return $target;
+    }
+
+    /** @return array{name:string,created_at:string,size_bytes:int}|null */
+    public function automaticBackup(): ?array
+    {
+        $path = $this->automaticBackupPath(false);
+        if (!is_file($path) || !is_readable($path)) {
+            return null;
+        }
+
+        return [
+            'name' => basename($path),
+            'created_at' => date('d/m/Y H:i:s', filemtime($path) ?: 0),
+            'size_bytes' => (int) (filesize($path) ?: 0),
+        ];
+    }
+
+    public function automaticBackupPath(bool $mustExist = true): string
+    {
+        $path = (string) config('database.automatic_backup_path');
+        if ($path === '') {
+            throw new RuntimeException('Chemin de sauvegarde automatique non configuré.');
+        }
+        if (!str_starts_with($path, DIRECTORY_SEPARATOR)) {
+            $path = base_path($path);
+        }
+        if ($mustExist && (!is_file($path) || !is_readable($path))) {
+            throw new RuntimeException('Sauvegarde automatique introuvable.');
+        }
+
+        return $path;
+    }
+
+    private function createSnapshot(string $path): string
+    {
+        $this->assertSqliteConnection();
         $pdo = DB::connection($this->connectionName())->getPdo();
         $quotedPath = $pdo->quote($path);
 
@@ -153,7 +216,7 @@ final class DatabaseMaintenanceService
 
             throw new RuntimeException(
                 $createSafetyBackup
-                    ? 'La restauration a échoué. La base précédente a été conservée et sa sauvegarde automatique est disponible.'
+                    ? 'La restauration a échoué. La base précédente a été conservée et sa sauvegarde de sécurité est disponible.'
                     : 'La restauration a échoué. La base précédente a été conservée.',
                 0,
                 $error,

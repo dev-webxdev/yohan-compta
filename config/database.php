@@ -4,6 +4,7 @@ use Illuminate\Support\Str;
 
 return [
     'default' => env('DB_CONNECTION', 'sqlite'),
+    'automatic_backup_path' => env('DB_AUTOMATIC_BACKUP_PATH', storage_path('app/private/automatic/yohan-compta-automatique.sqlite')),
     'connections' => [
         'sqlite' => [
             'driver' => 'sqlite',

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\WorkDay;
+use App\Services\DatabaseMaintenanceService;
 use App\Services\PayrollMath;
 use App\Services\SettingsService;
 use App\Support\Money;
@@ -14,7 +15,7 @@ use Illuminate\Validation\ValidationException;
 
 final class WorkDayController
 {
-    public function store(Request $request, SettingsService $settings, string $date): JsonResponse
+    public function store(Request $request, SettingsService $settings, DatabaseMaintenanceService $database, string $date): JsonResponse
     {
         $this->assertValidDate($date);
         $defaultStart = $settings->forDate($date)->default_start_time_minutes;
@@ -36,6 +37,7 @@ final class WorkDayController
         $isSunday = (int) (new DateTimeImmutable($date))->format('N') === 7;
         if ($isRest) {
             WorkDay::query()->updateOrCreate(['date' => $date], ['is_rest' => true]);
+            $database->refreshAutomaticBackup();
 
             return response()->json(['ok' => true]);
         }
@@ -77,14 +79,16 @@ final class WorkDayController
                 'meal_allowance_forced_cents' => $forcedCents,
             ]);
         }
+        $database->refreshAutomaticBackup();
 
         return response()->json(['ok' => true]);
     }
 
-    public function destroy(string $date): JsonResponse
+    public function destroy(string $date, DatabaseMaintenanceService $database): JsonResponse
     {
         $this->assertValidDate($date);
         WorkDay::query()->whereDate('date', $date)->delete();
+        $database->refreshAutomaticBackup();
 
         return response()->json(['ok' => true]);
     }

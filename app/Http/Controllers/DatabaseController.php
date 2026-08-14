@@ -13,11 +13,22 @@ final class DatabaseController
 {
     public function backup(DatabaseMaintenanceService $database): BinaryFileResponse
     {
-        $path = $database->createBackup();
+        $path = $database->createDownloadCopy();
 
         return response()
             ->download($path, 'yohan-compta-sauvegarde-'.now()->format('Y-m-d-His').'.sqlite')
             ->deleteFileAfterSend(true);
+    }
+
+    public function downloadAutomaticBackup(DatabaseMaintenanceService $database): BinaryFileResponse
+    {
+        try {
+            $path = $database->automaticBackupPath();
+        } catch (RuntimeException) {
+            abort(404);
+        }
+
+        return response()->download($path, basename($path));
     }
 
     public function downloadBackup(string $backup, DatabaseMaintenanceService $database): BinaryFileResponse
@@ -37,6 +48,7 @@ final class DatabaseController
 
         try {
             $database->restoreBackup($backup);
+            $database->refreshAutomaticBackup();
         } catch (RuntimeException $error) {
             throw ValidationException::withMessages(['backup' => $error->getMessage()]);
         }
@@ -69,13 +81,14 @@ final class DatabaseController
 
         try {
             $backup = $database->restoreFrom($data['database_file']->getRealPath());
+            $database->refreshAutomaticBackup();
         } catch (RuntimeException $error) {
             throw ValidationException::withMessages(['database_file' => $error->getMessage()]);
         }
 
         return redirect()->route('settings.index')->with(
             'status',
-            'Base restaurée. Sauvegarde automatique de l’état précédent : '.basename($backup).'.',
+            'Base restaurée. Sauvegarde de sécurité de l’état précédent : '.basename($backup).'.',
         );
     }
 
@@ -85,6 +98,7 @@ final class DatabaseController
 
         try {
             $backup = $database->resetAll();
+            $database->refreshAutomaticBackup();
         } catch (RuntimeException $error) {
             throw ValidationException::withMessages(['database' => $error->getMessage()]);
         }
@@ -105,6 +119,7 @@ final class DatabaseController
 
         try {
             $backup = $database->resetMonth((int) $data['year'], (int) $data['month']);
+            $database->refreshAutomaticBackup();
         } catch (RuntimeException $error) {
             throw ValidationException::withMessages(['database' => $error->getMessage()]);
         }
