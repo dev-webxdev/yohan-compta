@@ -2,6 +2,15 @@
     const q = (selector, root = document) => root.querySelector(selector);
     const qa = (selector, root = document) => [...root.querySelectorAll(selector)];
     const shell = q('#app-shell');
+
+    const normalizeTime = value => {
+        const normalized = value.trim().replace('.', ':');
+        if (/^\d{1,3}$/.test(normalized)) return `${normalized}:00`;
+        if (!/^\d{1,3}:\d{1,2}$/.test(normalized)) return normalized;
+        const [hours, minutes] = normalized.split(':');
+        return `${hours}:${minutes.padStart(2, '0')}`;
+    };
+
     const storageKey = 'yohan-compta-sidebar-collapsed';
 
     if (shell) {
@@ -37,6 +46,10 @@
         moreDays.innerHTML = expanded ? 'Voir moins de jours <i class="fa-solid fa-chevron-up"></i>' : 'Voir plus de jours <i class="fa-solid fa-chevron-down"></i>';
     });
 
+    qa('[data-time-normalize]').forEach(input => input.addEventListener('change', () => {
+        input.value = normalizeTime(input.value);
+    }));
+
     const dialog = q('#day-dialog');
     if (!dialog) return;
 
@@ -49,16 +62,6 @@
     let summaryRefreshController = null;
     const autosaveTimers = new WeakMap();
     const savedRowStates = new WeakMap();
-
-    const normalizeTime = value => {
-        const normalized = value.trim().replace('.', ':');
-        if (/^\d{1,3}$/.test(normalized)) {
-            return `${normalized.padStart(2, '0')}:00`;
-        }
-        if (!/^\d{1,3}:\d{1,2}$/.test(normalized)) return normalized;
-        const [hours, minutes] = normalized.split(':');
-        return `${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}`;
-    };
 
     const parseClock = value => {
         const match = normalizeTime(value).match(/^(\d{1,2}):([0-5]\d)$/);

@@ -102,6 +102,18 @@ final class BugFixRegressionTest extends TestCase
         self::assertStringNotContainsString('scheduleReload', $javascript);
     }
 
+    public function test_whole_hour_normalization_preserves_complete_time_inputs(): void
+    {
+        $javascript = file_get_contents(public_path('app.js'));
+        $payments = file_get_contents(resource_path('views/payments.blade.php'));
+
+        self::assertStringContainsString("if (/^\\d{1,3}$/.test(normalized)) return `\${normalized}:00`;", $javascript);
+        self::assertStringContainsString("return `\${hours}:\${minutes.padStart(2, '0')}`;", $javascript);
+        self::assertStringNotContainsString('normalized.padStart', $javascript);
+        self::assertStringContainsString('data-time-normalize', $payments);
+        self::assertStringContainsString("qa('[data-time-normalize]')", $javascript);
+    }
+
     public function test_invalid_delete_date_is_rejected(): void
     {
         $this->deleteJson('/jours/2026-99-99')->assertNotFound();

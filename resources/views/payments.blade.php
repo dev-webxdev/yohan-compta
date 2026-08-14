@@ -8,7 +8,7 @@
     <form method="post" action="{{ route('payments.store') }}" class="form-grid">@csrf
         <label>Date du paiement<input type="date" name="payment_date" value="{{ old('payment_date', now()->format('Y-m-d')) }}" required></label>
         <label>Montant reçu pour les heures sup (€)<input name="amount" inputmode="decimal" value="{{ old('amount') }}" placeholder="250,00" required></label>
-        <label>Heures supplémentaires payées <small>(facultatif)</small><input name="hours_paid" inputmode="numeric" value="{{ old('hours_paid') }}" placeholder="20:00"></label>
+        <label>Heures supplémentaires payées <small>(facultatif)</small><input name="hours_paid" inputmode="numeric" data-time-normalize value="{{ old('hours_paid') }}" placeholder="20:00"></label>
         <label>Référence période <small>(facultatif)</small><input name="period_reference" value="{{ old('period_reference') }}" placeholder="Ex. Juillet + Août"></label>
         <label class="wide">Note <small>(facultatif)</small><textarea name="note" rows="3" placeholder="Ex. paiement partiel reçu avec la paie d’octobre">{{ old('note') }}</textarea></label>
         <div class="wide"><button class="primary-button">Enregistrer le paiement</button></div>
