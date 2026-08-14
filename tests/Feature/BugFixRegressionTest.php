@@ -97,6 +97,27 @@ final class BugFixRegressionTest extends TestCase
         self::assertStringContainsString('.meal-button,.mobile-more-days{display:inline-flex;align-items:center;justify-content:center;gap:6px}', $css);
     }
 
+    public function test_actions_use_custom_confirmation_dialog_instead_of_browser_confirm(): void
+    {
+        $layout = file_get_contents(resource_path('views/layouts/app.blade.php'));
+        $settings = file_get_contents(resource_path('views/settings.blade.php'));
+        $payments = file_get_contents(resource_path('views/payments.blade.php'));
+        $javascript = file_get_contents(public_path('app.js'));
+        $css = file_get_contents(public_path('app.css'));
+
+        self::assertStringContainsString('id="confirm-dialog"', $layout);
+        self::assertStringContainsString('form[data-confirm]', $javascript);
+        self::assertStringContainsString('const askConfirmation =', $javascript);
+        self::assertStringContainsString("title: 'Supprimer cette journée ?'", $javascript);
+        self::assertStringContainsString('.confirm-dialog.is-danger', $css);
+        self::assertStringContainsString('@media(max-width:720px)', $css);
+        self::assertStringContainsString('data-confirm-danger="1"', $settings);
+        self::assertStringContainsString('data-confirm-danger="1"', $payments);
+        self::assertStringNotContainsString('confirm(', $settings);
+        self::assertStringNotContainsString('confirm(', $payments);
+        self::assertStringNotContainsString('confirm(', $javascript);
+    }
+
     public function test_dashboard_summary_panels_keep_inner_spacing(): void
     {
         $css = file_get_contents(public_path('app.css'));

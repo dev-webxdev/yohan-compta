@@ -50,6 +50,60 @@
         input.value = normalizeTime(input.value);
     }));
 
+    const confirmationDialog = q('#confirm-dialog');
+    const confirmationTitle = q('#confirm-dialog-title');
+    const confirmationMessage = q('#confirm-dialog-message');
+    const confirmationSubmit = q('#confirm-dialog-submit');
+    let confirmationResolver = null;
+
+    const resolveConfirmation = result => {
+        if (!confirmationResolver) return;
+        const resolver = confirmationResolver;
+        confirmationResolver = null;
+        confirmationDialog?.close();
+        resolver(result);
+    };
+
+    const askConfirmation = ({title, message, action = 'Confirmer', danger = false}) => new Promise(resolve => {
+        if (!confirmationDialog || !confirmationTitle || !confirmationMessage || !confirmationSubmit) {
+            resolve(false);
+            return;
+        }
+        if (confirmationResolver) resolveConfirmation(false);
+        confirmationResolver = resolve;
+        confirmationTitle.textContent = title;
+        confirmationMessage.textContent = message;
+        confirmationSubmit.textContent = action;
+        confirmationDialog.classList.toggle('is-danger', danger);
+        confirmationDialog.showModal();
+    });
+
+    q('#confirm-dialog-cancel')?.addEventListener('click', () => resolveConfirmation(false));
+    confirmationSubmit?.addEventListener('click', () => resolveConfirmation(true));
+    confirmationDialog?.addEventListener('cancel', event => {
+        event.preventDefault();
+        resolveConfirmation(false);
+    });
+
+    const confirmedForms = new WeakSet();
+    qa('form[data-confirm]').forEach(confirmForm => confirmForm.addEventListener('submit', async event => {
+        if (confirmedForms.has(confirmForm)) {
+            confirmedForms.delete(confirmForm);
+            return;
+        }
+        event.preventDefault();
+        const accepted = await askConfirmation({
+            title: confirmForm.dataset.confirmTitle || 'Confirmer l’action ?',
+            message: confirmForm.dataset.confirmMessage || 'Voulez-vous continuer ?',
+            action: confirmForm.dataset.confirmAction || 'Confirmer',
+            danger: confirmForm.dataset.confirmDanger === '1',
+        });
+        if (!accepted) return;
+        confirmedForms.add(confirmForm);
+        if (event.submitter) confirmForm.requestSubmit(event.submitter);
+        else confirmForm.requestSubmit();
+    }));
+
     const dialog = q('#day-dialog');
     if (!dialog) return;
 
@@ -303,7 +357,14 @@
     });
 
     q('#delete-day')?.addEventListener('click', async () => {
-        if (!activeRow || !confirm('Effacer toutes les données de cette journée ?')) return;
+        if (!activeRow) return;
+        const accepted = await askConfirmation({
+            title: 'Supprimer cette journée ?',
+            message: 'Toutes les données enregistrées pour cette journée seront effacées.',
+            action: 'Supprimer',
+            danger: true,
+        });
+        if (!accepted) return;
         const response = await fetch(`/jours/${activeRow.dataset.date}`, {
             method: 'DELETE',
             headers: {Accept: 'application/json', 'X-CSRF-TOKEN': token},

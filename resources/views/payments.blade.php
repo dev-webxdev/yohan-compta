@@ -33,7 +33,7 @@
                 @forelse(($allocations[$payment->id] ?? []) as $allocation)<span>{{ $allocation['month'] }} · {{ Money::formatCents($allocation['amount_cents']) }}</span>@empty<span>Avance non affectée</span>@endforelse
             </div>
             <div class="payment-amount">{{ Money::formatCents($payment->amount_cents) }}<small>{{ $paymentHours[$payment->id]['indicative'] ? '≈ ' : '' }}{{ Time::formatDuration($paymentHours[$payment->id]['minutes']) }}</small></div>
-            <form method="post" action="{{ route('payments.destroy', $payment) }}" onsubmit="return confirm('Supprimer ce paiement ?')">@csrf @method('DELETE')<button class="danger-link">Supprimer</button></form>
+            <form method="post" action="{{ route('payments.destroy', $payment) }}" data-confirm data-confirm-title="Supprimer ce paiement ?" data-confirm-message="Le paiement sera supprimé et les soldes d’heures supplémentaires seront recalculés." data-confirm-action="Supprimer" data-confirm-danger="1">@csrf @method('DELETE')<button class="danger-link">Supprimer</button></form>
         </article>
     @empty
         <p class="muted">Aucun paiement d’heures supplémentaires enregistré.</p>

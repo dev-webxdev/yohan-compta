@@ -45,6 +45,16 @@
     <a class="{{ request()->routeIs('settings.*') ? 'active' : '' }}" href="{{ route('settings.index') }}"><i class="fa-solid fa-gear"></i><span>Paramètres</span></a>
 </nav>
 </div>
+<dialog id="confirm-dialog" class="confirm-dialog" aria-labelledby="confirm-dialog-title" aria-describedby="confirm-dialog-message">
+    <div class="confirm-dialog-body">
+        <div class="confirm-dialog-icon" aria-hidden="true"><i class="fa-solid fa-circle-exclamation"></i></div>
+        <div class="confirm-dialog-copy"><h2 id="confirm-dialog-title">Confirmer l’action</h2><p id="confirm-dialog-message"></p></div>
+    </div>
+    <div class="confirm-dialog-actions">
+        <button type="button" class="confirm-dialog-cancel" id="confirm-dialog-cancel">Annuler</button>
+        <button type="button" class="confirm-dialog-submit" id="confirm-dialog-submit">Confirmer</button>
+    </div>
+</dialog>
 <script src="/app.js" defer></script>
 @stack('scripts')
 </body>

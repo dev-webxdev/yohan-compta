@@ -121,7 +121,8 @@ final class DatabaseMaintenanceTest extends TestCase
             ->assertSee('Restaurer')
             ->assertSee('Supprimer')
             ->assertSee('sans créer de nouvelle sauvegarde automatique')
-            ->assertSee("confirm('Supprimer définitivement cette sauvegarde ?')", false);
+            ->assertSee('data-confirm-title="Supprimer cette sauvegarde ?"', false)
+            ->assertSee('data-confirm-danger="1"', false);
 
         $this->get(route('settings.database.backups.download', ['backup' => $name]))
             ->assertOk()
