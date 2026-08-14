@@ -43,7 +43,9 @@ final class BugFixRegressionTest extends TestCase
 
         $this->get('/parametres')
             ->assertOk()
-            ->assertSee('Taux horaire net');
+            ->assertSee('Taux horaire net')
+            ->assertDontSee('<h2>Historique</h2>', false)
+            ->assertDontSee('settings-history', false);
     }
 
     public function test_meal_and_full_day_editing_use_distinct_triggers(): void

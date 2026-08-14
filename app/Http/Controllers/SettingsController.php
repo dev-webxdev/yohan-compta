@@ -15,7 +15,7 @@ final class SettingsController
 {
     public function index(SettingsService $settings): View
     {
-        return view('settings', ['periods' => $settings->all(), 'current' => $settings->forDate(now()->format('Y-m-d'))]);
+        return view('settings', ['current' => $settings->forDate(now()->format('Y-m-d'))]);
     }
 
     public function store(Request $request): RedirectResponse
