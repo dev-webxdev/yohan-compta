@@ -88,6 +88,14 @@ final class BugFixRegressionTest extends TestCase
         self::assertStringContainsString('.week-card{min-height:83px;grid-template-columns:1fr;padding-bottom:11px}', $css);
     }
 
+    public function test_icon_text_controls_use_consistent_spacing(): void
+    {
+        $css = file_get_contents(public_path('app.css'));
+
+        self::assertStringContainsString('.primary-button,.danger-button,.rail-add-button{gap:6px}', $css);
+        self::assertStringContainsString('.meal-button,.mobile-more-days{display:inline-flex;align-items:center;justify-content:center;gap:6px}', $css);
+    }
+
     public function test_dashboard_summary_panels_keep_inner_spacing(): void
     {
         $css = file_get_contents(public_path('app.css'));
