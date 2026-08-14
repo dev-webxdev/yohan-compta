@@ -16,17 +16,9 @@
   body{overflow-x:hidden}
   .app-shell{zoom:1.08;width:calc(92.5926vw - 8px);min-height:92vh;margin:2px auto}
 }
-@media (min-width:1920px) and (max-width:2559px){
+@media (min-width:1920px){
   body{overflow-x:hidden}
   .app-shell{zoom:1.16;width:calc(86.2069vw - 8px);min-height:85vh;margin:2px auto}
-}
-@media (min-width:2560px) and (max-width:3199px){
-  body{overflow-x:hidden}
-  .app-shell{zoom:1.32;width:calc(75.7576vw - 8px);min-height:75vh;margin:2px auto}
-}
-@media (min-width:3200px){
-  body{overflow-x:hidden}
-  .app-shell{zoom:1.5;width:calc(66.6667vw - 8px);min-height:66vh;margin:2px auto}
 }
 
 @media (min-width:721px){

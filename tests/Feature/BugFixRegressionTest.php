@@ -54,6 +54,16 @@ final class BugFixRegressionTest extends TestCase
         self::assertStringContainsString("openDialog(button.closest('.work-row'), 'meal')", file_get_contents(public_path('app.js')));
     }
 
+    public function test_large_screen_scaling_is_capped_after_1920_pixels(): void
+    {
+        $css = file_get_contents(public_path('app.css'));
+
+        self::assertStringContainsString('@media (min-width:1920px)', $css);
+        self::assertStringContainsString('zoom:1.16', $css);
+        self::assertStringNotContainsString('zoom:1.32', $css);
+        self::assertStringNotContainsString('zoom:1.5', $css);
+    }
+
     public function test_future_payment_is_not_shown_as_received_on_dashboard(): void
     {
         OvertimePayment::query()->create([
