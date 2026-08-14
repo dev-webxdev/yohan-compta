@@ -149,6 +149,8 @@ final class AuditImprovementTest extends TestCase
         self::assertStringContainsString('.mobile-nav a{font-size:10px}', $css);
         self::assertStringContainsString('const setRowSaveState =', $javascript);
         self::assertStringContainsString('const showSaveError =', $javascript);
+        self::assertStringContainsString('keepalive: true', $javascript);
+        self::assertStringContainsString("window.addEventListener('pagehide', flushPendingRows);", $javascript);
         self::assertStringContainsString("q('#confirm-dialog-cancel')?.focus();", $javascript);
         self::assertStringContainsString('/vendor/fontawesome/css/fontawesome.min.css', $layout);
         self::assertStringNotContainsString('cdnjs.cloudflare.com/ajax/libs/font-awesome', $layout);

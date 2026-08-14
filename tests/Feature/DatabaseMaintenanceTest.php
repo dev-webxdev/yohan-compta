@@ -157,6 +157,16 @@ final class DatabaseMaintenanceTest extends TestCase
         $pdo = new PDO('sqlite:'.$path);
         self::assertSame(480, (int) $pdo->query("SELECT default_start_time_minutes FROM setting_periods WHERE effective_from = '2026-08-14'")->fetchColumn());
 
+        $this->putJson('/jours/2026-08-17', [
+            'start_time' => '08:00',
+            'driving' => '01:30',
+            'warehouse' => '',
+            'meal_mode' => 'auto',
+            'meal_amount' => '',
+        ])->assertOk();
+        $pdo = new PDO('sqlite:'.$path);
+        self::assertSame(90, (int) $pdo->query("SELECT driving_minutes FROM work_days WHERE date = '2026-08-17'")->fetchColumn());
+
         $this->post('/paiements', [
             'payment_date' => '2026-08-14',
             'amount' => '13',

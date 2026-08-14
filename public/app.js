@@ -276,6 +276,7 @@
                     method: 'PUT',
                     headers: {'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': token},
                     body: JSON.stringify(body),
+                    keepalive: true,
                 });
                 if (!response.ok) {
                     const data = await response.json().catch(() => ({}));
@@ -312,6 +313,24 @@
         syncRow(row);
         savedRowStates.set(row, JSON.stringify(rowBody(row)));
     });
+
+    const flushPendingRows = () => {
+        qa('.work-row').forEach(row => {
+            const body = rowBody(row);
+            if (savedRowStates.get(row) === JSON.stringify(body)) return;
+            if (!body.is_rest && !rowValues(row)) return;
+            clearAutosaveTimer(row);
+            fetch(`/jours/${row.dataset.date}`, {
+                method: 'PUT',
+                headers: {'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': token},
+                body: JSON.stringify(body),
+                keepalive: true,
+            }).catch(() => {});
+        });
+    };
+
+    window.addEventListener('pagehide', flushPendingRows);
+
     qa('.rest-toggle').forEach(toggle => toggle.addEventListener('change', async () => {
         const row = toggle.closest('.work-row');
         const previous = !toggle.checked;
