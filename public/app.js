@@ -46,7 +46,9 @@
     const errorBox = q('#dialog-error');
     const mealAmount = form.elements.meal_amount;
     let activeRow = null;
-    let reloadTimer = null;
+    let summaryRefreshController = null;
+    const autosaveTimers = new WeakMap();
+    const savedRowStates = new WeakMap();
 
     const normalizeTime = value => {
         const normalized = value.trim().replace('.', ':');
@@ -88,17 +90,24 @@
         state.style.color = color;
     };
 
-    const scheduleReload = () => {
-        clearTimeout(reloadTimer);
-        const refreshWhenIdle = () => {
-            const focusedEditor = document.activeElement?.closest?.('.work-row, #day-dialog');
-            if (focusedEditor || dialog.open) {
-                reloadTimer = setTimeout(refreshWhenIdle, 700);
-                return;
-            }
-            location.reload();
-        };
-        reloadTimer = setTimeout(refreshWhenIdle, 1400);
+    const refreshDashboardSummary = async () => {
+        summaryRefreshController?.abort();
+        summaryRefreshController = new AbortController();
+        try {
+            const response = await fetch(location.href, {
+                headers: {Accept: 'text/html'},
+                signal: summaryRefreshController.signal,
+            });
+            if (!response.ok) return;
+            const freshDocument = new DOMParser().parseFromString(await response.text(), 'text/html');
+            ['.dashboard-kpis', '#weeks', '#balance', '.below-fold-summary'].forEach(selector => {
+                const current = q(selector);
+                const fresh = q(selector, freshDocument);
+                if (current && fresh) current.innerHTML = fresh.innerHTML;
+            });
+        } catch (error) {
+            if (error.name !== 'AbortError') console.error('Dashboard refresh failed', error);
+        }
     };
 
     const rowValues = row => {
@@ -142,16 +151,22 @@
         q('.meal-button', row).innerHTML = `${formatMoney(mealCents)} <i class="fa-solid fa-chevron-down"></i>`;
     };
 
+    const rowBody = row => ({
+        start_time: normalizeTime(q('[name="start_time"]', row)?.value || '07:45'),
+        driving: normalizeTime(q('[name="driving"]', row)?.value || ''),
+        warehouse: normalizeTime(q('[name="warehouse"]', row)?.value || ''),
+        is_rest: q('.rest-toggle', row)?.checked ?? false,
+        meal_mode: row.dataset.mealMode || 'auto',
+        meal_amount: row.dataset.mealAmount || '',
+    });
+
     async function saveRow(row, overrides = {}) {
         const body = {
-            start_time: normalizeTime(q('[name="start_time"]', row)?.value || '07:45'),
-            driving: normalizeTime(q('[name="driving"]', row)?.value || ''),
-            warehouse: normalizeTime(q('[name="warehouse"]', row)?.value || ''),
-            is_rest: q('.rest-toggle', row)?.checked ?? false,
-            meal_mode: row.dataset.mealMode || 'auto',
-            meal_amount: row.dataset.mealAmount || '',
+            ...rowBody(row),
             ...overrides,
         };
+        const stateSignature = JSON.stringify(body);
+        if (Object.keys(overrides).length === 0 && savedRowStates.get(row) === stateSignature) return;
         setState('Enregistrement…', '#6d7890');
         const response = await fetch(`/jours/${row.dataset.date}`, {
             method: 'PUT',
@@ -172,11 +187,15 @@
             row.dataset.mealAmount = body.meal_amount;
         }
         syncRow(row);
+        savedRowStates.set(row, JSON.stringify(rowBody(row)));
         setState('Enregistré ✓', '#198754');
-        scheduleReload();
+        void refreshDashboardSummary();
     }
 
-    qa('.work-row').forEach(syncRow);
+    qa('.work-row').forEach(row => {
+        syncRow(row);
+        savedRowStates.set(row, JSON.stringify(rowBody(row)));
+    });
     qa('.rest-toggle').forEach(toggle => toggle.addEventListener('change', async () => {
         const row = toggle.closest('.work-row');
         const previous = !toggle.checked;
@@ -187,11 +206,23 @@
         }
     }));
     qa('.autosave').forEach(input => {
+        const clearQueuedSave = () => {
+            const timer = autosaveTimers.get(input);
+            if (timer) clearTimeout(timer);
+            autosaveTimers.delete(input);
+        };
         input.addEventListener('input', () => {
-            clearTimeout(reloadTimer);
-            syncRow(input.closest('.work-row'));
+            const row = input.closest('.work-row');
+            clearQueuedSave();
+            syncRow(row);
+            if (!rowValues(row)) return;
+            autosaveTimers.set(input, setTimeout(async () => {
+                autosaveTimers.delete(input);
+                try { await saveRow(row); } catch (_) {}
+            }, 450));
         });
         input.addEventListener('change', async () => {
+            clearQueuedSave();
             try { await saveRow(input.closest('.work-row')); } catch (_) {}
         });
         input.addEventListener('keydown', event => {

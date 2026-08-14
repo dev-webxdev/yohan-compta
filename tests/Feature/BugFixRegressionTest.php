@@ -90,6 +90,18 @@ final class BugFixRegressionTest extends TestCase
         self::assertStringNotContainsString('OvertimePayment', $controller);
     }
 
+    public function test_table_edits_refresh_dashboard_data_without_reloading_the_page(): void
+    {
+        $javascript = file_get_contents(public_path('app.js'));
+
+        self::assertStringContainsString('const refreshDashboardSummary = async () =>', $javascript);
+        self::assertStringContainsString("['.dashboard-kpis', '#weeks', '#balance', '.below-fold-summary']", $javascript);
+        self::assertStringContainsString('void refreshDashboardSummary();', $javascript);
+        self::assertStringContainsString('autosaveTimers.set(input, setTimeout', $javascript);
+        self::assertStringContainsString('}, 450));', $javascript);
+        self::assertStringNotContainsString('scheduleReload', $javascript);
+    }
+
     public function test_invalid_delete_date_is_rejected(): void
     {
         $this->deleteJson('/jours/2026-99-99')->assertNotFound();
