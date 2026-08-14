@@ -35,14 +35,7 @@ final class WorkDayController
         $isRest = (bool) ($data['is_rest'] ?? false);
         $isSunday = (int) (new DateTimeImmutable($date))->format('N') === 7;
         if ($isRest) {
-            WorkDay::query()->updateOrCreate(['date' => $date], [
-                'start_time_minutes' => self::DEFAULT_START_MINUTES,
-                'driving_minutes' => 0,
-                'warehouse_minutes' => 0,
-                'is_rest' => true,
-                'meal_allowance_mode' => 'auto',
-                'meal_allowance_forced_cents' => null,
-            ]);
+            WorkDay::query()->updateOrCreate(['date' => $date], ['is_rest' => true]);
 
             return response()->json(['ok' => true]);
         }

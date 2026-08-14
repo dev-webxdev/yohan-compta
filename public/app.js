@@ -34,7 +34,7 @@
     const moreDays = q('#toggle-days-mobile');
     moreDays?.addEventListener('click', () => {
         const expanded = table?.classList.toggle('days-expanded') ?? false;
-        moreDays.textContent = expanded ? 'Voir moins de jours⌃' : 'Voir plus de jours⌄';
+        moreDays.innerHTML = expanded ? 'Voir moins de jours <i class="fa-solid fa-chevron-up"></i>' : 'Voir plus de jours <i class="fa-solid fa-chevron-down"></i>';
     });
 
     const dialog = q('#day-dialog');
@@ -139,7 +139,7 @@
         const mealCents = forced
             ? parseMoney(row.dataset.mealAmount)
             : values.end >= Number(row.dataset.mealThreshold || 0) ? Number(row.dataset.mealDefault || 0) : 0;
-        q('.meal-button', row).textContent = `${formatMoney(mealCents)}⌄`;
+        q('.meal-button', row).innerHTML = `${formatMoney(mealCents)} <i class="fa-solid fa-chevron-down"></i>`;
     };
 
     async function saveRow(row, overrides = {}) {
@@ -164,13 +164,7 @@
             setState(message, '#e84b55');
             throw new Error(message);
         }
-        if (body.is_rest) {
-            q('[name="start_time"]', row).value = '07:45';
-            q('[name="driving"]', row).value = '';
-            q('[name="warehouse"]', row).value = '';
-            row.dataset.mealMode = 'auto';
-            row.dataset.mealAmount = '';
-        } else {
+        if (!body.is_rest) {
             q('[name="start_time"]', row).value = body.start_time;
             q('[name="driving"]', row).value = body.driving;
             q('[name="warehouse"]', row).value = body.warehouse;

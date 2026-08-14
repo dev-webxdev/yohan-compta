@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', config('app.name'))</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
     <link rel="stylesheet" href="/app.css">
 </head>
 <body>
@@ -16,20 +17,20 @@
 @endphp
 <div class="app-shell" id="app-shell">
 <aside class="sidebar" aria-label="Navigation principale">
-    <div class="sidebar-head"><button type="button" class="bare-icon sidebar-toggle" aria-label="Réduire le menu" aria-expanded="true">☰</button></div>
+    <div class="sidebar-head"><button type="button" class="bare-icon sidebar-toggle" aria-label="Réduire le menu" aria-expanded="true"><i class="fa-solid fa-bars"></i></button></div>
     <nav class="sidebar-nav">
-        <a class="{{ request()->routeIs('month.*') ? 'active' : '' }}" href="{{ $dashboardUrl }}"><i>▣</i><span>Tableau de bord</span></a>
-        <a class="{{ request()->routeIs('payments.*') ? 'active' : '' }}" href="{{ route('payments.index') }}"><i>▭</i><span>Paiements</span></a>
-        <a class="{{ request()->routeIs('year.*') ? 'active' : '' }}" href="{{ route('year.show', ['year' => now()->year]) }}"><i>▥</i><span>Rapports</span></a>
-        <a class="{{ request()->routeIs('settings.*') ? 'active' : '' }}" href="{{ route('settings.index') }}"><i>⚙</i><span>Paramètres</span></a>
+        <a class="{{ request()->routeIs('month.*') ? 'active' : '' }}" href="{{ $dashboardUrl }}"><i class="fa-solid fa-table-columns"></i><span>Tableau de bord</span></a>
+        <a class="{{ request()->routeIs('payments.*') ? 'active' : '' }}" href="{{ route('payments.index') }}"><i class="fa-solid fa-money-check-dollar"></i><span>Paiements</span></a>
+        <a class="{{ request()->routeIs('year.*') ? 'active' : '' }}" href="{{ route('year.show', ['year' => now()->year]) }}"><i class="fa-solid fa-chart-column"></i><span>Rapports</span></a>
+        <a class="{{ request()->routeIs('settings.*') ? 'active' : '' }}" href="{{ route('settings.index') }}"><i class="fa-solid fa-gear"></i><span>Paramètres</span></a>
     </nav>
-    <div class="sidebar-bottom"><button type="button" class="sidebar-toggle" aria-expanded="true"><i>«</i><span>Réduire</span></button></div>
+    <div class="sidebar-bottom"><button type="button" class="sidebar-toggle" aria-expanded="true"><i class="fa-solid fa-angles-left"></i><span>Réduire</span></button></div>
 </aside>
 <div class="app-main">
 <header class="topbar">
-    <div class="mobile-top-menu"><button type="button" class="bare-icon mobile-menu-toggle" aria-label="Ouvrir le menu" aria-expanded="false">☰</button></div>
+    <div class="mobile-top-menu"><button type="button" class="bare-icon mobile-menu-toggle" aria-label="Ouvrir le menu" aria-expanded="false"><i class="fa-solid fa-bars"></i></button></div>
     <div class="topbar-title">Suivi Heures &amp; Salaire</div>
-    <div class="topbar-actions"><a class="mobile-calendar" href="{{ $dashboardUrl }}">▦</a></div>
+    <div class="topbar-actions"><a class="mobile-calendar" href="{{ $dashboardUrl }}" aria-label="Calendrier"><i class="fa-regular fa-calendar-days"></i></a></div>
 </header>
 <main class="content">
     @if (session('status'))<div class="flash success">{{ session('status') }}</div>@endif
@@ -38,10 +39,10 @@
 </main>
 </div>
 <nav class="mobile-nav" aria-label="Navigation mobile">
-    <a class="{{ request()->routeIs('month.*') ? 'active' : '' }}" href="{{ $dashboardUrl }}"><i>⌂</i><span>Tableau</span></a>
-    <a class="{{ request()->routeIs('payments.*') ? 'active' : '' }}" href="{{ route('payments.index') }}"><i>▭</i><span>Paiements</span></a>
-    <a class="{{ request()->routeIs('year.*') ? 'active' : '' }}" href="{{ route('year.show', ['year' => now()->year]) }}"><i>▥</i><span>Rapports</span></a>
-    <a class="{{ request()->routeIs('settings.*') ? 'active' : '' }}" href="{{ route('settings.index') }}"><i>⚙</i><span>Paramètres</span></a>
+    <a class="{{ request()->routeIs('month.*') ? 'active' : '' }}" href="{{ $dashboardUrl }}"><i class="fa-solid fa-house"></i><span>Tableau</span></a>
+    <a class="{{ request()->routeIs('payments.*') ? 'active' : '' }}" href="{{ route('payments.index') }}"><i class="fa-solid fa-money-check-dollar"></i><span>Paiements</span></a>
+    <a class="{{ request()->routeIs('year.*') ? 'active' : '' }}" href="{{ route('year.show', ['year' => now()->year]) }}"><i class="fa-solid fa-chart-column"></i><span>Rapports</span></a>
+    <a class="{{ request()->routeIs('settings.*') ? 'active' : '' }}" href="{{ route('settings.index') }}"><i class="fa-solid fa-gear"></i><span>Paramètres</span></a>
 </nav>
 </div>
 <script src="/app.js" defer></script>

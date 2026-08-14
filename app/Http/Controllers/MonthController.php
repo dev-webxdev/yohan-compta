@@ -29,9 +29,9 @@ final class MonthController
             $workDay = $report['work_days']->get($date);
             $setting = $settings->forDate($date);
             $isRest = $workDay ? $workDay->is_rest : (int) $cursor->format('N') === 7;
-            $start = $isRest ? self::DEFAULT_START_MINUTES : ($workDay?->start_time_minutes ?? self::DEFAULT_START_MINUTES);
-            $driving = $isRest ? 0 : ($workDay?->driving_minutes ?? 0);
-            $warehouse = $isRest ? 0 : ($workDay?->warehouse_minutes ?? 0);
+            $start = $workDay?->start_time_minutes ?? self::DEFAULT_START_MINUTES;
+            $driving = $workDay?->driving_minutes ?? 0;
+            $warehouse = $workDay?->warehouse_minutes ?? 0;
             $worked = $driving + $warehouse;
             $end = PayrollMath::endTimeMinutes($start, $driving, $warehouse);
             $calendarDays[] = [

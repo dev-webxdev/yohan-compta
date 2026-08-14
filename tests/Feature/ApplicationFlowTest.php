@@ -142,6 +142,31 @@ final class ApplicationFlowTest extends TestCase
         self::assertSame(60, $payment->hours_paid_minutes);
     }
 
+    public function test_month_total_excludes_overtime_but_keeps_it_visible_separately(): void
+    {
+        foreach (['2026-08-03','2026-08-04','2026-08-05','2026-08-06','2026-08-07'] as $date) {
+            $this->putJson('/jours/'.$date, [
+                'start_time' => '07:45',
+                'driving' => '08:00',
+                'warehouse' => '',
+                'is_rest' => false,
+                'meal_mode' => 'auto',
+                'meal_amount' => '',
+            ])->assertOk();
+        }
+
+        $month = app(ReportService::class)->month('2026-08');
+        self::assertGreaterThan(0, $month['overtime_net_cents']);
+        self::assertSame($month['normal_net_cents'] + $month['meal_cents'], $month['theoretical_net_cents']);
+        self::assertSame($month['normal_gross_cents'] + $month['meal_cents'], $month['theoretical_gross_cents']);
+        self::assertNotSame($month['work_net_cents'] + $month['meal_cents'], $month['theoretical_net_cents']);
+
+        $response = $this->get('/mois/2026-08')->assertOk();
+        $response->assertSee('Total hors heures sup');
+        $response->assertSee('Heures sup à part');
+        $response->assertSee('fa-table-columns', false);
+    }
+
     public function test_rest_days_and_fill_states_are_distinct(): void
     {
         $html = $this->get('/mois/2026-08')->assertOk()->getContent();
@@ -166,6 +191,15 @@ final class ApplicationFlowTest extends TestCase
             'start_time' => '09:00',
             'driving' => '08:00',
             'warehouse' => '02:00',
+            'is_rest' => false,
+            'meal_mode' => 'forced',
+            'meal_amount' => '25',
+        ])->assertOk();
+
+        $this->putJson('/jours/2026-08-03', [
+            'start_time' => '09:00',
+            'driving' => '08:00',
+            'warehouse' => '02:00',
             'is_rest' => true,
             'meal_mode' => 'forced',
             'meal_amount' => '25',
@@ -173,14 +207,25 @@ final class ApplicationFlowTest extends TestCase
 
         $rest = WorkDay::query()->whereDate('date', '2026-08-03')->firstOrFail();
         self::assertTrue($rest->is_rest);
-        self::assertSame(0, $rest->driving_minutes);
-        self::assertSame(0, $rest->warehouse_minutes);
-        self::assertSame('auto', $rest->meal_allowance_mode);
-        self::assertNull($rest->meal_allowance_forced_cents);
+        self::assertSame(480, $rest->driving_minutes);
+        self::assertSame(120, $rest->warehouse_minutes);
+        self::assertSame('forced', $rest->meal_allowance_mode);
+        self::assertSame(2500, $rest->meal_allowance_forced_cents);
         self::assertSame(0, app(ReportService::class)->month('2026-08')['worked_minutes']);
 
         $html = $this->get('/mois/2026-08')->getContent();
         self::assertMatchesRegularExpression('/class="work-row row-rest" data-date="2026-08-03" data-is-rest="1"/', $html);
+        self::assertMatchesRegularExpression('/name="driving" value="08:00"[^>]*disabled/', $html);
+
+        $this->putJson('/jours/2026-08-03', [
+            'start_time' => '09:00',
+            'driving' => '08:00',
+            'warehouse' => '02:00',
+            'is_rest' => false,
+            'meal_mode' => 'forced',
+            'meal_amount' => '25',
+        ])->assertOk();
+        self::assertSame(600, app(ReportService::class)->month('2026-08')['worked_minutes']);
 
         $this->putJson('/jours/2026-08-04', [
             'start_time' => '07:45',

@@ -3,13 +3,13 @@
 @section('title', 'Vue annuelle '.$report['year'])
 @section('content')
 <div class="report-page">
-<section class="year-nav"><a class="square-control" href="{{ route('year.show', $report['year']-1) }}">‹</a><div class="month-control"><i>▥</i><strong>{{ $report['year'] }}</strong></div><a class="square-control" href="{{ route('year.show', $report['year']+1) }}">›</a></section>
+<section class="year-nav"><a class="square-control" href="{{ route('year.show', $report['year']-1) }}" aria-label="Année précédente"><i class="fa-solid fa-chevron-left"></i></a><div class="month-control"><i class="fa-solid fa-chart-column"></i><strong>{{ $report['year'] }}</strong></div><a class="square-control" href="{{ route('year.show', $report['year']+1) }}" aria-label="Année suivante"><i class="fa-solid fa-chevron-right"></i></a></section>
 <section class="kpis dashboard-kpis report-kpis">
-<article class="kpi kpi-hours"><div class="kpi-icon">◷</div><div><span>Heures travaillées</span><strong>{{ Time::formatDuration($report['totals']['worked_minutes']) }}</strong></div></article>
-<article class="kpi kpi-overtime"><div class="kpi-icon">↗</div><div><span>Heures sup</span><strong>{{ Time::formatDuration($report['totals']['overtime_minutes']) }}</strong></div></article>
-<article class="kpi kpi-money"><div class="kpi-icon">€</div><div><span>Heures sup</span><strong>{{ Money::formatCents($report['totals']['overtime_net_cents']) }} net</strong><small>{{ Money::formatCents($report['totals']['overtime_gross_cents']) }} brut</small></div></article>
-<article class="kpi kpi-meal"><div class="kpi-icon">◇</div><div><span>Paniers</span><strong>{{ Money::formatCents($report['totals']['meal_cents']) }}</strong></div></article>
-<article class="kpi kpi-due"><div class="kpi-icon">▭</div><div><span>Reste dû net</span><strong>{{ Money::formatCents($balance['remaining']) }}</strong></div></article>
+<article class="kpi kpi-hours"><div class="kpi-icon"><i class="fa-regular fa-clock"></i></div><div><span>Heures travaillées</span><strong>{{ Time::formatDuration($report['totals']['worked_minutes']) }}</strong></div></article>
+<article class="kpi kpi-overtime"><div class="kpi-icon"><i class="fa-solid fa-arrow-trend-up"></i></div><div><span>Heures sup</span><strong>{{ Time::formatDuration($report['totals']['overtime_minutes']) }}</strong></div></article>
+<article class="kpi kpi-money"><div class="kpi-icon"><i class="fa-solid fa-euro-sign"></i></div><div><span>Heures sup</span><strong>{{ Money::formatCents($report['totals']['overtime_net_cents']) }} net</strong><small>{{ Money::formatCents($report['totals']['overtime_gross_cents']) }} brut</small></div></article>
+<article class="kpi kpi-meal"><div class="kpi-icon"><i class="fa-solid fa-utensils"></i></div><div><span>Paniers</span><strong>{{ Money::formatCents($report['totals']['meal_cents']) }}</strong></div></article>
+<article class="kpi kpi-due"><div class="kpi-icon"><i class="fa-solid fa-wallet"></i></div><div><span>Reste dû net</span><strong>{{ Money::formatCents($balance['remaining']) }}</strong></div></article>
 </section>
 <section class="panel report-panel">
 <div class="panel-heading report-heading"><div><h2>Détail mensuel</h2><p>Les paiements et le reste dû sont suivis en net.</p></div></div>

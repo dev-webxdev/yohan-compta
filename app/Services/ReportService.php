@@ -91,6 +91,8 @@ final class ReportService
         $workNet = Money::numeratorToCents($netNumerator);
         $overtimeGross = Money::numeratorToCents($overtimeGrossNumerator);
         $overtimeNet = Money::numeratorToCents($overtimeNetNumerator);
+        $normalGross = max(0, $workGross - $overtimeGross);
+        $normalNet = max(0, $workNet - $overtimeNet);
 
         return [
             'month' => $month,
@@ -103,12 +105,12 @@ final class ReportService
             'overtime_gross_cents' => $overtimeGross,
             'overtime_net_cents' => $overtimeNet,
             'meal_cents' => $mealCents,
-            'normal_gross_cents' => max(0, $workGross - $overtimeGross),
-            'normal_net_cents' => max(0, $workNet - $overtimeNet),
+            'normal_gross_cents' => $normalGross,
+            'normal_net_cents' => $normalNet,
             'work_gross_cents' => $workGross,
             'work_net_cents' => $workNet,
-            'theoretical_gross_cents' => $workGross + $mealCents,
-            'theoretical_net_cents' => $workNet + $mealCents,
+            'theoretical_gross_cents' => $normalGross + $mealCents,
+            'theoretical_net_cents' => $normalNet + $mealCents,
         ];
     }
 
