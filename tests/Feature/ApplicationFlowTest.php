@@ -170,6 +170,35 @@ final class ApplicationFlowTest extends TestCase
         self::assertSame(1, OvertimePayment::query()->count());
     }
 
+    public function test_whole_hours_are_accepted_for_work_days_and_overtime_payments(): void
+    {
+        $this->putJson('/jours/2026-08-03', [
+            'start_time' => '7',
+            'driving' => '6',
+            'warehouse' => '1',
+            'is_rest' => false,
+            'meal_mode' => 'auto',
+            'meal_amount' => '',
+        ])->assertOk();
+
+        $day = WorkDay::query()->whereDate('date', '2026-08-03')->firstOrFail();
+        self::assertSame(420, $day->start_time_minutes);
+        self::assertSame(360, $day->driving_minutes);
+        self::assertSame(60, $day->warehouse_minutes);
+
+        foreach (['2026-08-04','2026-08-05','2026-08-06','2026-08-07'] as $date) {
+            WorkDay::query()->create(['date' => $date, 'driving_minutes' => 480, 'warehouse_minutes' => 0, 'meal_allowance_mode' => 'auto']);
+        }
+
+        $this->post('/paiements', [
+            'payment_date' => '2026-08-13',
+            'amount' => '13',
+            'hours_paid' => '1',
+        ])->assertRedirect('/paiements');
+
+        self::assertSame(60, OvertimePayment::query()->latest('id')->firstOrFail()->hours_paid_minutes);
+    }
+
     public function test_month_total_excludes_overtime_but_keeps_it_visible_separately(): void
     {
         foreach (['2026-08-03','2026-08-04','2026-08-05','2026-08-06','2026-08-07'] as $date) {

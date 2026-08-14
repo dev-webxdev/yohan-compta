@@ -39,7 +39,7 @@ final class PaymentController
         $data = $request->validate([
             'payment_date' => ['required', 'date'],
             'amount' => ['required', 'string', 'max:30'],
-            'hours_paid' => ['nullable', 'regex:/^\d{1,3}:[0-5]\d$/'],
+            'hours_paid' => ['nullable', 'regex:/^\d{1,3}(?::[0-5]\d)?$/'],
             'period_reference' => ['nullable', 'string', 'max:255'],
             'note' => ['nullable', 'string', 'max:2000'],
         ]);

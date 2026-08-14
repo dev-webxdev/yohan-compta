@@ -20,16 +20,16 @@ final class WorkDayController
         $this->assertValidDate($date);
 
         $data = $request->validate([
-            'start_time' => ['required', 'regex:/^([01]?\d|2[0-3]):[0-5]\d$/'],
-            'driving' => ['nullable', 'regex:/^\d{1,3}:[0-5]\d$/'],
-            'warehouse' => ['nullable', 'regex:/^\d{1,3}:[0-5]\d$/'],
+            'start_time' => ['required', 'regex:/^([01]?\d|2[0-3])(?::[0-5]\d)?$/'],
+            'driving' => ['nullable', 'regex:/^\d{1,3}(?::[0-5]\d)?$/'],
+            'warehouse' => ['nullable', 'regex:/^\d{1,3}(?::[0-5]\d)?$/'],
             'is_rest' => ['sometimes', 'boolean'],
             'meal_mode' => ['required', 'in:auto,forced'],
             'meal_amount' => ['nullable', 'string', 'max:30'],
         ], [
-            'start_time.regex' => 'Début : format HH:MM attendu.',
-            'driving.regex' => 'Conduite : format HH:MM attendu.',
-            'warehouse.regex' => 'Entrepôt : format HH:MM attendu.',
+            'start_time.regex' => 'Début : format HH ou HH:MM attendu.',
+            'driving.regex' => 'Conduite : format HH ou HH:MM attendu.',
+            'warehouse.regex' => 'Entrepôt : format HH ou HH:MM attendu.',
         ]);
 
         $isRest = (bool) ($data['is_rest'] ?? false);

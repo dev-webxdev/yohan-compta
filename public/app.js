@@ -52,6 +52,9 @@
 
     const normalizeTime = value => {
         const normalized = value.trim().replace('.', ':');
+        if (/^\d{1,3}$/.test(normalized)) {
+            return `${normalized.padStart(2, '0')}:00`;
+        }
         if (!/^\d{1,3}:\d{1,2}$/.test(normalized)) return normalized;
         const [hours, minutes] = normalized.split(':');
         return `${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}`;

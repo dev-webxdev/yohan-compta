@@ -13,11 +13,11 @@ final class Time
             return 0;
         }
 
-        if (!preg_match('/^(\d{1,3}):([0-5]\d)$/', $value, $matches)) {
-            throw new InvalidArgumentException('Durée invalide. Format attendu : HH:MM.');
+        if (!preg_match('/^(\d{1,3})(?::([0-5]\d))?$/', $value, $matches)) {
+            throw new InvalidArgumentException('Durée invalide. Format attendu : HH ou HH:MM.');
         }
 
-        return ((int) $matches[1] * 60) + (int) $matches[2];
+        return ((int) $matches[1] * 60) + (int) ($matches[2] ?? 0);
     }
 
     public static function parseClock(?string $value): ?int
@@ -27,11 +27,11 @@ final class Time
             return null;
         }
 
-        if (!preg_match('/^([01]?\d|2[0-3]):([0-5]\d)$/', $value, $matches)) {
-            throw new InvalidArgumentException('Heure invalide. Format attendu : HH:MM.');
+        if (!preg_match('/^([01]?\d|2[0-3])(?::([0-5]\d))?$/', $value, $matches)) {
+            throw new InvalidArgumentException('Heure invalide. Format attendu : HH ou HH:MM.');
         }
 
-        return ((int) $matches[1] * 60) + (int) $matches[2];
+        return ((int) $matches[1] * 60) + (int) ($matches[2] ?? 0);
     }
 
     public static function formatDuration(int $minutes): string

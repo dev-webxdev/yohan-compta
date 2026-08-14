@@ -14,6 +14,14 @@ final class TimeTest extends TestCase
         self::assertSame('155:45', Time::formatDuration(9345));
     }
 
+    public function test_whole_hours_are_accepted_without_minutes(): void
+    {
+        self::assertSame(360, Time::parseDuration('6'));
+        self::assertSame(3600, Time::parseDuration('60'));
+        self::assertSame(360, Time::parseClock('6'));
+        self::assertSame(390, Time::parseClock('6:30'));
+    }
+
     #[DataProvider('invalidTimes')]
     public function test_invalid_values_are_rejected(string $value): void
     {
