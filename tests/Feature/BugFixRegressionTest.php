@@ -88,6 +88,13 @@ final class BugFixRegressionTest extends TestCase
         self::assertStringContainsString('.weeks-panel,.balance-panel{padding:14px 13px}', $css);
     }
 
+    public function test_payments_history_keeps_space_from_the_panels_above(): void
+    {
+        $css = file_get_contents(public_path('app.css'));
+
+        self::assertStringContainsString('.spacer-top{margin-top:16px}', $css);
+    }
+
     public function test_dashboard_does_not_duplicate_overtime_payments_panel(): void
     {
         $response = $this->get('/mois/2026-08')->assertOk();

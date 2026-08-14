@@ -64,6 +64,7 @@
 .payment-row:first-child{border-top:0}
 .payment-row>div:first-child small,.payment-amount small{display:block;margin-top:3px;color:var(--muted);font-size:10px;font-weight:400}
 .payment-amount small{white-space:nowrap}
+.spacer-top{margin-top:16px}
 .danger-link{padding:6px 8px;border-radius:5px;cursor:pointer}
 .danger-link:hover{background:#fff0f0}
 
