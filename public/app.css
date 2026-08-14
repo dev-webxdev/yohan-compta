@@ -48,7 +48,7 @@
 .report-page{width:100%;max-width:1800px;margin:0 auto}
 .report-panel{overflow:hidden;box-shadow:0 4px 16px #1d2d480c}
 .report-heading{padding:15px 17px 12px;border-bottom:1px solid #edf0f4}
-.report-table{min-width:1020px}
+.report-table{min-width:1120px}
 .report-table thead th{background:#f8fafc;color:#5a667a;font-weight:650;font-size:11px}
 .report-table tbody tr:hover{background:#fbfdff}
 .report-table tbody td:first-child a{color:#1768ef;font-weight:650;text-decoration:none}

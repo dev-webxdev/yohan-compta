@@ -158,7 +158,7 @@ final class ApplicationFlowTest extends TestCase
             'amount' => '13',
             'hours_paid' => '05:01',
         ])->assertRedirect('/paiements')->assertSessionHasErrors([
-            'hours_paid' => 'Les heures payées ne peuvent pas dépasser les 05:00 d’heures supplémentaires restantes.',
+            'hours_paid' => 'Les heures supplémentaires payées ne peuvent pas dépasser les 05:00 d’heures supplémentaires restantes à payer.',
         ]);
         self::assertSame(0, OvertimePayment::query()->count());
 
@@ -220,7 +220,7 @@ final class ApplicationFlowTest extends TestCase
 
         $response = $this->get('/mois/2026-08')->assertOk();
         $response->assertSee('Total hors heures sup');
-        $response->assertSee('Heures sup à part');
+        $response->assertSee('Montant heures sup');
         $response->assertSee('fa-table-columns', false);
     }
 

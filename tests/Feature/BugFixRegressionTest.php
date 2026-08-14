@@ -69,7 +69,7 @@ final class BugFixRegressionTest extends TestCase
 
     public function test_week_totals_stay_next_to_labels_and_only_show_net_overtime_amount(): void
     {
-        $this->get('/mois/2026-08')->assertOk()->assertSee('Montant sup :');
+        $this->get('/mois/2026-08')->assertOk()->assertSee('Montant heures sup :');
         $css = file_get_contents(public_path('app.css'));
         $view = file_get_contents(resource_path('views/month.blade.php'));
 
@@ -167,14 +167,32 @@ final class BugFixRegressionTest extends TestCase
         self::assertStringContainsString("qa('[data-time-normalize]')", $javascript);
     }
 
-    public function test_dashboard_overtime_balance_labels_are_explicit(): void
+    public function test_overtime_labels_are_explicit_and_consistent_across_pages(): void
     {
-        $response = $this->get('/mois/2026-08')->assertOk();
+        $month = $this->get('/mois/2026-08')->assertOk();
+        $payments = $this->get('/paiements')->assertOk();
+        $year = $this->get('/annee/2026')->assertOk();
 
-        $response->assertSee('Heures sup à payer');
-        $response->assertSee('Heures sup restantes à payer');
-        $response->assertDontSee('€ encore dus');
-        $response->assertDontSee('<h2>Reste dû</h2>', false);
+        $month->assertSee('Heures sup effectuées')
+            ->assertSee('Montant heures sup')
+            ->assertSee('Heures supplémentaires restantes à payer')
+            ->assertSee('Heures restantes :')
+            ->assertSee('Montant net :');
+        $payments->assertSee('Heures supplémentaires payées')
+            ->assertSee('Heures supplémentaires restantes à payer')
+            ->assertSee('Montant net restant à payer')
+            ->assertSee('Montant déjà payé');
+        $year->assertSee('Heures sup effectuées')
+            ->assertSee('Heures sup restantes')
+            ->assertSee('Montant sup à payer')
+            ->assertSee('Montant restant à payer');
+
+        self::assertStringContainsString('Heures sup payées :', file_get_contents(resource_path('views/payments.blade.php')));
+
+        foreach ([$month->getContent(), $payments->getContent(), $year->getContent()] as $content) {
+            self::assertStringNotContainsString('Reste dû', $content);
+            self::assertStringNotContainsString('restant dû', $content);
+        }
     }
 
     public function test_invalid_delete_date_is_rejected(): void

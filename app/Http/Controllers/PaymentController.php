@@ -59,7 +59,7 @@ final class PaymentController
             $remainingMinutes = (int) $reports->balance()['remaining_minutes_indicative'];
             if ($hoursMinutes > $remainingMinutes) {
                 throw ValidationException::withMessages([
-                    'hours_paid' => 'Les heures payées ne peuvent pas dépasser les '.Time::formatDuration($remainingMinutes).' d’heures supplémentaires restantes.',
+                    'hours_paid' => 'Les heures supplémentaires payées ne peuvent pas dépasser les '.Time::formatDuration($remainingMinutes).' d’heures supplémentaires restantes à payer.',
                 ]);
             }
         }

@@ -7,7 +7,7 @@
     <div class="panel-heading"><div><h2>Ajouter un paiement d’heures supplémentaires</h2><p>Ce paiement concerne uniquement les heures supplémentaires et reste indépendant du mois où elles ont été générées.</p></div></div>
     <form method="post" action="{{ route('payments.store') }}" class="form-grid">@csrf
         <label>Date du paiement<input type="date" name="payment_date" value="{{ old('payment_date', now()->format('Y-m-d')) }}" required></label>
-        <label>Montant reçu pour les heures sup (€)<input name="amount" inputmode="decimal" value="{{ old('amount') }}" placeholder="250,00" required></label>
+        <label>Montant reçu pour les heures supplémentaires (€)<input name="amount" inputmode="decimal" value="{{ old('amount') }}" placeholder="250,00" required></label>
         <label>Heures supplémentaires payées <small>(facultatif)</small><input name="hours_paid" inputmode="numeric" data-time-normalize value="{{ old('hours_paid') }}" placeholder="20:00"></label>
         <label>Référence période <small>(facultatif)</small><input name="period_reference" value="{{ old('period_reference') }}" placeholder="Ex. Juillet + Août"></label>
         <label class="wide">Note <small>(facultatif)</small><textarea name="note" rows="3" placeholder="Ex. paiement partiel reçu avec la paie d’octobre">{{ old('note') }}</textarea></label>
@@ -16,10 +16,10 @@
     <p class="hint">Répartition automatique : le montant rembourse d’abord les plus anciennes dettes mensuelles. Un éventuel surplus est conservé comme avance/trop-perçu.</p>
 </section>
 <section class="panel balance-panel payment-balance">
-    <h2>Solde des heures supplémentaires</h2>
-    <div class="big-due">{{ Money::formatCents($balance['remaining']) }}</div><p class="muted">≈ {{ Time::formatDuration($balance['remaining_minutes_indicative']) }} d’heures supplémentaires restantes (conversion indicative)</p>
-    <div class="balance-line"><span>Heures sup net dues</span><strong>{{ Money::formatCents($balance['generated']) }}</strong></div>
-    <div class="balance-line"><span>Total reçu</span><strong>{{ Money::formatCents($balance['paid']) }}</strong></div>
+    <h2>Heures supplémentaires restantes à payer</h2>
+    <p class="muted">Montant net restant à payer</p><div class="big-due">{{ Money::formatCents($balance['remaining']) }}</div><p class="muted">≈ {{ Time::formatDuration($balance['remaining_minutes_indicative']) }} d’heures supplémentaires restantes à payer (conversion indicative)</p>
+    <div class="balance-line"><span>Montant total des heures supplémentaires</span><strong>{{ Money::formatCents($balance['generated']) }}</strong></div>
+    <div class="balance-line"><span>Montant déjà payé</span><strong>{{ Money::formatCents($balance['paid']) }}</strong></div>
     @if($balance['credit'] > 0)<div class="credit">Avance / trop-perçu : {{ Money::formatCents($balance['credit']) }}</div>@endif
 </section>
 </div>
@@ -32,7 +32,7 @@
             <div class="allocation-tags">
                 @forelse(($allocations[$payment->id] ?? []) as $allocation)<span>{{ $allocation['month'] }} · {{ Money::formatCents($allocation['amount_cents']) }}</span>@empty<span>Avance non affectée</span>@endforelse
             </div>
-            <div class="payment-amount">{{ Money::formatCents($payment->amount_cents) }}<small>{{ $paymentHours[$payment->id]['indicative'] ? '≈ ' : '' }}{{ Time::formatDuration($paymentHours[$payment->id]['minutes']) }}</small></div>
+            <div class="payment-amount">{{ Money::formatCents($payment->amount_cents) }}<small>Heures sup payées : {{ $paymentHours[$payment->id]['indicative'] ? '≈ ' : '' }}{{ Time::formatDuration($paymentHours[$payment->id]['minutes']) }}</small></div>
             <form method="post" action="{{ route('payments.destroy', $payment) }}" data-confirm data-confirm-title="Supprimer ce paiement ?" data-confirm-message="Le paiement sera supprimé et les soldes d’heures supplémentaires seront recalculés." data-confirm-action="Supprimer" data-confirm-danger="1">@csrf @method('DELETE')<button class="danger-link">Supprimer</button></form>
         </article>
     @empty

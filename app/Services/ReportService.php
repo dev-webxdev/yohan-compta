@@ -166,6 +166,7 @@ final class ReportService
             'paid_received_cents' => 0,
             'paid_allocated_cents' => 0,
             'remaining_cents' => 0,
+            'remaining_minutes_indicative' => 0,
         ];
 
         for ($month = 1; $month <= 12; $month++) {
@@ -190,10 +191,11 @@ final class ReportService
         return ['year' => $year, 'months' => $months, 'totals' => $totals];
     }
 
-    /** @return array{generated:int,paid:int,remaining:int,credit:int,by_month:array<string,array<string,int>>} */
+    /** @return array{generated:int,paid:int,remaining:int,credit:int,by_month:array<string,array<string,int>>,remaining_minutes_indicative:int} */
     public function balance(): array
     {
         $snapshot = $this->allocationSnapshot();
+        $remainingMinutes = array_sum(array_column($snapshot['by_month'], 'remaining_minutes_indicative'));
 
         return [
             'generated' => $snapshot['generated'],
@@ -201,7 +203,7 @@ final class ReportService
             'remaining' => max(0, $snapshot['generated'] - $snapshot['paid']),
             'credit' => max(0, $snapshot['paid'] - $snapshot['generated']),
             'by_month' => $snapshot['by_month'],
-            'remaining_minutes_indicative' => array_sum(array_column($snapshot['by_month'], 'remaining_minutes_indicative')),
+            'remaining_minutes_indicative' => $remainingMinutes,
         ];
     }
 
