@@ -225,6 +225,42 @@ final class ApplicationFlowTest extends TestCase
         self::assertSame(60, OvertimePayment::query()->latest('id')->firstOrFail()->hours_paid_minutes);
     }
 
+    public function test_payment_and_settings_dates_stay_inside_supported_range(): void
+    {
+        $this->from('/paiements')->post('/paiements', [
+            'payment_date' => '1999-12-31',
+            'amount' => '10',
+            'hours_paid' => '',
+        ])->assertRedirect('/paiements')->assertSessionHasErrors('payment_date');
+        self::assertSame(0, OvertimePayment::query()->count());
+
+        $this->from('/parametres')->post('/parametres', [
+            'effective_from' => '2201-01-01',
+            'default_start_time' => '07:45',
+            'hourly_net_rate' => '9,74',
+            'weekly_threshold' => '35:00',
+            'meal_allowance' => '16',
+            'meal_allowance_time' => '14:15',
+        ])->assertRedirect('/parametres')->assertSessionHasErrors('effective_from');
+        self::assertSame(1, SettingPeriod::query()->count());
+    }
+
+    public function test_hourly_net_rate_must_be_positive(): void
+    {
+        $this->from('/parametres')->post('/parametres', [
+            'effective_from' => '2026-08-15',
+            'default_start_time' => '07:45',
+            'hourly_net_rate' => '0',
+            'weekly_threshold' => '35:00',
+            'meal_allowance' => '16',
+            'meal_allowance_time' => '14:15',
+        ])->assertRedirect('/parametres')->assertSessionHasErrors([
+            'hourly_net_rate' => 'Le taux horaire net doit être supérieur à 0 €.',
+        ]);
+
+        self::assertSame(1, SettingPeriod::query()->count());
+    }
+
     public function test_month_total_excludes_overtime_but_keeps_it_visible_separately(): void
     {
         foreach (['2026-08-03','2026-08-04','2026-08-05','2026-08-06','2026-08-07'] as $date) {

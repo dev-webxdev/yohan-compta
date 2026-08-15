@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\OvertimePayment;
 use App\Services\ReportService;
 use App\Services\SettingsService;
+use App\Support\DateRange;
 use App\Support\Money;
 use App\Support\Time;
 use Illuminate\Http\RedirectResponse;
@@ -61,7 +62,12 @@ final class PaymentController
     private function paymentPayload(Request $request, ReportService $reports, SettingsService $settings, ?OvertimePayment $payment = null): array
     {
         $data = $request->validate([
-            'payment_date' => ['required', 'date'],
+            'payment_date' => [
+                'required',
+                'date_format:Y-m-d',
+                'after_or_equal:'.DateRange::MIN_DATE,
+                'before_or_equal:'.DateRange::MAX_DATE,
+            ],
             'amount' => ['required', 'string', 'max:30'],
             'hours_paid' => ['nullable', 'regex:/^\d{1,3}(?::[0-5]\d)?$/'],
             'period_reference' => ['nullable', 'string', 'max:255'],

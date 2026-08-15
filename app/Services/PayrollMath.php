@@ -19,12 +19,12 @@ final class PayrollMath
         return max(0, $startTimeMinutes) + self::totalWorked($drivingMinutes, $warehouseMinutes);
     }
 
-    public static function mealAllowanceCents(?int $endTimeMinutes, string $mode, ?int $forcedCents, int $thresholdMinutes, int $defaultCents): int
+    public static function mealAllowanceCents(int $endTimeMinutes, string $mode, ?int $forcedCents, int $thresholdMinutes, int $defaultCents): int
     {
         if ($mode === 'forced') {
             return max(0, (int) $forcedCents);
         }
 
-        return $endTimeMinutes !== null && $endTimeMinutes >= $thresholdMinutes ? $defaultCents : 0;
+        return $endTimeMinutes >= $thresholdMinutes ? $defaultCents : 0;
     }
 }

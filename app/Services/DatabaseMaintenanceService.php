@@ -78,17 +78,6 @@ final class DatabaseMaintenanceService
         }, $backups);
     }
 
-    /** @return array{count:int,size_bytes:int} */
-    public function backupSummary(): array
-    {
-        $backups = $this->backups();
-
-        return [
-            'count' => count($backups),
-            'size_bytes' => array_sum(array_column($backups, 'size_bytes')),
-        ];
-    }
-
     public function deleteAllBackups(): int
     {
         $deleted = 0;

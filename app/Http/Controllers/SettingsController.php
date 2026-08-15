@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\SettingPeriod;
 use App\Services\DatabaseMaintenanceService;
 use App\Services\SettingsService;
+use App\Support\DateRange;
 use App\Support\Money;
 use App\Support\Time;
 use Illuminate\Http\RedirectResponse;
@@ -16,17 +17,27 @@ final class SettingsController
 {
     public function index(SettingsService $settings, DatabaseMaintenanceService $database): View
     {
+        $backups = $database->backups();
+
         return view('settings', [
             'current' => $settings->forDate(now()->format('Y-m-d')),
-            'backups' => $database->backups(),
-            'backupSummary' => $database->backupSummary(),
+            'backups' => $backups,
+            'backupSummary' => [
+                'count' => count($backups),
+                'size_bytes' => array_sum(array_column($backups, 'size_bytes')),
+            ],
         ]);
     }
 
     public function store(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'effective_from' => ['required', 'date'],
+            'effective_from' => [
+                'required',
+                'date_format:Y-m-d',
+                'after_or_equal:'.DateRange::MIN_DATE,
+                'before_or_equal:'.DateRange::MAX_DATE,
+            ],
             'default_start_time' => ['required', 'regex:/^([01]?\d|2[0-3])(?::[0-5]\d)?$/'],
             'hourly_net_rate' => ['required', 'string'],
             'weekly_threshold' => ['required', 'regex:/^\d{1,3}:[0-5]\d$/'],
@@ -39,6 +50,9 @@ final class SettingsController
         $threshold = $this->parseField('weekly_threshold', fn () => Time::parseDuration($data['weekly_threshold']));
         $meal = $this->parseField('meal_allowance', fn () => Money::parseEuros($data['meal_allowance']));
         $mealTime = $this->parseField('meal_allowance_time', fn () => Time::parseClock($data['meal_allowance_time']));
+        if ($netRate <= 0) {
+            throw ValidationException::withMessages(['hourly_net_rate' => 'Le taux horaire net doit être supérieur à 0 €.']);
+        }
 
         SettingPeriod::query()->updateOrCreate(['effective_from' => $data['effective_from']], [
             'default_start_time_minutes' => $defaultStart,

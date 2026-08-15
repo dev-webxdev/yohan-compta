@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\WorkDay;
 use App\Services\PayrollMath;
 use App\Services\SettingsService;
+use App\Support\DateRange;
 use App\Support\Money;
 use App\Support\Time;
 use DateTimeImmutable;
@@ -16,7 +17,7 @@ final class WorkDayController
 {
     public function store(Request $request, SettingsService $settings, string $date): JsonResponse
     {
-        $this->assertValidDate($date);
+        abort_unless(DateRange::isDate($date), 404);
         $defaultStart = $settings->forDate($date)->default_start_time_minutes;
 
         $data = $request->validate([
@@ -83,17 +84,9 @@ final class WorkDayController
 
     public function destroy(string $date): JsonResponse
     {
-        $this->assertValidDate($date);
+        abort_unless(DateRange::isDate($date), 404);
         WorkDay::query()->whereDate('date', $date)->delete();
 
         return response()->json(['ok' => true]);
-    }
-
-    private function assertValidDate(string $date): void
-    {
-        $parsed = DateTimeImmutable::createFromFormat('!Y-m-d', $date);
-        if (!$parsed || $parsed->format('Y-m-d') !== $date || (int) $parsed->format('Y') < 2000 || (int) $parsed->format('Y') > 2200) {
-            abort(404);
-        }
     }
 }

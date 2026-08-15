@@ -1,7 +1,5 @@
 <?php
 
-use Illuminate\Support\Str;
-
 return [
     'default' => env('DB_CONNECTION', 'sqlite'),
     'connections' => [
@@ -17,8 +15,4 @@ return [
         ],
     ],
     'migrations' => ['table' => 'migrations', 'update_date_on_publish' => true],
-    'redis' => [
-        'client' => env('REDIS_CLIENT', 'phpredis'),
-        'options' => ['cluster' => env('REDIS_CLUSTER', 'redis'), 'prefix' => Str::slug((string) env('APP_NAME', 'laravel')).'-database-'],
-    ],
 ];

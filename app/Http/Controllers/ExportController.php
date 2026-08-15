@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Services\PayrollMath;
 use App\Services\ReportService;
 use App\Services\SettingsService;
+use App\Support\DateRange;
 use App\Support\FrenchDate;
 use App\Support\Money;
 use App\Support\Time;
@@ -14,7 +15,7 @@ final class ExportController
 {
     public function month(string $month, ReportService $reports, SettingsService $settings): StreamedResponse
     {
-        $this->assertMonth($month);
+        abort_unless(DateRange::isMonth($month), 404);
         $report = $reports->month($month);
 
         return response()->streamDownload(function () use ($report, $settings): void {
@@ -58,7 +59,7 @@ final class ExportController
 
     public function year(int $year, ReportService $reports): StreamedResponse
     {
-        abort_unless($year >= 2000 && $year <= 2200, 404);
+        abort_unless(DateRange::containsYear($year), 404);
         $report = $reports->year($year);
 
         return response()->streamDownload(function () use ($report): void {
@@ -85,13 +86,5 @@ final class ExportController
             }
             fclose($output);
         }, 'yohan-compta-'.$year.'.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
-    }
-
-    private function assertMonth(string $month): void
-    {
-        $valid = preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $month)
-            && (int) substr($month, 0, 4) >= 2000
-            && (int) substr($month, 0, 4) <= 2200;
-        abort_unless($valid, 404);
     }
 }

@@ -26,8 +26,6 @@
 .square-control i{font-size:14px}
 .end-value,.dialog-readonly{background:#f5f7fa;color:#47546a;border-color:#e1e5eb;cursor:default}
 .dialog-readonly{min-height:31px;border:1px solid #d9e0e8;border-radius:5px;padding:7px 8px;display:flex;align-items:center;font-weight:650}
-.dialog-grid{grid-template-columns:repeat(4,1fr);gap:12px}
-.meal-fieldset{grid-template-columns:minmax(160px,1fr) 72px 95px}
 .day-dialog.meal-only .dialog-grid,.day-dialog.meal-only .dialog-delete{display:none}
 .week-card{min-height:90px;grid-template-columns:1fr}
 .weeks-panel,.balance-panel{padding:14px 13px}
@@ -85,8 +83,6 @@
 .confirm-dialog.is-danger .confirm-dialog-icon{background:#fff0f0;color:var(--red)}.confirm-dialog.is-danger .confirm-dialog-submit{border-color:#df3e49;background:#df3e49}
 
 @media(max-width:720px){
-  .dialog-grid{grid-template-columns:1fr 1fr}
-  .meal-fieldset{grid-template-columns:1fr}
   .salary-summary-grid{grid-template-columns:1fr 1fr}
   .report-kpis .kpi-due{grid-column:1/-1}
   .week-metrics{grid-template-columns:max-content 1fr;padding-left:0;column-gap:7px;row-gap:2px}
