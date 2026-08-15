@@ -82,15 +82,14 @@ final class AuthenticationTest extends TestCase
             ])->assertSessionHasErrors('login');
         }
 
-        $response = $this->post('/connexion', [
+        $this->post('/connexion', [
             'login' => 'yohan',
             'password' => 'mauvais-mot-de-passe',
         ])->assertSessionHasErrors('login');
 
-        self::assertStringContainsString(
-            'Trop de tentatives.',
-            $response->session()->get('errors')->first('login'),
-        );
+        $this->get('/connexion')
+            ->assertOk()
+            ->assertSee('Trop de tentatives.');
     }
 
     public function test_password_configuration_uses_a_one_way_hash(): void
