@@ -32,7 +32,13 @@
 <header class="topbar">
     <div class="mobile-top-menu"><button type="button" class="bare-icon mobile-menu-toggle" aria-label="Ouvrir le menu" aria-expanded="false"><i class="fa-solid fa-bars"></i></button></div>
     <div class="topbar-title">Suivi Heures &amp; Salaire</div>
-    <div class="topbar-actions"><a class="mobile-calendar" href="{{ $dashboardUrl }}" aria-label="Calendrier"><i class="fa-regular fa-calendar-days"></i></a></div>
+    <div class="topbar-actions">
+        <a class="mobile-calendar" href="{{ $dashboardUrl }}" aria-label="Calendrier"><i class="fa-regular fa-calendar-days"></i></a>
+        <form method="post" action="{{ route('logout') }}">
+            @csrf
+            <button type="submit" class="bare-icon" aria-label="Se déconnecter" title="Se déconnecter"><i class="fa-solid fa-right-from-bracket"></i></button>
+        </form>
+    </div>
 </header>
 <main class="content">
     @if (session('status'))<div class="flash success">{{ session('status') }}</div>@endif
