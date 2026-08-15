@@ -20,6 +20,15 @@ final class AuthenticationTest extends TestCase
         ]);
     }
 
+    public function test_login_page_displays_expected_fields(): void
+    {
+        $this->get('/connexion')
+            ->assertOk()
+            ->assertSee('Nom d’utilisateur ou adresse e-mail')
+            ->assertSee('Mot de passe')
+            ->assertSee('Se connecter');
+    }
+
     public function test_guests_cannot_access_pages_or_json_endpoints(): void
     {
         $this->get('/mois')->assertRedirect('/connexion');
@@ -80,7 +89,7 @@ final class AuthenticationTest extends TestCase
 
         self::assertStringContainsString(
             'Trop de tentatives.',
-            $response->getSession()->get('errors')->first('login'),
+            $response->session()->get('errors')->first('login'),
         );
     }
 
