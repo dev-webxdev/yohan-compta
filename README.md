@@ -17,10 +17,26 @@ cp .env.example .env
 touch database/database.sqlite
 php artisan key:generate
 php artisan migrate
+php artisan auth:password-hash
+```
+
+La dernière commande demande le mot de passe sans l'afficher et fournit uniquement son hash. Renseigner ensuite dans `.env` :
+
+```dotenv
+AUTH_USERNAME=yohan
+AUTH_EMAIL=yohan@example.com
+AUTH_PASSWORD_HASH='le_hash_genere'
+```
+
+Le hash du mot de passe est le seul secret d'authentification conservé par l'application : aucun mot de passe en clair n'est stocké dans SQLite ou dans le dépôt.
+
+Démarrer ensuite l'application :
+
+```bash
 php artisan serve
 ```
 
-Puis ouvrir `http://127.0.0.1:8000`.
+Puis ouvrir `http://127.0.0.1:8000`. En production derrière HTTPS, définir `SESSION_SECURE_COOKIE=true`.
 
 ## Principes métier
 
