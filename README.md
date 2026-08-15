@@ -23,7 +23,6 @@ php artisan auth:password-hash
 La dernière commande demande le mot de passe sans l'afficher et fournit uniquement son hash. Renseigner ensuite dans `.env` :
 
 ```dotenv
-AUTH_USERNAME=yohan
 AUTH_EMAIL=yohan@example.com
 AUTH_PASSWORD_HASH='le_hash_genere'
 ```

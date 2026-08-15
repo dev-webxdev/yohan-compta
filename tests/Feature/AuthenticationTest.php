@@ -2,11 +2,14 @@
 
 namespace Tests\Feature;
 
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
 final class AuthenticationTest extends TestCase
 {
+    use RefreshDatabase;
+
     protected bool $authenticatedByDefault = false;
 
     protected function setUp(): void
@@ -14,7 +17,6 @@ final class AuthenticationTest extends TestCase
         parent::setUp();
 
         config([
-            'access.username' => 'yohan',
             'access.email' => 'yohan@example.com',
             'access.password_hash' => Hash::make('correct-horse-battery'),
         ]);
@@ -24,7 +26,7 @@ final class AuthenticationTest extends TestCase
     {
         $this->get('/connexion')
             ->assertOk()
-            ->assertSee('Nom d’utilisateur ou adresse e-mail')
+            ->assertSee('Adresse e-mail')
             ->assertSee('Mot de passe')
             ->assertSee('Se connecter');
     }
@@ -41,10 +43,10 @@ final class AuthenticationTest extends TestCase
         ])->assertUnauthorized();
     }
 
-    public function test_login_accepts_username_or_email_and_logout_closes_session(): void
+    public function test_login_accepts_email_and_logout_closes_session(): void
     {
         $this->post('/connexion', [
-            'login' => 'yohan',
+            'email' => 'YOHAN@EXAMPLE.COM',
             'password' => 'correct-horse-battery',
         ])->assertRedirect('/mois');
 
@@ -54,7 +56,7 @@ final class AuthenticationTest extends TestCase
         $this->get('/mois')->assertRedirect('/connexion');
 
         $this->post('/connexion', [
-            'login' => 'YOHAN@EXAMPLE.COM',
+            'email' => 'yohan@example.com',
             'password' => 'correct-horse-battery',
         ])->assertRedirect('/mois');
 
@@ -64,11 +66,18 @@ final class AuthenticationTest extends TestCase
     public function test_invalid_credentials_return_a_clear_generic_error(): void
     {
         $this->from('/connexion')->post('/connexion', [
-            'login' => 'yohan',
+            'email' => 'yohan@example.com',
             'password' => 'mauvais-mot-de-passe',
         ])
             ->assertRedirect('/connexion')
-            ->assertSessionHasErrors(['login' => 'Identifiants incorrects.']);
+            ->assertSessionHasErrors(['email' => 'Identifiants incorrects.']);
+
+        $this->from('/connexion')->post('/connexion', [
+            'email' => 'yohan',
+            'password' => 'correct-horse-battery',
+        ])
+            ->assertRedirect('/connexion')
+            ->assertSessionHasErrors('email');
 
         $this->get('/mois')->assertRedirect('/connexion');
     }
@@ -77,15 +86,15 @@ final class AuthenticationTest extends TestCase
     {
         for ($attempt = 0; $attempt < 5; $attempt++) {
             $this->post('/connexion', [
-                'login' => 'yohan',
+                'email' => 'yohan@example.com',
                 'password' => 'mauvais-mot-de-passe',
-            ])->assertSessionHasErrors('login');
+            ])->assertSessionHasErrors('email');
         }
 
         $this->post('/connexion', [
-            'login' => 'yohan',
+            'email' => 'yohan@example.com',
             'password' => 'mauvais-mot-de-passe',
-        ])->assertSessionHasErrors('login');
+        ])->assertSessionHasErrors('email');
 
         $this->get('/connexion')
             ->assertOk()

@@ -162,3 +162,50 @@ a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible,
   .payment-actions{grid-column:1/-1;justify-content:flex-start}
   .compact-button{min-height:36px}
 }
+
+.day-dialog{width:min(680px,calc(100vw - 32px));max-height:calc(100vh - 32px);overflow:hidden;border-radius:16px;box-shadow:0 24px 72px #17213b4d}
+.day-dialog::backdrop{background:#17213b66;backdrop-filter:blur(3px)}
+.day-dialog form{padding:0;max-height:calc(100vh - 32px);overflow-y:auto;overflow-x:hidden}
+.dialog-head{padding:20px 22px 16px;border-bottom:1px solid #e8ecf2;background:linear-gradient(180deg,#fbfdff,#fff)}
+.dialog-head h2{margin:0;font-size:20px;line-height:1.2}
+.dialog-head h2 small{display:block;margin-top:5px;color:var(--muted);font-size:12px;font-weight:600}
+.dialog-close{width:38px;height:38px;border-radius:9px;color:#526078;transition:background .15s ease,color .15s ease}
+.dialog-close:hover{background:#eef3f9;color:#26344d}
+.dialog-grid{padding:20px 22px 18px;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.day-dialog label{gap:7px;font-size:13px;font-weight:650;color:#43516a}
+.day-dialog input,.day-dialog textarea{min-width:0;min-height:42px;padding:9px 10px;font-size:14px}
+.dialog-readonly{min-height:42px;padding:9px 10px;font-size:14px}
+.meal-fieldset{margin:0 22px 18px;padding:15px 16px;border:1px solid #e2e7ee;border-radius:10px;background:#fafbfd;grid-template-columns:minmax(180px,1fr) minmax(80px,.55fr) 120px;gap:10px}
+.meal-fieldset legend{padding:0 6px;color:#43516a;font-size:13px;font-weight:750}
+.meal-fieldset label{font-weight:550}
+.dialog-actions{margin:0;padding:15px 22px 18px;border-top:1px solid #e8ecf2;background:#fafbfd}
+.dialog-actions>div{gap:10px}
+.dialog-delete,.dialog-cancel,.dialog-save{height:40px;border-radius:8px;padding:0 17px;font-size:13px;font-weight:650}
+.dialog-delete:hover{background:#fff2f2;border-color:#f0c5c8}
+.dialog-cancel:hover{background:#f2f5f9}
+.dialog-save{min-width:132px;box-shadow:0 5px 14px #2678ff26}
+.inline-error{margin:0 22px 14px;font-size:12px}
+
+@media(max-width:720px){
+  .day-dialog{width:calc(100vw - 20px);max-height:calc(100vh - 20px)}
+  .day-dialog form{max-height:calc(100vh - 20px)}
+  .dialog-head{padding:17px 16px 14px}.dialog-head h2{font-size:18px}
+  .dialog-grid{padding:16px;grid-template-columns:1fr 1fr;gap:12px}
+  .meal-fieldset{margin:0 16px 16px;padding:13px;grid-template-columns:1fr}
+  .dialog-actions{padding:13px 16px 16px}.dialog-delete,.dialog-cancel,.dialog-save{height:40px;padding:0 12px}
+  .inline-error{margin:0 16px 12px}
+}
+
+.column-title{display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.column-title i{font-size:11px}
+.work-table th.driving-head{background:#f2f7ff;color:#245ea8}
+.work-table th.warehouse-head{background:#fff8ef;color:#9a5d18}
+.work-table th.total-head{background:#f3f6fb;color:#44526a}
+.work-table th.meal-head{background:#fff8ef;color:#9a5d18}
+.driving-cell .time-input{background:#f5f9ff;border-color:#cfe0ff}
+.warehouse-cell .time-input{background:#fff9f2;border-color:#f0dcc2}
+.total-cell strong{display:inline-flex;align-items:center;justify-content:center;min-width:56px;padding:5px 8px;border-radius:6px;background:#edf4ff;color:#1768ef;font-weight:750}
+.meal-cell .meal-button{background:#fff8ed;border-color:#f0dcc2;color:#9a5d18;font-weight:650}
+.row-rest .driving-cell .time-input:disabled,.row-rest .warehouse-cell .time-input:disabled{background:#eceff2;border-color:#dfe3e8;color:#8b94a2}
+.row-needs-fill .total-cell strong{background:#fff0bd;color:#8c6400}
+.row-rest .total-cell strong{background:#e6e9ed;color:#737d8c}

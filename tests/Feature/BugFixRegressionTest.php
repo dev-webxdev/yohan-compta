@@ -60,6 +60,36 @@ final class BugFixRegressionTest extends TestCase
         self::assertStringContainsString("openDialog(button.closest('.work-row'), 'meal')", file_get_contents(public_path('app.js')));
     }
 
+    public function test_day_editor_modal_is_roomy_readable_and_never_scrolls_horizontally(): void
+    {
+        $css = file_get_contents(public_path('app.css'));
+
+        self::assertStringContainsString('.day-dialog{width:min(680px,calc(100vw - 32px));', $css);
+        self::assertStringContainsString('overflow-y:auto;overflow-x:hidden', $css);
+        self::assertStringContainsString('.dialog-head h2{margin:0;font-size:20px;', $css);
+        self::assertStringContainsString('.dialog-grid{padding:20px 22px 18px;grid-template-columns:repeat(4,minmax(0,1fr));', $css);
+        self::assertStringContainsString('.day-dialog input,.day-dialog textarea{min-width:0;min-height:42px;', $css);
+        self::assertStringContainsString('.dialog-delete,.dialog-cancel,.dialog-save{height:40px;', $css);
+        self::assertStringContainsString('.dialog-grid{padding:16px;grid-template-columns:1fr 1fr;', $css);
+    }
+
+    public function test_work_table_visually_distinguishes_driving_warehouse_total_and_meal_columns(): void
+    {
+        $response = $this->get('/mois/2026-08')->assertOk();
+        $css = file_get_contents(public_path('app.css'));
+
+        $response->assertSee('fa-car-side', false)
+            ->assertSee('fa-warehouse', false)
+            ->assertSee('class="driving-cell"', false)
+            ->assertSee('class="warehouse-cell"', false);
+        self::assertStringContainsString('.work-table th.driving-head{background:#f2f7ff;', $css);
+        self::assertStringContainsString('.work-table th.warehouse-head{background:#fff8ef;', $css);
+        self::assertStringContainsString('.driving-cell .time-input{background:#f5f9ff;', $css);
+        self::assertStringContainsString('.warehouse-cell .time-input{background:#fff9f2;', $css);
+        self::assertStringContainsString('.total-cell strong{display:inline-flex;', $css);
+        self::assertStringContainsString('.meal-cell .meal-button{background:#fff8ed;', $css);
+    }
+
     public function test_large_screen_layout_is_fluid_without_css_zoom(): void
     {
         $css = file_get_contents(public_path('app.css'));

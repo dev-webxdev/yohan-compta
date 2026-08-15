@@ -24,28 +24,25 @@ final class AuthController
     public function store(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'login' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email:rfc', 'max:255'],
             'password' => ['required', 'string', 'max:4096'],
         ]);
 
-        $login = trim($data['login']);
-        $throttleKey = Str::lower($login).'|'.$request->ip();
+        $email = Str::lower(trim($data['email']));
+        $throttleKey = $email.'|'.$request->ip();
 
         if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
             $seconds = max(1, RateLimiter::availableIn($throttleKey));
 
             throw ValidationException::withMessages([
-                'login' => 'Trop de tentatives. Réessayez dans '.$seconds.' secondes.',
+                'email' => 'Trop de tentatives. Réessayez dans '.$seconds.' secondes.',
             ]);
         }
 
-        $username = trim((string) config('access.username'));
-        $email = Str::lower(trim((string) config('access.email')));
+        $configuredEmail = Str::lower(trim((string) config('access.email')));
         $passwordHash = (string) config('access.password_hash');
 
-        $normalizedLogin = Str::lower($login);
-        $identityMatches = ($username !== '' && hash_equals($username, $login))
-            || ($email !== '' && hash_equals($email, $normalizedLogin));
+        $identityMatches = $configuredEmail !== '' && hash_equals($configuredEmail, $email);
 
         $passwordMatches = $passwordHash !== '' && Hash::check($data['password'], $passwordHash);
 
@@ -53,7 +50,7 @@ final class AuthController
             RateLimiter::hit($throttleKey, 60);
 
             throw ValidationException::withMessages([
-                'login' => 'Identifiants incorrects.',
+                'email' => 'Identifiants incorrects.',
             ]);
         }
 

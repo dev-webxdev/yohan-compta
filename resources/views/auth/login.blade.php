@@ -26,18 +26,18 @@
 
         <form method="post" action="{{ route('login.store') }}" class="auth-form">
             @csrf
-            <label for="login">
-                <span>Nom d’utilisateur ou adresse e-mail</span>
+            <label for="email">
+                <span>Adresse e-mail</span>
                 <input
-                    id="login"
-                    name="login"
-                    type="text"
-                    value="{{ old('login') }}"
-                    autocomplete="username"
+                    id="email"
+                    name="email"
+                    type="email"
+                    value="{{ old('email') }}"
+                    autocomplete="email"
                     maxlength="255"
                     required
                     autofocus
-                    @error('login') aria-invalid="true" @enderror
+                    @error('email') aria-invalid="true" @enderror
                 >
             </label>
 
