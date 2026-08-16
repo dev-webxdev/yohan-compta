@@ -24,11 +24,6 @@
 </div>
 <section class="panel spacer-top">
     <div class="panel-heading"><div><h2>Historique des paiements d’heures supplémentaires</h2><p>Supprimer un paiement recalcule automatiquement tous les soldes d’heures supplémentaires.</p></div></div>
-    <form method="get" action="{{ route('payments.index') }}" class="payment-filters">
-        <label>Mois<select name="month"><option value="">Tous les mois</option>@foreach($availableMonths as $month)<option value="{{ $month }}" @selected($filterMonth === $month)>{{ ucfirst(FrenchDate::month((int)substr($month,5,2))) }} {{ substr($month,0,4) }}</option>@endforeach</select></label>
-        <button class="primary-button compact-button"><i class="fa-solid fa-filter"></i> Filtrer</button>
-        @if($filterMonth !== '' || $filterYear !== 0)<a class="primary-button secondary-button compact-button" href="{{ route('payments.index') }}">Effacer</a>@endif
-    </form>
     <div class="payment-list">
     @forelse($payments as $payment)
         <article class="payment-row">

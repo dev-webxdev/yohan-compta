@@ -125,7 +125,7 @@ final class BugFixRegressionTest extends TestCase
     {
         $css = file_get_contents(public_path('app.css'));
 
-        self::assertStringContainsString('.week-card{min-height:90px;grid-template-columns:1fr}', $css);
+        self::assertStringContainsString('.week-card{min-height:133px;grid-template-columns:1fr}', $css);
         self::assertStringNotContainsString('padding-bottom:11px', $css);
     }
 

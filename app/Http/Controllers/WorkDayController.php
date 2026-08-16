@@ -11,6 +11,7 @@ use App\Support\Time;
 use DateTimeImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 
 final class WorkDayController
@@ -120,7 +121,7 @@ final class WorkDayController
     /** @param array<string,mixed> $payload */
     private function persist(string $date, array $payload, int $defaultStart, ?int $writeVersion): bool
     {
-        if ($writeVersion === null) {
+        if ($writeVersion === null || !Schema::hasColumn('work_days', 'client_write_version')) {
             WorkDay::query()->updateOrCreate(['date' => $date], $payload);
 
             return true;
@@ -166,6 +167,11 @@ final class WorkDayController
 
     private function copyToDate(string $date, WorkDay $source): void
     {
+        if (!Schema::hasColumn('work_days', 'client_write_version')) {
+            WorkDay::query()->updateOrCreate(['date' => $date], $this->copyPayload($source));
+            return;
+        }
+
         $currentVersion = (int) (WorkDay::query()
             ->whereDate('date', $date)
             ->value('client_write_version') ?? 0);
