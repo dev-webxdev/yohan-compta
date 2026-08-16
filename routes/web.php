@@ -22,8 +22,6 @@ Route::middleware('auth.local')->group(function (): void {
     Route::get('/mois/{month}/export.csv', [ExportController::class, 'month'])->where('month', '\\d{4}-\\d{2}')->name('month.export');
     Route::put('/jours/{date}', [WorkDayController::class, 'store'])->where('date', '\\d{4}-\\d{2}-\\d{2}')->name('days.store');
     Route::post('/jours/{date}/copier-veille', [WorkDayController::class, 'copyPreviousDay'])->where('date', '\\d{4}-\\d{2}-\\d{2}')->name('days.copy-previous');
-    Route::get('/semaines/{week}/copie-precedente', [WorkDayController::class, 'previewPreviousWeek'])->where('week', '\\d{4}-\\d{2}-\\d{2}')->name('weeks.copy-previous.preview');
-    Route::post('/semaines/{week}/copie-precedente', [WorkDayController::class, 'copyPreviousWeek'])->where('week', '\\d{4}-\\d{2}-\\d{2}')->name('weeks.copy-previous');
 
     Route::get('/paiements', [PaymentController::class, 'index'])->name('payments.index');
     Route::post('/paiements', [PaymentController::class, 'store'])->name('payments.store');
@@ -37,8 +35,4 @@ Route::middleware('auth.local')->group(function (): void {
     Route::post('/parametres', [SettingsController::class, 'store'])->name('settings.store');
     Route::get('/parametres/base/sauvegarde', [DatabaseController::class, 'backup'])->name('settings.database.backup');
     Route::post('/parametres/base/restauration', [DatabaseController::class, 'restore'])->name('settings.database.restore');
-    Route::get('/parametres/base/sauvegardes/{backup}', [DatabaseController::class, 'downloadBackup'])->where('backup', 'yohan-compta-\\d{8}-\\d{6}-[a-f0-9]{6}\\.sqlite')->name('settings.database.backups.download');
-    Route::post('/parametres/base/sauvegardes/{backup}/restauration', [DatabaseController::class, 'restoreBackup'])->where('backup', 'yohan-compta-\\d{8}-\\d{6}-[a-f0-9]{6}\\.sqlite')->name('settings.database.backups.restore');
-    Route::delete('/parametres/base/sauvegardes/{backup}', [DatabaseController::class, 'deleteBackup'])->where('backup', 'yohan-compta-\\d{8}-\\d{6}-[a-f0-9]{6}\\.sqlite')->name('settings.database.backups.delete');
-    Route::delete('/parametres/base/sauvegardes', [DatabaseController::class, 'deleteAllBackups'])->name('settings.database.backups.delete-all');
 });

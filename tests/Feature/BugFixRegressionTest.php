@@ -147,7 +147,7 @@ final class BugFixRegressionTest extends TestCase
         self::assertStringNotContainsString("method: 'DELETE'", $javascript);
         self::assertStringContainsString('.confirm-dialog.is-danger', $css);
         self::assertStringContainsString('@media(max-width:720px)', $css);
-        self::assertStringContainsString('data-confirm-danger="1"', $settings);
+        self::assertStringContainsString('data-confirm-title="Restaurer la base SQLite ?"', $settings);
         self::assertStringContainsString('data-confirm-danger="1"', $payments);
         self::assertStringNotContainsString('confirm(', $settings);
         self::assertStringNotContainsString('confirm(', $payments);

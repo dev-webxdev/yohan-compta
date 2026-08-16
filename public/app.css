@@ -70,7 +70,7 @@
 .primary-button,.danger-button{gap:6px}
 .meal-button,.mobile-more-days{display:inline-flex;align-items:center;justify-content:center;gap:6px}
 .danger-button{border:1px solid #e34852;background:#fff;color:#d63540;border-radius:6px;padding:8px 12px;cursor:pointer;font:inherit;display:inline-flex;align-items:center;justify-content:center}.danger-button:hover{background:#fff0f0}
-.backup-list{display:grid;gap:9px;margin-top:12px}.backup-row{display:flex;align-items:center;justify-content:space-between;gap:16px;border:1px solid #e2e7ed;border-radius:8px;padding:11px 12px}.backup-info{min-width:0;display:grid;gap:4px}.backup-info strong{overflow-wrap:anywhere}.backup-info span{color:var(--muted);font-size:11px}.backup-actions{display:flex;align-items:center;gap:7px;flex-wrap:wrap}.backup-actions form{margin:0}.backup-actions .primary-button,.backup-actions .danger-button{white-space:nowrap}.secondary-button{background:#fff;color:#26344d}.backup-empty{margin-top:12px!important}
+.secondary-button{background:#fff;color:#26344d}
 
 .confirm-dialog{width:min(430px,calc(100vw - 28px));border:0;border-radius:12px;padding:0;background:#fff;color:var(--text);box-shadow:0 20px 60px #17213b38}
 .confirm-dialog::backdrop{background:#17213b45;backdrop-filter:blur(2px)}
@@ -88,7 +88,6 @@
   .week-metrics{grid-template-columns:max-content 1fr;padding-left:0;column-gap:7px;row-gap:2px}
   .week-metrics b{font-size:10px}
   .database-actions{grid-template-columns:1fr}
-  .backup-row{align-items:flex-start;flex-direction:column}.backup-actions{width:100%}
   .confirm-dialog-body{padding:17px 16px 14px}.confirm-dialog-actions{padding:11px 16px 14px}
   .confirm-dialog-actions button{flex:1}
 }
@@ -122,7 +121,6 @@
 .compact-button{min-height:32px;padding:6px 9px}
 .field-error{display:block;color:var(--red);font-size:11px;line-height:1.3}
 [aria-invalid="true"]{border-color:#df3e49!important;box-shadow:0 0 0 2px #df3e4914!important}
-.backup-library>.panel-heading{align-items:flex-start;flex-wrap:wrap}
 .row-actions{display:flex;align-items:center;justify-content:center;gap:3px}
 .row-save-state{width:15px;height:15px;display:inline-grid;place-items:center;border-radius:50%;font-size:10px;font-weight:800;line-height:1;color:transparent}
 .row-save-state[data-state="saving"]{color:#69758a;background:#edf0f4}
@@ -210,10 +208,8 @@ a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible,
 .save-state[data-state="warning"]{color:#a15c00}
 .save-state[data-state="error"]{color:#c83842}
 .future-notice{display:flex;align-items:center;gap:9px;margin:-5px 0 14px;padding:9px 11px;border:1px solid #b9d6ff;border-radius:8px;background:#f3f8ff;color:#315b91;font-size:12px}
-.dialog-copy,.week-copy-button{border:1px solid #dbe1e9;background:#fff;color:#315b91;border-radius:7px;cursor:pointer;font-weight:650}
-.dialog-copy{height:40px;padding:0 14px}
-.week-copy-button{margin:7px 0 0 25px;padding:5px 8px;font-size:10px}
-.dialog-copy:hover,.week-copy-button:hover{background:#f3f7fd;border-color:#b9cbed}
+.dialog-copy{height:40px;padding:0 14px;border:1px solid #dbe1e9;background:#fff;color:#315b91;border-radius:7px;cursor:pointer;font-weight:650}
+.dialog-copy:hover{background:#f3f7fd;border-color:#b9cbed}
 .payment-filters{display:flex;align-items:end;gap:9px;margin:12px 0}
 .payment-filters label{display:flex;flex-direction:column;gap:4px;font-size:11px;color:var(--muted)}
 .payment-filters input,.payment-filters select{height:34px;border:1px solid #d9e0e8;border-radius:6px;background:#fff;padding:0 9px;color:var(--text)}
@@ -225,7 +221,6 @@ a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible,
   .app-shell.mobile-menu-open .mobile-menu-backdrop{display:block;position:fixed;inset:0 0 58px;z-index:49}
   .more-button,.rest-check,.bare-icon{min-width:40px;min-height:40px}
   .dialog-copy{height:40px;padding:0 10px}
-  .week-copy-button{margin-left:0;width:100%;min-height:34px}
   .payment-filters{display:grid;grid-template-columns:1fr 1fr;align-items:end}
   .payment-filters label,.payment-filters input,.payment-filters select{width:100%}
   .pagination{justify-content:space-between}

@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\WorkDay;
 use App\Services\PayrollMath;
 use App\Services\SettingsService;
-use App\Services\WeekCalculator;
 use App\Support\DateRange;
 use App\Support\Money;
 use App\Support\Time;
@@ -115,50 +114,6 @@ final class WorkDayController
         ]);
     }
 
-    public function previewPreviousWeek(string $week): JsonResponse
-    {
-        $range = $this->weekCopyRange($week);
-        $items = [];
-
-        for ($target = $range['start']; $target <= $range['end']; $target = $target->modify('+1 day')) {
-            $source = $target->modify('-7 days');
-            $sourceDay = WorkDay::query()->whereDate('date', $source->format('Y-m-d'))->first();
-            $items[] = [
-                'source' => $source->format('d/m/Y'),
-                'target' => $target->format('d/m/Y'),
-                'has_source' => $sourceDay !== null,
-            ];
-        }
-
-        return response()->json([
-            'count' => count(array_filter($items, static fn (array $item): bool => $item['has_source'])),
-            'items' => $items,
-        ]);
-    }
-
-    public function copyPreviousWeek(string $week): JsonResponse
-    {
-        $range = $this->weekCopyRange($week);
-        $copied = 0;
-
-        for ($target = $range['start']; $target <= $range['end']; $target = $target->modify('+1 day')) {
-            $sourceDate = $target->modify('-7 days')->format('Y-m-d');
-            $source = WorkDay::query()->whereDate('date', $sourceDate)->first();
-            if (!$source) {
-                continue;
-            }
-
-            $this->copyToDate($target->format('Y-m-d'), $source);
-            $copied++;
-        }
-
-        if ($copied === 0) {
-            return response()->json(['message' => 'La semaine précédente ne contient aucune saisie à recopier.'], 422);
-        }
-
-        return response()->json(['ok' => true, 'copied' => $copied]);
-    }
-
     /** @param array<string,mixed> $payload */
     private function persist(string $date, array $payload, int $defaultStart, ?int $writeVersion): bool
     {
@@ -217,15 +172,5 @@ final class WorkDayController
                 'client_write_version' => $currentVersion + 1,
             ],
         );
-    }
-
-    /** @return array{start:DateTimeImmutable,end:DateTimeImmutable} */
-    private function weekCopyRange(string $week): array
-    {
-        abort_unless(DateRange::isDate($week) && WeekCalculator::weekId($week) === $week, 404);
-
-        $start = new DateTimeImmutable($week);
-
-        return ['start' => $start, 'end' => WeekCalculator::periodEnd($start)];
     }
 }

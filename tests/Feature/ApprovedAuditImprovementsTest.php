@@ -65,35 +65,6 @@ final class ApprovedAuditImprovementsTest extends TestCase
         $this->deleteJson('/jours/2026-08-18')->assertStatus(405);
     }
 
-    public function test_previous_week_can_be_previewed_and_copied(): void
-    {
-        WorkDay::query()->create([
-            'date' => '2026-08-03',
-            'driving_minutes' => 420,
-            'warehouse_minutes' => 30,
-            'meal_allowance_mode' => 'auto',
-        ]);
-        WorkDay::query()->create([
-            'date' => '2026-08-04',
-            'driving_minutes' => 480,
-            'warehouse_minutes' => 0,
-            'meal_allowance_mode' => 'auto',
-        ]);
-
-        $this->getJson('/semaines/2026-08-10/copie-precedente')
-            ->assertOk()
-            ->assertJsonPath('count', 2)
-            ->assertJsonFragment(['source' => '03/08/2026', 'target' => '10/08/2026']);
-
-        $this->postJson('/semaines/2026-08-10/copie-precedente')
-            ->assertOk()
-            ->assertJsonPath('copied', 2);
-
-        self::assertSame(420, WorkDay::query()->whereDate('date', '2026-08-10')->value('driving_minutes'));
-        self::assertSame(30, WorkDay::query()->whereDate('date', '2026-08-10')->value('warehouse_minutes'));
-        self::assertSame(480, WorkDay::query()->whereDate('date', '2026-08-11')->value('driving_minutes'));
-    }
-
     public function test_public_pages_send_security_headers_and_secure_requests_get_hsts(): void
     {
         config(['app.url' => 'https://example.test']);
@@ -157,7 +128,8 @@ final class ApprovedAuditImprovementsTest extends TestCase
         self::assertStringContainsString('appMain.inert = open', $javascript);
         self::assertStringContainsString("event.altKey && event.key === 'ArrowDown'", $javascript);
         self::assertStringContainsString("event.key === 'Enter'", $javascript);
-        self::assertStringContainsString('Recopier la semaine précédente', $html);
+        self::assertStringNotContainsString('Recopier la semaine précédente', $html);
+        self::assertStringNotContainsString('data-copy-week', $html);
         self::assertStringContainsString('.mobile-menu-backdrop', $css);
     }
 }

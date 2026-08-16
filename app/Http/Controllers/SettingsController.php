@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\SettingPeriod;
-use App\Services\DatabaseMaintenanceService;
 use App\Services\SettingsService;
 use App\Support\DateRange;
 use App\Support\Money;
@@ -15,18 +14,10 @@ use Illuminate\View\View;
 
 final class SettingsController
 {
-    public function index(SettingsService $settings, DatabaseMaintenanceService $database): View
+    public function index(SettingsService $settings): View
     {
-        $backups = $database->backups();
-
         return view('settings', [
             'current' => $settings->forDate(now()->format('Y-m-d')),
-            'backups' => $backups,
-            'backupSummary' => [
-                'count' => count($backups),
-                'size_bytes' => array_sum(array_column($backups, 'size_bytes')),
-            ],
-            'backupRetention' => (int) config('backups.retention', 20),
         ]);
     }
 
