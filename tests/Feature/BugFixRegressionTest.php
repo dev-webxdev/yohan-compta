@@ -101,7 +101,7 @@ final class BugFixRegressionTest extends TestCase
         self::assertStringNotContainsString('zoom:', $css);
     }
 
-    public function test_week_totals_stay_next_to_labels_and_only_show_net_overtime_amount(): void
+    public function test_week_totals_show_overtime_tiers_and_majorated_net_amount(): void
     {
         $this->get('/mois/2026-08')->assertOk()->assertSee('Montant heures sup :');
         $css = file_get_contents(public_path('app.css'));
@@ -110,7 +110,9 @@ final class BugFixRegressionTest extends TestCase
         self::assertStringNotContainsString('.week-metrics b{float:right', $css);
         self::assertStringContainsString('.week-metrics b{float:none;margin:0;font-size:12px;font-weight:650}', $css);
         self::assertStringContainsString('.week-metrics b{font-size:10px}', $css);
-        self::assertStringContainsString("Money::formatCents(\$week['overtime_net_cents']) }} net</b>", $view);
+        self::assertStringContainsString("Time::formatDuration(\$week['overtime_25_minutes'])", $view);
+        self::assertStringContainsString("Time::formatDuration(\$week['overtime_50_minutes'])", $view);
+        self::assertStringContainsString("Money::formatCents(\$week['overtime_net_cents']) }} net majoré</b>", $view);
         self::assertStringNotContainsString("\$week['overtime_gross_cents']", $view);
         self::assertStringContainsString('.week-metrics{grid-template-columns:max-content 1fr;', $css);
         self::assertStringContainsString('<span>Total travaillé :</span><b class="blue-value">', $view);
@@ -251,11 +253,11 @@ final class BugFixRegressionTest extends TestCase
         $this->deleteJson('/jours/2026-08-03')->assertStatus(405);
     }
 
-    public function test_month_boundary_can_create_a_one_day_week_segment(): void
+    public function test_month_boundary_keeps_the_same_calendar_week(): void
     {
         self::assertSame('2026-08-31', WeekCalculator::weekId('2026-08-31'));
-        self::assertSame('2026-08-31', WeekCalculator::periodEnd('2026-08-31')->format('Y-m-d'));
-        self::assertSame('2026-09-01', WeekCalculator::weekId('2026-09-01'));
+        self::assertSame('2026-09-06', WeekCalculator::periodEnd('2026-08-31')->format('Y-m-d'));
+        self::assertSame('2026-08-31', WeekCalculator::weekId('2026-09-01'));
     }
 
     public function test_money_formatting_stays_exact_without_float_conversion(): void

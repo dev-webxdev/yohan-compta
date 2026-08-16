@@ -9,6 +9,11 @@ final class Money
         return $minutes * $hourlyRateCents;
     }
 
+    public static function wagePercentNumerator(int $minutes, int $hourlyRateCents, int $percent): int
+    {
+        return $minutes * $hourlyRateCents * $percent;
+    }
+
     public static function numeratorToCents(int $numerator): int
     {
         if ($numerator <= 0) {
@@ -16,6 +21,15 @@ final class Money
         }
 
         return intdiv($numerator + 30, 60);
+    }
+
+    public static function percentNumeratorToCents(int $numerator): int
+    {
+        if ($numerator <= 0) {
+            return 0;
+        }
+
+        return intdiv($numerator + 3000, 6000);
     }
 
     public static function formatCents(int $cents): string
