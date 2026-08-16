@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\OvertimePayment;
 use App\Models\WorkDay;
+use App\Support\DateRange;
 use App\Support\Money;
 use DateTimeImmutable;
 use Illuminate\Support\Collection;
@@ -60,7 +61,10 @@ final class ReportService
 
         $weeks = [];
         $overtimeMinutesMonth = 0;
-        $overtimeNetNumerator = 0;
+        $overtime25MinutesMonth = 0;
+        $overtime50MinutesMonth = 0;
+        $overtimeBaseNumerator = 0;
+        $overtimeNetPercentNumerator = 0;
         foreach (array_keys($weekIds) as $weekId) {
             $week = $this->week($weekId);
             $weeks[] = $week;
@@ -69,8 +73,14 @@ final class ReportService
                     continue;
                 }
                 $setting = $this->settings->forDate($date);
+                $minutes25 = $week['overtime_25_by_date'][$date] ?? 0;
+                $minutes50 = $week['overtime_50_by_date'][$date] ?? 0;
                 $overtimeMinutesMonth += $minutes;
-                $overtimeNetNumerator += Money::wageNumerator($minutes, $setting->hourly_net_rate_cents);
+                $overtime25MinutesMonth += $minutes25;
+                $overtime50MinutesMonth += $minutes50;
+                $overtimeBaseNumerator += Money::wageNumerator($minutes, $setting->hourly_net_rate_cents);
+                $overtimeNetPercentNumerator += Money::wagePercentNumerator($minutes25, $setting->hourly_net_rate_cents, 125);
+                $overtimeNetPercentNumerator += Money::wagePercentNumerator($minutes50, $setting->hourly_net_rate_cents, 150);
             }
         }
 
@@ -99,8 +109,9 @@ final class ReportService
         }
 
         $workNet = Money::numeratorToCents($netNumerator);
-        $overtimeNet = Money::numeratorToCents($overtimeNetNumerator);
-        $normalNet = max(0, $workNet - $overtimeNet);
+        $overtimeNet = Money::percentNumeratorToCents($overtimeNetPercentNumerator);
+        $overtimeBaseNet = Money::numeratorToCents($overtimeBaseNumerator);
+        $normalNet = max(0, $workNet - $overtimeBaseNet);
 
         return $this->monthBaseCache[$month] = [
             'month' => $month,
@@ -110,6 +121,8 @@ final class ReportService
             'weeks' => $weeks,
             'worked_minutes' => $workedMinutes,
             'overtime_minutes' => $overtimeMinutesMonth,
+            'overtime_25_minutes' => $overtime25MinutesMonth,
+            'overtime_50_minutes' => $overtime50MinutesMonth,
             'overtime_net_cents' => $overtimeNet,
             'meal_cents' => $mealCents,
             'normal_net_cents' => $normalNet,
@@ -123,7 +136,7 @@ final class ReportService
     {
         $this->beginCalculation();
         try {
-        $start = new DateTimeImmutable($weekId);
+        $start = WeekCalculator::monday($weekId);
         $end = WeekCalculator::periodEnd($start);
         $days = $this->workDaysBetween($start, $end)->keyBy(fn (WorkDay $day) => $day->date->format('Y-m-d'));
         $minutesByDate = [];
@@ -133,25 +146,31 @@ final class ReportService
             $minutesByDate[$date] = $day && !$day->is_rest ? $day->driving_minutes + $day->warehouse_minutes : 0;
         }
 
-        $threshold = $this->settings->forDate($weekId)->weekly_threshold_minutes;
+        $thresholdDate = max(DateRange::MIN_DATE, $start->format('Y-m-d'));
+        $threshold = $this->settings->forDate($thresholdDate)->weekly_threshold_minutes;
         $result = WeekCalculator::calculate($weekId, $minutesByDate, $threshold);
-        $netNumerator = 0;
+        $netPercentNumerator = 0;
         foreach ($result['overtime_by_date'] as $date => $minutes) {
             if ($minutes <= 0) {
                 continue;
             }
             $setting = $this->settings->forDate($date);
-            $netNumerator += Money::wageNumerator($minutes, $setting->hourly_net_rate_cents);
+            $netPercentNumerator += Money::wagePercentNumerator($result['overtime_25_by_date'][$date], $setting->hourly_net_rate_cents, 125);
+            $netPercentNumerator += Money::wagePercentNumerator($result['overtime_50_by_date'][$date], $setting->hourly_net_rate_cents, 150);
         }
 
         return [
-            'id' => $weekId,
+            'id' => $start->format('Y-m-d'),
             'start' => $start,
             'end' => $end,
             'total_minutes' => $result['total'],
             'overtime_minutes' => $result['overtime'],
+            'overtime_25_minutes' => $result['overtime_25'],
+            'overtime_50_minutes' => $result['overtime_50'],
             'overtime_by_date' => $result['overtime_by_date'],
-            'overtime_net_cents' => Money::numeratorToCents($netNumerator),
+            'overtime_25_by_date' => $result['overtime_25_by_date'],
+            'overtime_50_by_date' => $result['overtime_50_by_date'],
+            'overtime_net_cents' => Money::percentNumeratorToCents($netPercentNumerator),
         ];
         } finally {
             $this->endCalculation();

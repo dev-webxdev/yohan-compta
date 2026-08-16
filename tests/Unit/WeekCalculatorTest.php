@@ -23,20 +23,34 @@ final class WeekCalculatorTest extends TestCase
         return [[1920, 0], [2100, 0], [2400, 300]];
     }
 
-    public function test_week_is_cut_and_reset_at_month_boundary(): void
+    public function test_overtime_is_split_between_25_and_50_percent_tiers(): void
+    {
+        $minutes = [];
+        foreach (['2026-08-03', '2026-08-04', '2026-08-05', '2026-08-06', '2026-08-07'] as $date) {
+            $minutes[$date] = 9 * 60;
+        }
+
+        $result = WeekCalculator::calculate('2026-08-03', $minutes);
+        self::assertSame(600, $result['overtime']);
+        self::assertSame(480, $result['overtime_25']);
+        self::assertSame(120, $result['overtime_50']);
+        self::assertSame(480, array_sum($result['overtime_25_by_date']));
+        self::assertSame(120, array_sum($result['overtime_50_by_date']));
+    }
+
+    public function test_calendar_week_does_not_reset_at_month_boundary(): void
     {
         self::assertSame('2026-07-27', WeekCalculator::weekId('2026-07-31'));
-        self::assertSame('2026-08-01', WeekCalculator::weekId('2026-08-01'));
-        self::assertSame('2026-08-01', WeekCalculator::weekId('2026-08-02'));
-        self::assertSame('2027-01-01', WeekCalculator::weekId('2027-01-03'));
-        self::assertSame('2026-07-31', WeekCalculator::periodEnd('2026-07-27')->format('Y-m-d'));
-        self::assertSame('2026-08-02', WeekCalculator::periodEnd('2026-08-01')->format('Y-m-d'));
+        self::assertSame('2026-07-27', WeekCalculator::weekId('2026-08-01'));
+        self::assertSame('2026-07-27', WeekCalculator::weekId('2026-08-02'));
+        self::assertSame('2026-12-28', WeekCalculator::weekId('2027-01-03'));
+        self::assertSame('2026-08-02', WeekCalculator::periodEnd('2026-07-27')->format('Y-m-d'));
 
         $minutes = [
             '2026-07-27' => 420, '2026-07-28' => 420, '2026-07-29' => 420, '2026-07-30' => 420,
             '2026-07-31' => 300, '2026-08-01' => 180, '2026-08-02' => 240,
         ];
-        self::assertSame(0, WeekCalculator::calculate('2026-07-27', $minutes)['overtime']);
-        self::assertSame(0, WeekCalculator::calculate('2026-08-01', $minutes)['overtime']);
+        self::assertSame(300, WeekCalculator::calculate('2026-07-27', $minutes)['overtime']);
+        self::assertSame(300, WeekCalculator::calculate('2026-08-01', $minutes)['overtime']);
     }
 }
