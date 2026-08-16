@@ -17,8 +17,12 @@ final class PaymentController
 {
     public function index(Request $request, ReportService $reports, SettingsService $settings): View
     {
+        $filterMonth = trim((string) $request->query('month', ''));
         $filterYear = $request->integer('year');
         $search = trim((string) $request->query('q', ''));
+        if ($filterMonth !== '' && !DateRange::isMonth($filterMonth)) {
+            abort(404);
+        }
         if ($filterYear !== 0 && !DateRange::containsYear($filterYear)) {
             abort(404);
         }
@@ -27,7 +31,10 @@ final class PaymentController
         }
 
         $query = OvertimePayment::query()->orderByDesc('payment_date')->orderByDesc('id');
-        if ($filterYear !== 0) {
+        if ($filterMonth !== '') {
+            $start = new \DateTimeImmutable($filterMonth.'-01');
+            $query->whereBetween('payment_date', [$start->format('Y-m-d'), $start->modify('last day of this month')->format('Y-m-d')]);
+        } elseif ($filterYear !== 0) {
             $query->whereBetween('payment_date', [$filterYear.'-01-01', $filterYear.'-12-31']);
         }
         if ($search !== '') {
@@ -36,12 +43,11 @@ final class PaymentController
 
         $payments = $query->paginate(50)->withQueryString();
         $editingPayment = $request->integer('edit') > 0 ? OvertimePayment::query()->find($request->integer('edit')) : null;
-        $availableYears = OvertimePayment::query()
-            ->selectRaw('substr(payment_date, 1, 4) as year')
+        $availableMonths = OvertimePayment::query()
+            ->selectRaw('substr(payment_date, 1, 7) as month')
             ->distinct()
-            ->orderByDesc('year')
-            ->pluck('year')
-            ->map(static fn (string $year): int => (int) $year)
+            ->orderByDesc('month')
+            ->pluck('month')
             ->all();
         $paymentHours = [];
         foreach ($payments as $payment) {
@@ -58,7 +64,8 @@ final class PaymentController
             'paymentHours' => $paymentHours,
             'allocations' => $reports->paymentAllocations(),
             'balance' => $reports->balance(),
-            'availableYears' => $availableYears,
+            'availableMonths' => $availableMonths,
+            'filterMonth' => $filterMonth,
             'filterYear' => $filterYear,
             'search' => $search,
         ]);

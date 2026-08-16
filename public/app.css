@@ -28,9 +28,12 @@
 .dialog-readonly{min-height:31px;border:1px solid #d9e0e8;border-radius:5px;padding:7px 8px;display:flex;align-items:center;font-weight:650}
 .day-dialog.meal-only .dialog-grid,.day-dialog.meal-only .dialog-copy{display:none}
 .week-card{min-height:90px;grid-template-columns:1fr}
+.week-card,.week-title,.week-metrics{min-width:0}
+.week-card{overflow:hidden}
 .weeks-panel,.balance-panel{padding:14px 13px}
-.week-metrics{grid-template-columns:max-content 1fr;column-gap:7px;row-gap:2px;align-items:baseline}
-.week-metrics b{float:none;margin:0;font-size:12px;font-weight:650}
+.week-metrics{grid-template-columns:minmax(0,1fr) max-content;column-gap:9px;row-gap:3px;align-items:baseline}
+.week-metrics span{min-width:0;overflow-wrap:anywhere}
+.week-metrics b{float:none;margin:0;font-size:12px;font-weight:650;justify-self:end;white-space:nowrap}
 .balance-summary div{grid-template-columns:max-content 1fr;column-gap:8px}
 .balance-summary span{white-space:nowrap}
 .salary-summary-grid>div{display:flex;flex-direction:column;justify-content:center;min-height:72px}
@@ -85,7 +88,7 @@
 @media(max-width:720px){
   .salary-summary-grid{grid-template-columns:1fr 1fr}
   .report-kpis .kpi-due{grid-column:1/-1}
-  .week-metrics{grid-template-columns:max-content 1fr;padding-left:0;column-gap:7px;row-gap:2px}
+  .week-metrics{grid-template-columns:minmax(0,1fr) max-content;padding-left:0;column-gap:7px;row-gap:3px}
   .week-metrics b{font-size:10px}
   .database-actions{grid-template-columns:1fr}
   .confirm-dialog-body{padding:17px 16px 14px}.confirm-dialog-actions{padding:11px 16px 14px}

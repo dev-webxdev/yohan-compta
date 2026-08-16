@@ -26,10 +26,11 @@ final class ApprovedAuditImprovementsTest extends TestCase
             'write_version' => 200,
         ])->assertOk();
 
-        $this->putJson('/jours/2026-08-17', $payload + [
+        $response = $this->putJson('/jours/2026-08-17', $payload + [
             'driving' => '01:00',
             'write_version' => 100,
         ])->assertStatus(409);
+        $response->assertJsonPath('write_version', 200);
 
         $day = WorkDay::query()->whereDate('date', '2026-08-17')->firstOrFail();
         self::assertSame(540, $day->driving_minutes);
@@ -79,7 +80,7 @@ final class ApprovedAuditImprovementsTest extends TestCase
         self::assertSame('strict', config('session.same_site'));
     }
 
-    public function test_payment_history_can_be_filtered_by_year_and_reference(): void
+    public function test_payment_history_can_be_filtered_by_available_month_and_reference(): void
     {
         OvertimePayment::query()->create([
             'payment_date' => '2025-08-10',
@@ -87,17 +88,27 @@ final class ApprovedAuditImprovementsTest extends TestCase
             'period_reference' => 'Ancien paiement',
         ]);
         OvertimePayment::query()->create([
+            'payment_date' => '2026-07-10',
+            'amount_cents' => 1500,
+            'period_reference' => 'Juillet camion',
+        ]);
+        OvertimePayment::query()->create([
             'payment_date' => '2026-08-10',
             'amount_cents' => 2000,
             'period_reference' => 'Août camion',
         ]);
 
-        $this->get('/paiements?year=2026&q=camion')
+        $this->get('/paiements?month=2026-08&q=camion')
             ->assertOk()
             ->assertSee('Août camion')
+            ->assertDontSee('Juillet camion')
             ->assertDontSee('Ancien paiement')
-            ->assertSee('name="year"', false)
+            ->assertSee('name="month"', false)
+            ->assertSee('Juillet 2026')
+            ->assertSee('Août 2026')
             ->assertSee('name="q"', false);
+
+        $this->get('/paiements?month=2026-13')->assertNotFound();
     }
 
     public function test_future_reports_explain_when_the_global_balance_becomes_effective(): void
