@@ -70,7 +70,7 @@ test('day editor saves a row and reports the new total', async ({page}) => {
     await expect(page.locator('#save-state')).toContainText(/Enregistré|Toutes les modifications/);
 });
 
-test('rest checkbox saves the day as rest', async ({page}, testInfo) => {
+test('rest checkbox persists when checked and unchecked', async ({page}, testInfo) => {
     await page.goto('/mois/2026-08');
     const showMore = page.locator('#toggle-days-mobile');
     if (await showMore.isVisible()) {
@@ -98,6 +98,31 @@ test('rest checkbox saves the day as rest', async ({page}, testInfo) => {
     await expect(toggle).toBeChecked();
     await expect(row).toHaveClass(/row-rest/);
     await expect(row.locator('.total-cell strong')).toHaveText('—');
+
+    await page.reload();
+    if (await showMore.isVisible()) {
+        await showMore.click();
+    }
+    const reloadedRow = page.locator(`.work-row[data-date="${date}"]`);
+    const reloadedToggle = reloadedRow.locator('.rest-toggle');
+    await expect(reloadedToggle).toBeChecked();
+
+    const uncheckResponsePromise = page.waitForResponse(response =>
+        response.url().endsWith(`/jours/${date}`) && response.request().method() === 'PUT',
+    );
+    await reloadedToggle.uncheck();
+    const uncheckResponse = await uncheckResponsePromise;
+    expect(uncheckResponse.ok()).toBeTruthy();
+    await expect(reloadedToggle).not.toBeChecked();
+    await expect(reloadedRow).not.toHaveClass(/row-rest/);
+
+    await page.reload();
+    if (await showMore.isVisible()) {
+        await showMore.click();
+    }
+    const finalRow = page.locator(`.work-row[data-date="${date}"]`);
+    await expect(finalRow.locator('.rest-toggle')).not.toBeChecked();
+    await expect(finalRow).not.toHaveClass(/row-rest/);
 });
 
 test('rest checkbox supersedes a late keepalive from the previous page', async ({page}, testInfo) => {
@@ -181,9 +206,8 @@ test('weekly summary metrics stay inside their cards without overlap', async ({p
     }
 });
 
-test('payment history exposes lightweight filters', async ({page}) => {
+test('payment history is shown without filter controls', async ({page}) => {
     await page.goto('/paiements');
     await expect(page.getByRole('heading', {name: 'Historique des paiements d’heures supplémentaires'})).toBeVisible();
-    await expect(page.locator('.payment-filters select[name="month"]')).toBeVisible();
-    await expect(page.locator('.payment-filters input[name="q"]')).toHaveCount(0);
+    await expect(page.locator('.payment-filters')).toHaveCount(0);
 });

@@ -313,7 +313,9 @@
                 });
                 if (!response.ok) {
                     const data = await response.json().catch(() => ({}));
-                    const message = data.errors ? Object.values(data.errors).flat()[0] : 'Erreur lors de l’enregistrement.';
+                    const message = data.errors
+                        ? Object.values(data.errors).flat()[0]
+                        : data.message || `Erreur lors de l’enregistrement (${response.status}).`;
                     if (saveVersions.get(row) === version) {
                         setState(message, 'error');
                         setRowSaveState(row, 'error', message);

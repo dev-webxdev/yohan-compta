@@ -4,7 +4,9 @@ namespace Tests\Feature;
 
 use App\Models\OvertimePayment;
 use App\Models\WorkDay;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 final class ApprovedAuditImprovementsTest extends TestCase
@@ -80,7 +82,7 @@ final class ApprovedAuditImprovementsTest extends TestCase
         self::assertSame('strict', config('session.same_site'));
     }
 
-    public function test_payment_history_can_be_filtered_by_available_month_without_manual_text(): void
+    public function test_payment_history_shows_all_payments_without_filters(): void
     {
         OvertimePayment::query()->create([
             'payment_date' => '2025-08-10',
@@ -101,14 +103,44 @@ final class ApprovedAuditImprovementsTest extends TestCase
         $this->get('/paiements?month=2026-08')
             ->assertOk()
             ->assertSee('Août camion')
-            ->assertDontSee('Juillet camion')
-            ->assertDontSee('Ancien paiement')
-            ->assertSee('name="month"', false)
-            ->assertSee('Juillet 2026')
-            ->assertSee('Août 2026')
-            ->assertDontSee('name="q"', false);
+            ->assertSee('Juillet camion')
+            ->assertSee('Ancien paiement')
+            ->assertDontSee('payment-filters');
+    }
 
-        $this->get('/paiements?month=2026-13')->assertNotFound();
+    public function test_rest_can_be_checked_and_unchecked_before_write_version_migration(): void
+    {
+        Schema::table('work_days', static function (Blueprint $table): void {
+            $table->dropColumn('client_write_version');
+        });
+
+        try {
+            $this->putJson('/jours/2026-08-18', [
+                'is_rest' => true,
+                'write_version' => 100,
+            ])->assertOk();
+
+            $day = WorkDay::query()->whereDate('date', '2026-08-18')->firstOrFail();
+            self::assertTrue($day->is_rest);
+
+            $this->putJson('/jours/2026-08-18', [
+                'start_time' => '07:45',
+                'driving' => '01:00',
+                'warehouse' => '',
+                'is_rest' => false,
+                'meal_mode' => 'auto',
+                'meal_amount' => '',
+                'write_version' => 101,
+            ])->assertOk();
+
+            $day->refresh();
+            self::assertFalse($day->is_rest);
+            self::assertSame(60, $day->driving_minutes);
+        } finally {
+            Schema::table('work_days', static function (Blueprint $table): void {
+                $table->unsignedBigInteger('client_write_version')->default(0);
+            });
+        }
     }
 
     public function test_future_reports_explain_when_the_global_balance_becomes_effective(): void
