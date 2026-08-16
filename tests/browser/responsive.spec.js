@@ -100,9 +100,81 @@ test('rest checkbox saves the day as rest', async ({page}, testInfo) => {
     await expect(row.locator('.total-cell strong')).toHaveText('—');
 });
 
+test('rest checkbox supersedes a late keepalive from the previous page', async ({page}, testInfo) => {
+    await page.goto('/mois/2026-08');
+    const showMore = page.locator('#toggle-days-mobile');
+    if (await showMore.isVisible()) {
+        await showMore.click();
+    }
+
+    const dates = {
+        'mobile-390': '2026-08-22',
+        'tablet-768': '2026-08-24',
+        'desktop-1440': '2026-08-25',
+        'wide-2560': '2026-08-26',
+    };
+    const date = dates[testInfo.project.name];
+    const row = page.locator(`.work-row[data-date="${date}"]`);
+    const toggle = row.locator('.rest-toggle');
+    const lateKeepaliveVersion = Date.now() - 1000;
+
+    const preloadStatus = await page.evaluate(async ({date, lateKeepaliveVersion}) => {
+        const token = document.querySelector('meta[name="csrf-token"]')?.content;
+        const response = await fetch(`/jours/${date}`, {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': token},
+            body: JSON.stringify({
+                start_time: '07:45',
+                driving: '01:00',
+                warehouse: '',
+                is_rest: false,
+                meal_mode: 'auto',
+                meal_amount: '',
+                write_version: lateKeepaliveVersion,
+            }),
+        });
+        return response.status;
+    }, {date, lateKeepaliveVersion});
+    expect(preloadStatus).toBe(200);
+
+    const successResponse = page.waitForResponse(response =>
+        response.url().endsWith(`/jours/${date}`)
+        && response.request().method() === 'PUT'
+        && response.status() === 200,
+    );
+    await toggle.check();
+    await successResponse;
+
+    await expect(toggle).toBeChecked();
+    await expect(row).toHaveClass(/row-rest/);
+    const savedVersion = Number(await row.getAttribute('data-write-version'));
+    expect(savedVersion).toBeGreaterThan(lateKeepaliveVersion);
+    expect(savedVersion).toBeGreaterThanOrEqual(Date.now() - 2000);
+});
+
+test('weekly summary metrics stay inside their cards without overlap', async ({page}) => {
+    await page.goto('/mois/2026-08');
+    const layout = await page.locator('.week-card').evaluateAll(cards => cards.map(card => {
+        const metrics = card.querySelector('.week-metrics');
+        const children = metrics ? [...metrics.children] : [];
+        const pairs = [];
+        for (let index = 0; index + 1 < children.length; index += 2) {
+            const label = children[index].getBoundingClientRect();
+            const value = children[index + 1].getBoundingClientRect();
+            pairs.push({labelRight: label.right, valueLeft: value.left});
+        }
+        return {overflow: card.scrollWidth - card.clientWidth, pairs};
+    }));
+
+    for (const card of layout) {
+        expect(card.overflow).toBeLessThanOrEqual(1);
+        for (const pair of card.pairs) expect(pair.labelRight).toBeLessThanOrEqual(pair.valueLeft + 1);
+    }
+});
+
 test('payment history exposes lightweight filters', async ({page}) => {
     await page.goto('/paiements');
     await expect(page.getByRole('heading', {name: 'Historique des paiements d’heures supplémentaires'})).toBeVisible();
-    await expect(page.locator('.payment-filters select[name="year"]')).toBeVisible();
+    await expect(page.locator('.payment-filters select[name="month"]')).toBeVisible();
     await expect(page.locator('.payment-filters input[name="q"]')).toBeVisible();
 });

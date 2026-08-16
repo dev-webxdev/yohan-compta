@@ -29,7 +29,7 @@ final class WorkDayController
 
         if ($isRest) {
             if (!$this->persist($date, ['is_rest' => true], $defaultStart, $writeVersion)) {
-                return $this->staleWriteResponse();
+                return $this->staleWriteResponse($date);
             }
 
             return response()->json(['ok' => true, 'write_version' => $writeVersion]);
@@ -90,7 +90,7 @@ final class WorkDayController
         ];
 
         if (!$this->persist($date, $payload, $defaultStart, $writeVersion)) {
-            return $this->staleWriteResponse();
+            return $this->staleWriteResponse($date);
         }
 
         return response()->json(['ok' => true, 'write_version' => $writeVersion]);
@@ -143,10 +143,11 @@ final class WorkDayController
             ]) === 1;
     }
 
-    private function staleWriteResponse(): JsonResponse
+    private function staleWriteResponse(string $date): JsonResponse
     {
         return response()->json([
             'message' => 'Une modification plus récente de cette journée a déjà été enregistrée. Rechargez la page avant de continuer.',
+            'write_version' => (int) (WorkDay::query()->whereDate('date', $date)->value('client_write_version') ?? 0),
         ], 409);
     }
 

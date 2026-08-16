@@ -281,7 +281,7 @@
         const current = writeVersions.has(row)
             ? writeVersions.get(row)
             : Number(row.dataset.writeVersion || 0);
-        const next = current + 1;
+        const next = Math.max(current + 1, Date.now());
         writeVersions.set(row, next);
         return next;
     };

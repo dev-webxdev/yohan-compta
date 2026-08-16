@@ -108,13 +108,16 @@ final class BugFixRegressionTest extends TestCase
         $view = file_get_contents(resource_path('views/month.blade.php'));
 
         self::assertStringNotContainsString('.week-metrics b{float:right', $css);
-        self::assertStringContainsString('.week-metrics b{float:none;margin:0;font-size:12px;font-weight:650}', $css);
+        self::assertStringContainsString('.week-metrics b{float:none;margin:0;font-size:12px;font-weight:650;', $css);
         self::assertStringContainsString('.week-metrics b{font-size:10px}', $css);
         self::assertStringContainsString("Time::formatDuration(\$week['overtime_25_minutes'])", $view);
         self::assertStringContainsString("Time::formatDuration(\$week['overtime_50_minutes'])", $view);
         self::assertStringContainsString("Money::formatCents(\$week['overtime_net_cents']) }} net majoré</b>", $view);
         self::assertStringNotContainsString("\$week['overtime_gross_cents']", $view);
-        self::assertStringContainsString('.week-metrics{grid-template-columns:max-content 1fr;', $css);
+        self::assertStringContainsString('.week-metrics{grid-template-columns:minmax(0,1fr) max-content;', $css);
+        self::assertStringContainsString('.week-card{overflow:hidden}', $css);
+        self::assertStringContainsString('.week-metrics span{min-width:0;overflow-wrap:anywhere}', $css);
+        self::assertStringContainsString('justify-self:end;white-space:nowrap', $css);
         self::assertStringContainsString('<span>Total travaillé :</span><b class="blue-value">', $view);
     }
 
