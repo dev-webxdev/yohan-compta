@@ -14,6 +14,7 @@ final class WorkDay extends Model
         'is_rest',
         'meal_allowance_mode',
         'meal_allowance_forced_cents',
+        'client_write_version',
     ];
 
     protected function casts(): array
@@ -25,6 +26,7 @@ final class WorkDay extends Model
             'warehouse_minutes' => 'integer',
             'is_rest' => 'boolean',
             'meal_allowance_forced_cents' => 'integer',
+            'client_write_version' => 'integer',
         ];
     }
 }

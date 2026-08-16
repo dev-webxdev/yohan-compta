@@ -18,6 +18,10 @@ jobs:
           php-version: '8.4'
           extensions: pdo_sqlite
           coverage: none
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
       - name: Validate Composer
         run: composer validate --strict
       - name: Install dependencies
@@ -29,5 +33,13 @@ jobs:
           php artisan key:generate
       - name: PHP syntax
         run: find app bootstrap config database routes tests -name '*.php' -print0 | xargs -0 -n1 php -l
+      - name: Composer security audit
+        run: composer audit --locked --no-interaction
       - name: Tests
         run: php artisan test
+      - name: Install browser test dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Browser tests
+        run: npm run test:e2e

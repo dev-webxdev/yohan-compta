@@ -6,6 +6,7 @@ use App\Models\WorkDay;
 use App\Services\DatabaseMaintenanceService;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 use PDO;
 use RuntimeException;
 use Tests\TestCase;
@@ -14,8 +15,7 @@ final class DatabaseMaintenanceTest extends TestCase
 {
     private string $databasePath;
     private string $originalDatabase;
-    /** @var array<int,string> */
-    private array $existingBackups = [];
+    private string $backupDirectory;
 
     protected function setUp(): void
     {
@@ -28,11 +28,14 @@ final class DatabaseMaintenanceTest extends TestCase
         }
         $this->databasePath = $directory.'/maintenance-'.bin2hex(random_bytes(6)).'.sqlite';
         touch($this->databasePath);
+        $this->backupDirectory = 'framework/testing/backups-'.bin2hex(random_bytes(6));
 
-        config(['database.connections.sqlite.database' => $this->databasePath]);
+        config([
+            'database.connections.sqlite.database' => $this->databasePath,
+            'backups.directory' => $this->backupDirectory,
+        ]);
         DB::purge('sqlite');
         Artisan::call('migrate:fresh', ['--force' => true]);
-        $this->existingBackups = glob(storage_path('app/private/backups/*.sqlite')) ?: [];
     }
 
     protected function tearDown(): void
@@ -41,11 +44,7 @@ final class DatabaseMaintenanceTest extends TestCase
         foreach (glob($this->databasePath.'*') ?: [] as $path) {
             @unlink($path);
         }
-        foreach (glob(storage_path('app/private/backups/*.sqlite')) ?: [] as $path) {
-            if (!in_array($path, $this->existingBackups, true)) {
-                @unlink($path);
-            }
-        }
+        File::deleteDirectory(storage_path($this->backupDirectory));
 
         config(['database.connections.sqlite.database' => $this->originalDatabase]);
         DB::purge('sqlite');
@@ -91,6 +90,19 @@ final class DatabaseMaintenanceTest extends TestCase
         self::assertStringContainsString('attachment;', (string) $response->headers->get('content-disposition'));
         self::assertStringContainsString('.sqlite', (string) $response->headers->get('content-disposition'));
         self::assertCount(count($beforeDownload), app(DatabaseMaintenanceService::class)->backups());
+    }
+
+    public function test_backup_retention_keeps_the_new_backup_even_when_created_in_the_same_second(): void
+    {
+        config(['backups.retention' => 2]);
+        $service = app(DatabaseMaintenanceService::class);
+
+        $service->createBackup();
+        $service->createBackup();
+        $latest = $service->createBackup();
+
+        self::assertCount(2, $service->backups());
+        self::assertFileExists($latest);
     }
 
     public function test_saved_backups_are_listed_downloadable_and_deletable_with_confirmation(): void

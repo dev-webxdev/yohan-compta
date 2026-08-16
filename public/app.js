@@ -18,7 +18,11 @@
 
         const syncSidebarButtons = () => {
             const expanded = !shell.classList.contains('sidebar-collapsed');
-            qa('.sidebar-toggle').forEach(button => button.setAttribute('aria-expanded', String(expanded)));
+            qa('.sidebar-toggle').forEach(button => {
+                button.setAttribute('aria-expanded', String(expanded));
+                button.setAttribute('aria-label', expanded ? 'Réduire le menu' : 'Déployer le menu');
+                button.title = expanded ? 'Réduire le menu' : 'Déployer le menu';
+            });
         };
         syncSidebarButtons();
 
@@ -29,17 +33,31 @@
         }));
 
         const mobileToggle = q('.mobile-menu-toggle');
-        const closeMobileMenu = () => {
+        const mobileBackdrop = q('.mobile-menu-backdrop');
+        const appMain = q('.app-main');
+        const mobileNav = q('.mobile-nav');
+        const syncMobileMenu = open => {
+            mobileToggle?.setAttribute('aria-expanded', String(open));
+            mobileToggle?.setAttribute('aria-label', open ? 'Fermer le menu' : 'Ouvrir le menu');
+            if (appMain) appMain.inert = open;
+            if (mobileNav) mobileNav.inert = open;
+        };
+        const closeMobileMenu = (restoreFocus = false) => {
             shell.classList.remove('mobile-menu-open');
-            mobileToggle?.setAttribute('aria-expanded', 'false');
+            syncMobileMenu(false);
+            if (restoreFocus) mobileToggle?.focus();
         };
         mobileToggle?.addEventListener('click', () => {
             const open = shell.classList.toggle('mobile-menu-open');
-            mobileToggle.setAttribute('aria-expanded', String(open));
+            syncMobileMenu(open);
+            if (open) q('.sidebar-nav a')?.focus();
         });
-        qa('.sidebar a').forEach(link => link.addEventListener('click', closeMobileMenu));
+        mobileBackdrop?.addEventListener('click', () => closeMobileMenu(true));
+        qa('.sidebar a').forEach(link => link.addEventListener('click', () => closeMobileMenu(false)));
         document.addEventListener('keydown', event => {
-            if (event.key === 'Escape') closeMobileMenu();
+            if (event.key === 'Escape' && shell.classList.contains('mobile-menu-open')) {
+                closeMobileMenu(true);
+            }
         });
     }
 
@@ -158,10 +176,10 @@
         return Math.round(Number(normalized) * 100);
     };
 
-    const setState = (text, color) => {
+    const setState = (text, status = 'saved') => {
         if (!state) return;
         state.textContent = text;
-        state.style.color = color;
+        state.dataset.state = status;
     };
 
     const setRowSaveState = (row, status, message = '') => {
@@ -192,15 +210,19 @@
                 headers: {Accept: 'text/html'},
                 signal: summaryRefreshController.signal,
             });
-            if (!response.ok) return;
+            if (!response.ok) throw new Error('Actualisation impossible');
             const freshDocument = new DOMParser().parseFromString(await response.text(), 'text/html');
             ['.dashboard-kpis', '#weeks', '#balance', '.below-fold-summary'].forEach(selector => {
                 const current = q(selector);
                 const fresh = q(selector, freshDocument);
                 if (current && fresh) current.innerHTML = fresh.innerHTML;
             });
+            setState('Enregistré ✓', 'saved');
         } catch (error) {
-            if (error.name !== 'AbortError') console.error('Dashboard refresh failed', error);
+            if (error.name !== 'AbortError') {
+                setState('Enregistré · totaux à actualiser', 'warning');
+                showSaveError('La saisie est enregistrée, mais les totaux n’ont pas pu être actualisés. Rechargez la page.');
+            }
         }
     };
 
@@ -254,6 +276,16 @@
         meal_amount: row.dataset.mealAmount || '',
     });
 
+    const writeVersions = new WeakMap();
+    const nextWriteVersion = row => {
+        const current = writeVersions.has(row)
+            ? writeVersions.get(row)
+            : Number(row.dataset.writeVersion || 0);
+        const next = current + 1;
+        writeVersions.set(row, next);
+        return next;
+    };
+
     function saveRow(row, overrides = {}) {
         const body = {
             ...rowBody(row),
@@ -267,22 +299,23 @@
 
         const version = (saveVersions.get(row) || 0) + 1;
         saveVersions.set(row, version);
+        const writeVersion = nextWriteVersion(row);
         const task = (pending || Promise.resolve())
             .catch(() => {})
             .then(async () => {
-                setState('Enregistrement…', '#6d7890');
+                setState('Enregistrement…', 'saving');
                 setRowSaveState(row, 'saving', 'Enregistrement en cours');
                 const response = await fetch(`/jours/${row.dataset.date}`, {
                     method: 'PUT',
                     headers: {'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': token},
-                    body: JSON.stringify(body),
+                    body: JSON.stringify({...body, write_version: writeVersion}),
                     keepalive: true,
                 });
                 if (!response.ok) {
                     const data = await response.json().catch(() => ({}));
                     const message = data.errors ? Object.values(data.errors).flat()[0] : 'Erreur lors de l’enregistrement.';
                     if (saveVersions.get(row) === version) {
-                        setState(message, '#e84b55');
+                        setState(message, 'error');
                         setRowSaveState(row, 'error', message);
                         showSaveError(message);
                     }
@@ -298,7 +331,8 @@
                 }
                 syncRow(row);
                 savedRowStates.set(row, JSON.stringify(rowBody(row)));
-                setState('Enregistré ✓', '#198754');
+                row.dataset.writeVersion = String(writeVersion);
+                setState('Enregistré ✓', 'saved');
                 setRowSaveState(row, 'saved', 'Enregistré');
                 void refreshDashboardSummary();
             });
@@ -320,10 +354,12 @@
             if (savedRowStates.get(row) === JSON.stringify(body)) return;
             if (!body.is_rest && !rowValues(row)) return;
             clearAutosaveTimer(row);
+            saveVersions.set(row, (saveVersions.get(row) || 0) + 1);
+            const writeVersion = nextWriteVersion(row);
             fetch(`/jours/${row.dataset.date}`, {
                 method: 'PUT',
                 headers: {'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': token},
-                body: JSON.stringify(body),
+                body: JSON.stringify({...body, write_version: writeVersion}),
                 keepalive: true,
             }).catch(() => {});
         });
@@ -358,7 +394,29 @@
             try { await saveRow(row); } catch (_) {}
         });
         input.addEventListener('keydown', event => {
-            if (event.key === 'Enter') { event.preventDefault(); input.blur(); }
+            const move = delta => {
+                const rows = qa('.work-row');
+                const currentIndex = rows.indexOf(input.closest('.work-row'));
+                for (let index = currentIndex + delta; index >= 0 && index < rows.length; index += delta) {
+                    const candidate = q(`[name="${input.name}"]`, rows[index]);
+                    if (candidate && !candidate.disabled) {
+                        candidate.focus();
+                        candidate.select();
+                        return;
+                    }
+                }
+            };
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                input.blur();
+                move(1);
+            } else if (event.altKey && event.key === 'ArrowDown') {
+                event.preventDefault();
+                move(1);
+            } else if (event.altKey && event.key === 'ArrowUp') {
+                event.preventDefault();
+                move(-1);
+            }
         });
     });
 
@@ -429,21 +487,66 @@
         }
     });
 
-    q('#delete-day')?.addEventListener('click', async () => {
+    const flushRows = async rows => {
+        for (const row of rows) {
+            clearAutosaveTimer(row);
+            await (saveQueues.get(row) || Promise.resolve());
+            const body = rowBody(row);
+            if (savedRowStates.get(row) === JSON.stringify(body)) continue;
+            if (!body.is_rest && !rowValues(row)) {
+                throw new Error(`La journée ${row.dataset.date} contient une saisie invalide.`);
+            }
+            await saveRow(row);
+        }
+    };
+
+    q('#copy-previous-day')?.addEventListener('click', async () => {
         if (!activeRow) return;
         const accepted = await askConfirmation({
-            title: 'Supprimer cette journée ?',
-            message: 'Toutes les données enregistrées pour cette journée seront effacées.',
-            action: 'Supprimer',
-            danger: true,
+            title: 'Recopier la journée précédente ?',
+            message: 'La saisie actuelle de cette journée sera remplacée par celle de la veille.',
+            action: 'Recopier',
         });
         if (!accepted) return;
-        clearAutosaveTimer(activeRow);
-        await (saveQueues.get(activeRow) || Promise.resolve()).catch(() => {});
-        const response = await fetch(`/jours/${activeRow.dataset.date}`, {
-            method: 'DELETE',
-            headers: {Accept: 'application/json', 'X-CSRF-TOKEN': token},
-        });
-        if (response.ok) location.reload();
+        try {
+            await flushRows([activeRow]);
+            const response = await fetch(`/jours/${activeRow.dataset.date}/copier-veille`, {
+                method: 'POST',
+                headers: {Accept: 'application/json', 'X-CSRF-TOKEN': token},
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(data.message || 'Impossible de recopier la journée précédente.');
+            location.reload();
+        } catch (error) {
+            errorBox.textContent = error.message;
+            showSaveError(error.message);
+        }
     });
+
+    qa('[data-copy-week]').forEach(button => button.addEventListener('click', async () => {
+        try {
+            const week = button.dataset.copyWeek;
+            const previewResponse = await fetch(`/semaines/${week}/copie-precedente`, {headers: {Accept: 'application/json'}});
+            const preview = await previewResponse.json().catch(() => ({}));
+            if (!previewResponse.ok) throw new Error(preview.message || 'Impossible de préparer la copie.');
+            if (!preview.count) throw new Error('La semaine précédente ne contient aucune saisie à recopier.');
+            const mappings = preview.items.filter(item => item.has_source).map(item => `${item.source} → ${item.target}`).join(' · ');
+            const accepted = await askConfirmation({
+                title: 'Recopier la semaine précédente ?',
+                message: `${preview.count} jour(s) seront recopiés : ${mappings}. Les journées cibles correspondantes seront remplacées.`,
+                action: 'Recopier',
+            });
+            if (!accepted) return;
+            await flushRows(qa('.work-row'));
+            const response = await fetch(`/semaines/${week}/copie-precedente`, {
+                method: 'POST',
+                headers: {Accept: 'application/json', 'X-CSRF-TOKEN': token},
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(data.message || 'Impossible de recopier la semaine précédente.');
+            location.reload();
+        } catch (error) {
+            showSaveError(error.message);
+        }
+    }));
 })();

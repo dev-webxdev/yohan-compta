@@ -1,13 +1,14 @@
 # Suivi Heures & Salaire
 
-Application personnelle locale pour suivre les heures travaillées, heures supplémentaires, paniers et paiements différés.
+Application personnelle pour suivre les heures travaillées, heures supplémentaires, paniers et paiements différés.
 
 ## Stack
 
 - PHP 8.4+
 - Laravel 13
 - SQLite (un seul fichier `database/database.sqlite`)
-- Blade + CSS + JavaScript natif, sans Node/npm
+- Blade + CSS + JavaScript natif, sans Node/npm au runtime
+- Playwright/Node uniquement pour les tests navigateur
 
 ## Installation
 
@@ -35,7 +36,23 @@ Démarrer ensuite l'application :
 php artisan serve
 ```
 
-Puis ouvrir `http://127.0.0.1:8000`. En production derrière HTTPS, définir `SESSION_SECURE_COOKIE=true`.
+Puis ouvrir `http://127.0.0.1:8000` en développement.
+
+## Production Internet
+
+Le fichier `.env.example` est volontairement durci pour un déploiement HTTPS. En production :
+
+```dotenv
+APP_ENV=production
+APP_DEBUG=false
+APP_URL=https://votre-domaine.example
+SESSION_SECURE_COOKIE=true
+BACKUP_RETENTION=20
+```
+
+Terminer TLS au niveau du serveur web/reverse proxy, conserver `storage/` accessible en écriture par PHP, puis exécuter `php artisan migrate --force` à chaque déploiement. L'application ajoute automatiquement CSP, HSTS sur une URL HTTPS, anti-clickjacking, `nosniff`, une politique de référent stricte et une limitation renforcée des tentatives de connexion.
+
+Les sauvegardes SQLite de sécurité restent manuelles/associées aux restaurations ; seules les `BACKUP_RETENTION` plus récentes sont conservées afin d'éviter une croissance illimitée du stockage.
 
 ## Principes métier
 
@@ -48,15 +65,20 @@ Puis ouvrir `http://127.0.0.1:8000`. En production derrière HTTPS, définir `SE
 - panier par défaut : 16 € si l'heure de fin calculée est au moins 14:15, avec forçage manuel possible ;
 - paramètres historisés par date d'effet ;
 - paiements indépendants des journées, modifiables et répartis FIFO sur les plus anciennes dettes mensuelles nettes ;
+- le nombre d’heures indiqué sur un paiement reste informatif et n’est pas plafonné par le solde calculé ;
 - la dette globale et le détail par mois sont suivis en net ;
 - les données calculées (semaines, totaux, soldes) sont recalculées depuis les données sources ;
 - export CSV disponible pour le détail mensuel et le rapport annuel ;
-- sauvegarde manuelle, restauration et sauvegardes de sécurité SQLite disponibles dans les paramètres.
+- sauvegarde manuelle, restauration et sauvegardes de sécurité SQLite disponibles dans les paramètres ;
+- aucune suppression complète d’une journée : une journée peut être modifiée, mise en repos ou recopiée depuis la veille/semaine précédente.
 
 ## Tests
 
 ```bash
 php artisan test
+npm ci
+npx playwright install chromium
+npm run test:e2e
 ```
 
-Le workflow GitHub Actions exécute également les tests avec PHP 8.4 et SQLite.
+Les tests Playwright couvrent Chromium en 390 px, 768 px, 1440 px et 2560 px. Le workflow GitHub Actions exécute la suite PHP, l'audit Composer et ces tests navigateur.

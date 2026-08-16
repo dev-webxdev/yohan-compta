@@ -10,6 +10,12 @@ use Illuminate\Support\Collection;
 
 final class ReportService
 {
+    /** @var array<string,array<string,mixed>> */
+    private array $monthBaseCache = [];
+    /** @var array<string,mixed>|null */
+    private ?array $allocationCache = null;
+    private int $calculationDepth = 0;
+
     public function __construct(private readonly SettingsService $settings)
     {
     }
@@ -17,6 +23,8 @@ final class ReportService
     /** @return array<string,mixed> */
     public function month(string $month): array
     {
+        $this->beginCalculation();
+        try {
         $base = $this->monthBase($month);
         $allocation = $this->allocationSnapshot();
         $paidAllocated = $allocation['by_month'][$month]['paid'] ?? 0;
@@ -30,11 +38,18 @@ final class ReportService
             'remaining_cents' => $remaining,
             'remaining_minutes_indicative' => $allocation['by_month'][$month]['remaining_minutes_indicative'] ?? 0,
         ];
+        } finally {
+            $this->endCalculation();
+        }
     }
 
     /** @return array<string,mixed> */
     private function monthBase(string $month): array
     {
+        if (isset($this->monthBaseCache[$month])) {
+            return $this->monthBaseCache[$month];
+        }
+
         $start = new DateTimeImmutable($month.'-01');
         $end = $start->modify('last day of this month');
         $days = $this->workDaysBetween($start, $end);
@@ -87,7 +102,7 @@ final class ReportService
         $overtimeNet = Money::numeratorToCents($overtimeNetNumerator);
         $normalNet = max(0, $workNet - $overtimeNet);
 
-        return [
+        return $this->monthBaseCache[$month] = [
             'month' => $month,
             'start' => $start,
             'end' => $end,
@@ -106,6 +121,8 @@ final class ReportService
     /** @return array<string,mixed> */
     public function week(string $weekId): array
     {
+        $this->beginCalculation();
+        try {
         $start = new DateTimeImmutable($weekId);
         $end = WeekCalculator::periodEnd($start);
         $days = $this->workDaysBetween($start, $end)->keyBy(fn (WorkDay $day) => $day->date->format('Y-m-d'));
@@ -136,11 +153,16 @@ final class ReportService
             'overtime_by_date' => $result['overtime_by_date'],
             'overtime_net_cents' => Money::numeratorToCents($netNumerator),
         ];
+        } finally {
+            $this->endCalculation();
+        }
     }
 
     /** @return array<string,mixed> */
     public function year(int $year): array
     {
+        $this->beginCalculation();
+        try {
         $allocation = $this->allocationSnapshot();
         $months = [];
         $totals = [
@@ -174,11 +196,16 @@ final class ReportService
         }
 
         return ['year' => $year, 'months' => $months, 'totals' => $totals];
+        } finally {
+            $this->endCalculation();
+        }
     }
 
     /** @return array{generated:int,paid:int,remaining:int,credit:int,by_month:array<string,array<string,int>>,remaining_minutes_indicative:int} */
     public function balance(): array
     {
+        $this->beginCalculation();
+        try {
         $snapshot = $this->allocationSnapshot();
         $remainingMinutes = array_sum(array_column($snapshot['by_month'], 'remaining_minutes_indicative'));
 
@@ -190,17 +217,29 @@ final class ReportService
             'by_month' => $snapshot['by_month'],
             'remaining_minutes_indicative' => $remainingMinutes,
         ];
+        } finally {
+            $this->endCalculation();
+        }
     }
 
     /** @return array<int,array<int,array{month:string,amount_cents:int}>> */
     public function paymentAllocations(): array
     {
-        return $this->allocationSnapshot()['by_payment'];
+        $this->beginCalculation();
+        try {
+            return $this->allocationSnapshot()['by_payment'];
+        } finally {
+            $this->endCalculation();
+        }
     }
 
     /** @return array{generated:int,paid:int,by_month:array<string,array{generated:int,paid:int,remaining:int}>,by_payment:array<int,array<int,array{month:string,amount_cents:int}>>} */
     private function allocationSnapshot(): array
     {
+        if ($this->allocationCache !== null) {
+            return $this->allocationCache;
+        }
+
         $firstDate = WorkDay::query()->min('date');
         $lastEligibleMonth = now()->format('Y-m');
         $debts = [];
@@ -229,7 +268,7 @@ final class ReportService
             ->map(fn (OvertimePayment $payment) => ['id' => $payment->id, 'amount_cents' => $payment->amount_cents])
             ->all();
 
-        return PaymentAllocator::allocate($debts, $payments);
+        return $this->allocationCache = PaymentAllocator::allocate($debts, $payments);
     }
 
     private function workDaysBetween(DateTimeImmutable $start, DateTimeImmutable $end): Collection
@@ -238,5 +277,19 @@ final class ReportService
             ->whereBetween('date', [$start->format('Y-m-d'), $end->format('Y-m-d')])
             ->orderBy('date')
             ->get();
+    }
+
+    private function beginCalculation(): void
+    {
+        if ($this->calculationDepth === 0) {
+            $this->monthBaseCache = [];
+            $this->allocationCache = null;
+        }
+        $this->calculationDepth++;
+    }
+
+    private function endCalculation(): void
+    {
+        $this->calculationDepth--;
     }
 }

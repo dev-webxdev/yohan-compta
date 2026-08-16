@@ -15,6 +15,6 @@ return [
     'domain' => null,
     'secure' => (bool) env('SESSION_SECURE_COOKIE', false),
     'http_only' => true,
-    'same_site' => 'lax',
+    'same_site' => 'strict',
     'partitioned' => false,
 ];

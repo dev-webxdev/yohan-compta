@@ -16,6 +16,7 @@ final class YearController
         return view('year', [
             'report' => $reports->year($year),
             'balance' => $reports->balance(),
+            'isFutureYear' => $year > (int) now()->format('Y'),
         ]);
     }
 }

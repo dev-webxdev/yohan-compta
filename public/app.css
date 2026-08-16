@@ -9,7 +9,7 @@
   .panel-heading p,.panel p{font-size:12px;line-height:1.35}
   .work-table th{font-size:12px}
   .date-cell,.day-name,.total-cell strong,.week-title strong,.balance-summary div{font-size:12px}
-  .week-metrics span,.muted,.hint,.save-state,.credit,.salary-summary-grid span,.day-dialog label,.form-grid label,.dialog-delete,.dialog-cancel,.dialog-save,.inline-error,.allocation-tags span{font-size:12px}
+  .week-metrics span,.muted,.hint,.save-state,.credit,.salary-summary-grid span,.day-dialog label,.form-grid label,.dialog-copy,.dialog-cancel,.dialog-save,.inline-error,.allocation-tags span{font-size:12px}
   .kpi span{font-size:12px}
 }
 @media (min-width:1600px){
@@ -26,7 +26,7 @@
 .square-control i{font-size:14px}
 .end-value,.dialog-readonly{background:#f5f7fa;color:#47546a;border-color:#e1e5eb;cursor:default}
 .dialog-readonly{min-height:31px;border:1px solid #d9e0e8;border-radius:5px;padding:7px 8px;display:flex;align-items:center;font-weight:650}
-.day-dialog.meal-only .dialog-grid,.day-dialog.meal-only .dialog-delete{display:none}
+.day-dialog.meal-only .dialog-grid,.day-dialog.meal-only .dialog-copy{display:none}
 .week-card{min-height:90px;grid-template-columns:1fr}
 .weeks-panel,.balance-panel{padding:14px 13px}
 .week-metrics{grid-template-columns:max-content 1fr;column-gap:7px;row-gap:2px;align-items:baseline}
@@ -176,8 +176,7 @@ a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible,
 .meal-fieldset label{font-weight:550}
 .dialog-actions{margin:0;padding:15px 22px 18px;border-top:1px solid #e8ecf2;background:#fafbfd}
 .dialog-actions>div{gap:10px}
-.dialog-delete,.dialog-cancel,.dialog-save{height:40px;border-radius:8px;padding:0 17px;font-size:13px;font-weight:650}
-.dialog-delete:hover{background:#fff2f2;border-color:#f0c5c8}
+.dialog-copy,.dialog-cancel,.dialog-save{height:40px;border-radius:8px;padding:0 17px;font-size:13px;font-weight:650}
 .dialog-cancel:hover{background:#f2f5f9}
 .dialog-save{min-width:132px;box-shadow:0 5px 14px #2678ff26}
 .inline-error{margin:0 22px 14px;font-size:12px}
@@ -188,7 +187,7 @@ a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible,
   .dialog-head{padding:17px 16px 14px}.dialog-head h2{font-size:18px}
   .dialog-grid{padding:16px;grid-template-columns:1fr 1fr;gap:12px}
   .meal-fieldset{margin:0 16px 16px;padding:13px;grid-template-columns:1fr}
-  .dialog-actions{padding:13px 16px 16px}.dialog-delete,.dialog-cancel,.dialog-save{height:40px;padding:0 12px}
+  .dialog-actions{padding:13px 16px 16px}.dialog-copy,.dialog-cancel,.dialog-save{height:40px;padding:0 12px}
   .inline-error{margin:0 16px 12px}
 }
 
@@ -205,3 +204,30 @@ a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible,
 .row-rest .driving-cell .time-input:disabled,.row-rest .warehouse-cell .time-input:disabled{background:#eceff2;border-color:#dfe3e8;color:#8b94a2}
 .row-needs-fill .total-cell strong{background:#fff0bd;color:#8c6400}
 .row-rest .total-cell strong{background:#e6e9ed;color:#737d8c}
+.mobile-menu-backdrop{display:none;border:0;background:#17213b52;padding:0}
+.save-state[data-state="saving"]{color:#6d7890}
+.save-state[data-state="saved"]{color:#198754}
+.save-state[data-state="warning"]{color:#a15c00}
+.save-state[data-state="error"]{color:#c83842}
+.future-notice{display:flex;align-items:center;gap:9px;margin:-5px 0 14px;padding:9px 11px;border:1px solid #b9d6ff;border-radius:8px;background:#f3f8ff;color:#315b91;font-size:12px}
+.dialog-copy,.week-copy-button{border:1px solid #dbe1e9;background:#fff;color:#315b91;border-radius:7px;cursor:pointer;font-weight:650}
+.dialog-copy{height:40px;padding:0 14px}
+.week-copy-button{margin:7px 0 0 25px;padding:5px 8px;font-size:10px}
+.dialog-copy:hover,.week-copy-button:hover{background:#f3f7fd;border-color:#b9cbed}
+.payment-filters{display:flex;align-items:end;gap:9px;margin:12px 0}
+.payment-filters label{display:flex;flex-direction:column;gap:4px;font-size:11px;color:var(--muted)}
+.payment-filters input,.payment-filters select{height:34px;border:1px solid #d9e0e8;border-radius:6px;background:#fff;padding:0 9px;color:var(--text)}
+.payment-filters input{width:210px}
+.pagination{display:flex;justify-content:center;align-items:center;gap:10px;margin-top:14px;font-size:11px;color:var(--muted)}
+.future-payment{display:inline-block;margin-left:7px;padding:2px 6px;border-radius:10px;background:#eef4ff;color:#2678ff;font-size:9px;font-weight:650}
+
+@media(max-width:720px){
+  .app-shell.mobile-menu-open .mobile-menu-backdrop{display:block;position:fixed;inset:0 0 58px;z-index:49}
+  .more-button,.rest-check,.bare-icon{min-width:40px;min-height:40px}
+  .dialog-copy{height:40px;padding:0 10px}
+  .week-copy-button{margin-left:0;width:100%;min-height:34px}
+  .payment-filters{display:grid;grid-template-columns:1fr 1fr;align-items:end}
+  .payment-filters label,.payment-filters input,.payment-filters select{width:100%}
+  .pagination{justify-content:space-between}
+  .future-notice{font-size:10px;margin-bottom:10px}
+}

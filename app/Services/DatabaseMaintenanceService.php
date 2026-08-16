@@ -15,13 +15,20 @@ final class DatabaseMaintenanceService
     private const BACKUP_DIRECTORY = 'app/private/backups';
     private const BACKUP_FILENAME_PATTERN = '/^yohan-compta-\d{8}-\d{6}-[a-f0-9]{6}\.sqlite$/';
 
+    public function __construct(private readonly DatabaseAccessLock $databaseLock)
+    {
+    }
+
     public function createBackup(): string
     {
         $directory = $this->backupDirectory();
         File::ensureDirectoryExists($directory);
 
         $path = $directory.'/yohan-compta-'.now()->format('Ymd-His').'-'.bin2hex(random_bytes(3)).'.sqlite';
-        return $this->createSnapshot($path);
+        $this->createSnapshot($path);
+        $this->pruneBackups(basename($path));
+
+        return $path;
     }
 
     public function createDownloadCopy(): string
@@ -92,6 +99,28 @@ final class DatabaseMaintenanceService
         return $deleted;
     }
 
+    public function pruneBackups(?string $preserve = null): int
+    {
+        $retention = (int) config('backups.retention', 20);
+        $deleted = 0;
+        $backups = $this->backups();
+
+        if ($preserve !== null) {
+            $preserved = array_values(array_filter($backups, static fn (array $backup): bool => $backup['name'] === $preserve));
+            $others = array_values(array_filter($backups, static fn (array $backup): bool => $backup['name'] !== $preserve));
+            $backups = array_merge($preserved, $others);
+        }
+
+        foreach (array_slice($backups, $retention) as $backup) {
+            if (!File::delete($this->backupPath($backup['name']))) {
+                throw new RuntimeException('Impossible d’appliquer la rétention des sauvegardes de sécurité.');
+            }
+            $deleted++;
+        }
+
+        return $deleted;
+    }
+
     public function backupPath(string $filename): string
     {
         if ($filename !== basename($filename) || !preg_match(self::BACKUP_FILENAME_PATTERN, $filename)) {
@@ -130,6 +159,13 @@ final class DatabaseMaintenanceService
     }
 
     private function restoreDatabase(string $sourcePath, bool $createSafetyBackup): ?string
+    {
+        return $this->databaseLock->exclusive(
+            fn (): ?string => $this->restoreDatabaseLocked($sourcePath, $createSafetyBackup),
+        );
+    }
+
+    private function restoreDatabaseLocked(string $sourcePath, bool $createSafetyBackup): ?string
     {
         $this->validateDatabaseFile($sourcePath);
         $safetyBackup = $createSafetyBackup ? $this->createBackup() : null;
@@ -281,7 +317,7 @@ final class DatabaseMaintenanceService
 
     private function backupDirectory(): string
     {
-        return storage_path(self::BACKUP_DIRECTORY);
+        return storage_path((string) config('backups.directory', self::BACKUP_DIRECTORY));
     }
 
     private function assertSqliteConnection(): void

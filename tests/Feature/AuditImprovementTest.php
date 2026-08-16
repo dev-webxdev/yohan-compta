@@ -6,6 +6,7 @@ use App\Models\OvertimePayment;
 use App\Models\WorkDay;
 use App\Services\ReportService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 final class AuditImprovementTest extends TestCase
@@ -36,7 +37,6 @@ final class AuditImprovementTest extends TestCase
             'payment_date' => '2026-08-10',
             'amount_cents' => 1000,
             'period_reference' => 'Ancienne référence',
-            'note' => 'Avant correction',
         ]);
 
         $this->get('/paiements?edit='.$payment->id)
@@ -51,7 +51,6 @@ final class AuditImprovementTest extends TestCase
             'amount' => '12,50',
             'hours_paid' => '',
             'period_reference' => 'Août 2026',
-            'note' => 'Montant corrigé',
         ])->assertRedirect('/paiements');
 
         $payment->refresh();
@@ -59,7 +58,7 @@ final class AuditImprovementTest extends TestCase
         self::assertSame(1250, $payment->amount_cents);
         self::assertNull($payment->hours_paid_minutes);
         self::assertSame('Août 2026', $payment->period_reference);
-        self::assertSame('Montant corrigé', $payment->note);
+        self::assertFalse(Schema::hasColumn('overtime_payments', 'note'));
         self::assertSame(1, OvertimePayment::query()->count());
     }
 

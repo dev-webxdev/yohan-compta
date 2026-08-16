@@ -171,7 +171,7 @@ final class ApplicationFlowTest extends TestCase
         self::assertSame(60, $payment->hours_paid_minutes);
     }
 
-    public function test_payment_hours_cannot_exceed_remaining_overtime(): void
+    public function test_payment_hours_can_exceed_calculated_remaining_overtime(): void
     {
         foreach (['2026-08-03','2026-08-04','2026-08-05','2026-08-06','2026-08-07'] as $date) {
             WorkDay::query()->create(['date' => $date, 'driving_minutes' => 480, 'warehouse_minutes' => 0, 'meal_allowance_mode' => 'auto']);
@@ -183,17 +183,10 @@ final class ApplicationFlowTest extends TestCase
             'payment_date' => '2026-08-13',
             'amount' => '13',
             'hours_paid' => '05:01',
-        ])->assertRedirect('/paiements')->assertSessionHasErrors([
-            'hours_paid' => 'Les heures supplémentaires payées ne peuvent pas dépasser les 05:00 d’heures supplémentaires restantes à payer.',
-        ]);
-        self::assertSame(0, OvertimePayment::query()->count());
+        ])->assertRedirect('/paiements')->assertSessionHasNoErrors();
 
-        $this->post('/paiements', [
-            'payment_date' => '2026-08-13',
-            'amount' => '13',
-            'hours_paid' => '05:00',
-        ])->assertRedirect('/paiements');
         self::assertSame(1, OvertimePayment::query()->count());
+        self::assertSame(301, OvertimePayment::query()->firstOrFail()->hours_paid_minutes);
     }
 
     public function test_whole_hours_are_accepted_for_work_days_and_overtime_payments(): void
@@ -288,8 +281,8 @@ final class ApplicationFlowTest extends TestCase
     public function test_rest_days_and_fill_states_are_distinct(): void
     {
         $html = $this->get('/mois/2026-08')->assertOk()->getContent();
-        self::assertMatchesRegularExpression('/class="work-row row-rest" data-date="2026-08-02" data-is-rest="1"/', $html);
-        self::assertMatchesRegularExpression('/class="work-row row-needs-fill" data-date="2026-08-03" data-is-rest="0"/', $html);
+        self::assertMatchesRegularExpression('/class="work-row row-rest" data-date="2026-08-02"[^>]*data-is-rest="1"/', $html);
+        self::assertMatchesRegularExpression('/class="work-row row-needs-fill" data-date="2026-08-03"[^>]*data-is-rest="0"/', $html);
 
         $this->putJson('/jours/2026-08-02', [
             'start_time' => '07:45',
@@ -303,7 +296,7 @@ final class ApplicationFlowTest extends TestCase
         $sunday = WorkDay::query()->whereDate('date', '2026-08-02')->firstOrFail();
         self::assertFalse($sunday->is_rest);
         $html = $this->get('/mois/2026-08')->getContent();
-        self::assertMatchesRegularExpression('/class="work-row row-needs-fill" data-date="2026-08-02" data-is-rest="0"/', $html);
+        self::assertMatchesRegularExpression('/class="work-row row-needs-fill" data-date="2026-08-02"[^>]*data-is-rest="0"/', $html);
 
         $this->putJson('/jours/2026-08-03', [
             'start_time' => '09:00',
@@ -332,7 +325,7 @@ final class ApplicationFlowTest extends TestCase
         self::assertSame(0, app(ReportService::class)->month('2026-08')['worked_minutes']);
 
         $html = $this->get('/mois/2026-08')->getContent();
-        self::assertMatchesRegularExpression('/class="work-row row-rest" data-date="2026-08-03" data-is-rest="1"/', $html);
+        self::assertMatchesRegularExpression('/class="work-row row-rest" data-date="2026-08-03"[^>]*data-is-rest="1"/', $html);
         self::assertMatchesRegularExpression('/name="driving" value="08:00"[^>]*disabled/', $html);
 
         $this->putJson('/jours/2026-08-03', [
@@ -354,14 +347,14 @@ final class ApplicationFlowTest extends TestCase
             'meal_amount' => '',
         ])->assertOk();
         $html = $this->get('/mois/2026-08')->getContent();
-        self::assertMatchesRegularExpression('/class="work-row row-filled" data-date="2026-08-04" data-is-rest="0"/', $html);
+        self::assertMatchesRegularExpression('/class="work-row row-filled" data-date="2026-08-04"[^>]*data-is-rest="0"/', $html);
     }
 
-    public function test_delete_day_restores_empty_calendar_day(): void
+    public function test_day_deletion_endpoint_is_removed(): void
     {
         WorkDay::query()->create(['date' => '2026-08-03', 'driving_minutes' => 60, 'warehouse_minutes' => 0, 'meal_allowance_mode' => 'auto']);
-        $this->deleteJson('/jours/2026-08-03')->assertOk();
-        self::assertSame(0, WorkDay::query()->count());
-        $this->get('/mois/2026-08')->assertSee('03/08/2026')->assertSee('00:00');
+        $this->deleteJson('/jours/2026-08-03')->assertStatus(405);
+        self::assertSame(1, WorkDay::query()->count());
+        self::assertSame(60, WorkDay::query()->whereDate('date', '2026-08-03')->value('driving_minutes'));
     }
 }

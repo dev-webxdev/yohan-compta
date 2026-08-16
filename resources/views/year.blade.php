@@ -4,6 +4,7 @@
 @section('content')
 <div class="report-page">
 <section class="year-nav"><a class="square-control" href="{{ route('year.show', $report['year']-1) }}" aria-label="Année précédente"><i class="fa-solid fa-chevron-left"></i></a><div class="month-control"><i class="fa-solid fa-chart-column"></i><strong>{{ $report['year'] }}</strong></div><a class="square-control" href="{{ route('year.show', $report['year']+1) }}" aria-label="Année suivante"><i class="fa-solid fa-chevron-right"></i></a><a class="primary-button secondary-button export-button" href="{{ route('year.export', ['year' => $report['year']]) }}"><i class="fa-solid fa-file-csv"></i> Export CSV</a></section>
+@if($isFutureYear)<div class="future-notice" role="note"><i class="fa-solid fa-circle-info"></i><span>Année future : les données restent consultables, mais les mois futurs ne sont pas encore intégrés au solde global.</span></div>@endif
 <section class="kpis dashboard-kpis report-kpis">
 <article class="kpi kpi-hours"><div class="kpi-icon"><i class="fa-regular fa-clock"></i></div><div><span>Heures travaillées</span><strong>{{ Time::formatDuration($report['totals']['worked_minutes']) }}</strong></div></article>
 <article class="kpi kpi-overtime"><div class="kpi-icon"><i class="fa-solid fa-arrow-trend-up"></i></div><div><span>Heures sup effectuées</span><strong>{{ Time::formatDuration($report['totals']['overtime_minutes']) }}</strong></div></article>

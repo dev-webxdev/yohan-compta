@@ -28,7 +28,7 @@
 </section>
 
 <section class="panel backup-library">
-<div class="panel-heading"><div><h2>Sauvegardes de sécurité</h2><p>{{ $backupSummary['count'] }} sauvegarde(s) · {{ number_format($backupSummary['size_bytes'] / 1024, 0, ',', ' ') }} Ko. Elles restent disponibles jusqu’à leur suppression.</p></div>
+<div class="panel-heading"><div><h2>Sauvegardes de sécurité</h2><p>{{ $backupSummary['count'] }} sauvegarde(s) · {{ number_format($backupSummary['size_bytes'] / 1024, 0, ',', ' ') }} Ko. Les {{ $backupRetention }} plus récentes sont conservées automatiquement.</p></div>
 @if($backupSummary['count'] > 0)<form method="post" action="{{ route('settings.database.backups.delete-all') }}" data-confirm data-confirm-title="Supprimer toutes les sauvegardes ?" data-confirm-message="Toutes les sauvegardes de sécurité seront définitivement supprimées." data-confirm-action="Tout supprimer" data-confirm-danger="1">@csrf @method('DELETE')
 <input type="hidden" name="confirmed" value="1"><button class="danger-button compact-button"><i class="fa-solid fa-trash"></i> Tout supprimer</button></form>@endif
 </div>
