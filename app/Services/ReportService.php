@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Models\OvertimePayment;
 use App\Models\WorkDay;
-use App\Support\DateRange;
 use App\Support\Money;
 use DateTimeImmutable;
 use Illuminate\Support\Collection;
@@ -136,7 +135,7 @@ final class ReportService
     {
         $this->beginCalculation();
         try {
-        $start = WeekCalculator::monday($weekId);
+        $start = WeekCalculator::periodStart($weekId);
         $end = WeekCalculator::periodEnd($start);
         $days = $this->workDaysBetween($start, $end)->keyBy(fn (WorkDay $day) => $day->date->format('Y-m-d'));
         $minutesByDate = [];
@@ -146,8 +145,7 @@ final class ReportService
             $minutesByDate[$date] = $day && !$day->is_rest ? $day->driving_minutes + $day->warehouse_minutes : 0;
         }
 
-        $thresholdDate = max(DateRange::MIN_DATE, $start->format('Y-m-d'));
-        $threshold = $this->settings->forDate($thresholdDate)->weekly_threshold_minutes;
+        $threshold = $this->settings->forDate($start->format('Y-m-d'))->weekly_threshold_minutes;
         $result = WeekCalculator::calculate($weekId, $minutesByDate, $threshold);
         $netPercentNumerator = 0;
         foreach ($result['overtime_by_date'] as $date => $minutes) {
