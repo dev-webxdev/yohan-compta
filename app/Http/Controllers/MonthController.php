@@ -60,6 +60,7 @@ final class MonthController
             'previousMonth' => $current->modify('-1 month')->format('Y-m'),
             'nextMonth' => $current->modify('+1 month')->format('Y-m'),
             'monthLabel' => FrenchDate::monthYear($current),
+            'isFutureMonth' => $month > now()->format('Y-m'),
         ]);
     }
 }

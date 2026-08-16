@@ -21,7 +21,9 @@ Route::middleware('auth.local')->group(function (): void {
     Route::get('/mois/{month}', MonthController::class)->where('month', '\\d{4}-\\d{2}')->name('month.show');
     Route::get('/mois/{month}/export.csv', [ExportController::class, 'month'])->where('month', '\\d{4}-\\d{2}')->name('month.export');
     Route::put('/jours/{date}', [WorkDayController::class, 'store'])->where('date', '\\d{4}-\\d{2}-\\d{2}')->name('days.store');
-    Route::delete('/jours/{date}', [WorkDayController::class, 'destroy'])->where('date', '\\d{4}-\\d{2}-\\d{2}')->name('days.destroy');
+    Route::post('/jours/{date}/copier-veille', [WorkDayController::class, 'copyPreviousDay'])->where('date', '\\d{4}-\\d{2}-\\d{2}')->name('days.copy-previous');
+    Route::get('/semaines/{week}/copie-precedente', [WorkDayController::class, 'previewPreviousWeek'])->where('week', '\\d{4}-\\d{2}-\\d{2}')->name('weeks.copy-previous.preview');
+    Route::post('/semaines/{week}/copie-precedente', [WorkDayController::class, 'copyPreviousWeek'])->where('week', '\\d{4}-\\d{2}-\\d{2}')->name('weeks.copy-previous');
 
     Route::get('/paiements', [PaymentController::class, 'index'])->name('payments.index');
     Route::post('/paiements', [PaymentController::class, 'store'])->name('payments.store');

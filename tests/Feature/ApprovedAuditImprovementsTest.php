@@ -1,0 +1,163 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\OvertimePayment;
+use App\Models\WorkDay;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
+
+final class ApprovedAuditImprovementsTest extends TestCase
+{
+    use RefreshDatabase;
+
+    public function test_stale_autosave_cannot_overwrite_a_newer_write(): void
+    {
+        $payload = [
+            'start_time' => '07:45',
+            'warehouse' => '',
+            'is_rest' => false,
+            'meal_mode' => 'auto',
+            'meal_amount' => '',
+        ];
+
+        $this->putJson('/jours/2026-08-17', $payload + [
+            'driving' => '09:00',
+            'write_version' => 200,
+        ])->assertOk();
+
+        $this->putJson('/jours/2026-08-17', $payload + [
+            'driving' => '01:00',
+            'write_version' => 100,
+        ])->assertStatus(409);
+
+        $day = WorkDay::query()->whereDate('date', '2026-08-17')->firstOrFail();
+        self::assertSame(540, $day->driving_minutes);
+        self::assertSame(200, $day->client_write_version);
+    }
+
+    public function test_copy_previous_day_replaces_target_without_delete_action(): void
+    {
+        WorkDay::query()->create([
+            'date' => '2026-08-17',
+            'start_time_minutes' => 480,
+            'driving_minutes' => 420,
+            'warehouse_minutes' => 60,
+            'meal_allowance_mode' => 'forced',
+            'meal_allowance_forced_cents' => 1250,
+        ]);
+        WorkDay::query()->create([
+            'date' => '2026-08-18',
+            'driving_minutes' => 60,
+            'warehouse_minutes' => 0,
+            'meal_allowance_mode' => 'auto',
+        ]);
+
+        $this->postJson('/jours/2026-08-18/copier-veille')->assertOk();
+
+        $target = WorkDay::query()->whereDate('date', '2026-08-18')->firstOrFail();
+        self::assertSame(480, $target->start_time_minutes);
+        self::assertSame(420, $target->driving_minutes);
+        self::assertSame(60, $target->warehouse_minutes);
+        self::assertSame('forced', $target->meal_allowance_mode);
+        self::assertSame(1250, $target->meal_allowance_forced_cents);
+        self::assertSame(1, $target->client_write_version);
+        $this->deleteJson('/jours/2026-08-18')->assertStatus(405);
+    }
+
+    public function test_previous_week_can_be_previewed_and_copied(): void
+    {
+        WorkDay::query()->create([
+            'date' => '2026-08-03',
+            'driving_minutes' => 420,
+            'warehouse_minutes' => 30,
+            'meal_allowance_mode' => 'auto',
+        ]);
+        WorkDay::query()->create([
+            'date' => '2026-08-04',
+            'driving_minutes' => 480,
+            'warehouse_minutes' => 0,
+            'meal_allowance_mode' => 'auto',
+        ]);
+
+        $this->getJson('/semaines/2026-08-10/copie-precedente')
+            ->assertOk()
+            ->assertJsonPath('count', 2)
+            ->assertJsonFragment(['source' => '03/08/2026', 'target' => '10/08/2026']);
+
+        $this->postJson('/semaines/2026-08-10/copie-precedente')
+            ->assertOk()
+            ->assertJsonPath('copied', 2);
+
+        self::assertSame(420, WorkDay::query()->whereDate('date', '2026-08-10')->value('driving_minutes'));
+        self::assertSame(30, WorkDay::query()->whereDate('date', '2026-08-10')->value('warehouse_minutes'));
+        self::assertSame(480, WorkDay::query()->whereDate('date', '2026-08-11')->value('driving_minutes'));
+    }
+
+    public function test_public_pages_send_security_headers_and_secure_requests_get_hsts(): void
+    {
+        config(['app.url' => 'https://example.test']);
+        $response = $this->get('/mois/2026-08')->assertOk();
+
+        $response->assertHeader('X-Content-Type-Options', 'nosniff');
+        $response->assertHeader('X-Frame-Options', 'DENY');
+        $response->assertHeader('Referrer-Policy', 'same-origin');
+        $response->assertHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+        self::assertStringContainsString("frame-ancestors 'none'", (string) $response->headers->get('Content-Security-Policy'));
+        self::assertStringContainsString('max-age=31536000', (string) $response->headers->get('Strict-Transport-Security'));
+        self::assertSame('strict', config('session.same_site'));
+    }
+
+    public function test_payment_history_can_be_filtered_by_year_and_reference(): void
+    {
+        OvertimePayment::query()->create([
+            'payment_date' => '2025-08-10',
+            'amount_cents' => 1000,
+            'period_reference' => 'Ancien paiement',
+        ]);
+        OvertimePayment::query()->create([
+            'payment_date' => '2026-08-10',
+            'amount_cents' => 2000,
+            'period_reference' => 'Août camion',
+        ]);
+
+        $this->get('/paiements?year=2026&q=camion')
+            ->assertOk()
+            ->assertSee('Août camion')
+            ->assertDontSee('Ancien paiement')
+            ->assertSee('name="year"', false)
+            ->assertSee('name="q"', false);
+    }
+
+    public function test_future_reports_explain_when_the_global_balance_becomes_effective(): void
+    {
+        $this->get('/mois/2026-12')
+            ->assertOk()
+            ->assertSee('Mois futur')
+            ->assertSee('solde global');
+
+        $this->get('/annee/2027')
+            ->assertOk()
+            ->assertSee('Année future')
+            ->assertSee('solde global');
+    }
+
+    public function test_month_ui_exposes_accessibility_and_shortcut_behaviour(): void
+    {
+        $html = $this->get('/mois/2026-08')->assertOk()->getContent();
+        $javascript = file_get_contents(public_path('app.js'));
+        $css = file_get_contents(public_path('app.css'));
+
+        self::assertStringContainsString('aria-label="Début du 01/08/2026"', $html);
+        self::assertStringContainsString('aria-label="Conduite du 01/08/2026"', $html);
+        self::assertStringContainsString('aria-label="Entrepôt du 01/08/2026"', $html);
+        self::assertStringContainsString('id="copy-previous-day"', $html);
+        self::assertStringNotContainsString('id="delete-day"', $html);
+        self::assertStringContainsString('data-write-version="0"', $html);
+        self::assertStringContainsString('appMain.inert = open', $javascript);
+        self::assertStringContainsString("event.altKey && event.key === 'ArrowDown'", $javascript);
+        self::assertStringContainsString("event.key === 'Enter'", $javascript);
+        self::assertStringContainsString('Recopier la semaine précédente', $html);
+        self::assertStringContainsString('.mobile-menu-backdrop', $css);
+    }
+}

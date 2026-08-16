@@ -69,7 +69,7 @@ final class BugFixRegressionTest extends TestCase
         self::assertStringContainsString('.dialog-head h2{margin:0;font-size:20px;', $css);
         self::assertStringContainsString('.dialog-grid{padding:20px 22px 18px;grid-template-columns:repeat(4,minmax(0,1fr));', $css);
         self::assertStringContainsString('.day-dialog input,.day-dialog textarea{min-width:0;min-height:42px;', $css);
-        self::assertStringContainsString('.dialog-delete,.dialog-cancel,.dialog-save{height:40px;', $css);
+        self::assertStringContainsString('.dialog-copy,.dialog-cancel,.dialog-save{height:40px;', $css);
         self::assertStringContainsString('.dialog-grid{padding:16px;grid-template-columns:1fr 1fr;', $css);
     }
 
@@ -143,7 +143,8 @@ final class BugFixRegressionTest extends TestCase
         self::assertStringContainsString('id="confirm-dialog"', $layout);
         self::assertStringContainsString('form[data-confirm]', $javascript);
         self::assertStringContainsString('const askConfirmation =', $javascript);
-        self::assertStringContainsString("title: 'Supprimer cette journée ?'", $javascript);
+        self::assertStringContainsString("title: 'Recopier la journée précédente ?'", $javascript);
+        self::assertStringNotContainsString("method: 'DELETE'", $javascript);
         self::assertStringContainsString('.confirm-dialog.is-danger', $css);
         self::assertStringContainsString('@media(max-width:720px)', $css);
         self::assertStringContainsString('data-confirm-danger="1"', $settings);
@@ -244,9 +245,9 @@ final class BugFixRegressionTest extends TestCase
         }
     }
 
-    public function test_invalid_delete_date_is_rejected(): void
+    public function test_work_day_delete_route_no_longer_exists(): void
     {
-        $this->deleteJson('/jours/2026-99-99')->assertNotFound();
+        $this->deleteJson('/jours/2026-08-03')->assertStatus(405);
     }
 
     public function test_month_boundary_can_create_a_one_day_week_segment(): void

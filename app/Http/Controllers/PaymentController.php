@@ -17,8 +17,32 @@ final class PaymentController
 {
     public function index(Request $request, ReportService $reports, SettingsService $settings): View
     {
-        $payments = OvertimePayment::query()->orderByDesc('payment_date')->orderByDesc('id')->get();
+        $filterYear = $request->integer('year');
+        $search = trim((string) $request->query('q', ''));
+        if ($filterYear !== 0 && !DateRange::containsYear($filterYear)) {
+            abort(404);
+        }
+        if (mb_strlen($search) > 100) {
+            $search = mb_substr($search, 0, 100);
+        }
+
+        $query = OvertimePayment::query()->orderByDesc('payment_date')->orderByDesc('id');
+        if ($filterYear !== 0) {
+            $query->whereBetween('payment_date', [$filterYear.'-01-01', $filterYear.'-12-31']);
+        }
+        if ($search !== '') {
+            $query->where('period_reference', 'like', '%'.$search.'%');
+        }
+
+        $payments = $query->paginate(50)->withQueryString();
         $editingPayment = $request->integer('edit') > 0 ? OvertimePayment::query()->find($request->integer('edit')) : null;
+        $availableYears = OvertimePayment::query()
+            ->selectRaw('substr(payment_date, 1, 4) as year')
+            ->distinct()
+            ->orderByDesc('year')
+            ->pluck('year')
+            ->map(static fn (string $year): int => (int) $year)
+            ->all();
         $paymentHours = [];
         foreach ($payments as $payment) {
             $rate = $settings->forDate($payment->payment_date->format('Y-m-d'))->hourly_net_rate_cents;
@@ -34,20 +58,23 @@ final class PaymentController
             'paymentHours' => $paymentHours,
             'allocations' => $reports->paymentAllocations(),
             'balance' => $reports->balance(),
+            'availableYears' => $availableYears,
+            'filterYear' => $filterYear,
+            'search' => $search,
         ]);
     }
 
-    public function store(Request $request, ReportService $reports, SettingsService $settings): RedirectResponse
+    public function store(Request $request): RedirectResponse
     {
-        $payload = $this->paymentPayload($request, $reports, $settings);
+        $payload = $this->paymentPayload($request);
         OvertimePayment::query()->create($payload);
 
         return redirect()->route('payments.index')->with('status', 'Paiement enregistré. Les soldes nets sont recalculés automatiquement en FIFO.');
     }
 
-    public function update(Request $request, OvertimePayment $payment, ReportService $reports, SettingsService $settings): RedirectResponse
+    public function update(Request $request, OvertimePayment $payment): RedirectResponse
     {
-        $payment->update($this->paymentPayload($request, $reports, $settings, $payment));
+        $payment->update($this->paymentPayload($request));
 
         return redirect()->route('payments.index')->with('status', 'Paiement modifié. Les soldes ont été recalculés automatiquement.');
     }
@@ -58,8 +85,8 @@ final class PaymentController
         return redirect()->route('payments.index')->with('status', 'Paiement supprimé. Les soldes ont été recalculés.');
     }
 
-    /** @return array{payment_date:string,amount_cents:int,hours_paid_minutes:?int,note:?string,period_reference:?string} */
-    private function paymentPayload(Request $request, ReportService $reports, SettingsService $settings, ?OvertimePayment $payment = null): array
+    /** @return array{payment_date:string,amount_cents:int,hours_paid_minutes:?int,period_reference:?string} */
+    private function paymentPayload(Request $request): array
     {
         $data = $request->validate([
             'payment_date' => [
@@ -71,7 +98,6 @@ final class PaymentController
             'amount' => ['required', 'string', 'max:30'],
             'hours_paid' => ['nullable', 'regex:/^\d{1,3}(?::[0-5]\d)?$/'],
             'period_reference' => ['nullable', 'string', 'max:255'],
-            'note' => ['nullable', 'string', 'max:2000'],
         ]);
 
         try {
@@ -89,27 +115,10 @@ final class PaymentController
             throw ValidationException::withMessages(['amount' => 'Le paiement doit être supérieur à 0 €.']);
         }
 
-        if ($hoursMinutes !== null) {
-            $remainingMinutes = (int) $reports->balance()['remaining_minutes_indicative'];
-            $existingMinutes = 0;
-            if ($payment !== null) {
-                $rate = $settings->forDate($payment->payment_date->format('Y-m-d'))->hourly_net_rate_cents;
-                $existingMinutes = $payment->hours_paid_minutes
-                    ?? (int) round($payment->amount_cents * 60 / max(1, $rate));
-            }
-            $maximumMinutes = $remainingMinutes + $existingMinutes;
-            if ($hoursMinutes > $maximumMinutes) {
-                throw ValidationException::withMessages([
-                    'hours_paid' => 'Les heures supplémentaires payées ne peuvent pas dépasser les '.Time::formatDuration($maximumMinutes).' d’heures supplémentaires restantes à payer.',
-                ]);
-            }
-        }
-
         return [
             'payment_date' => $data['payment_date'],
             'amount_cents' => $amountCents,
             'hours_paid_minutes' => $hoursMinutes,
-            'note' => trim((string) ($data['note'] ?? '')) ?: null,
             'period_reference' => trim((string) ($data['period_reference'] ?? '')) ?: null,
         ];
     }

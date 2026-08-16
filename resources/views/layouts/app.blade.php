@@ -28,6 +28,7 @@
     </nav>
     <div class="sidebar-bottom"><button type="button" class="sidebar-toggle" aria-expanded="true"><i class="fa-solid fa-angles-left"></i><span>Réduire</span></button></div>
 </aside>
+<button type="button" class="mobile-menu-backdrop" aria-label="Fermer le menu" tabindex="-1"></button>
 <div class="app-main">
 <header class="topbar">
     <div class="mobile-top-menu"><button type="button" class="bare-icon mobile-menu-toggle" aria-label="Ouvrir le menu" aria-expanded="false"><i class="fa-solid fa-bars"></i></button></div>
@@ -41,8 +42,8 @@
     </div>
 </header>
 <main class="content">
-    @if (session('status'))<div class="flash success">{{ session('status') }}</div>@endif
-    @if ($errors->any())<div class="flash error">{{ $errors->first() }}</div>@endif
+    @if (session('status'))<div class="flash success" role="status">{{ session('status') }}</div>@endif
+    @if ($errors->any())<div class="flash error" role="alert">{{ $errors->first() }}</div>@endif
     @yield('content')
 </main>
 </div>

@@ -26,6 +26,7 @@ final class SettingsController
                 'count' => count($backups),
                 'size_bytes' => array_sum(array_column($backups, 'size_bytes')),
             ],
+            'backupRetention' => (int) config('backups.retention', 20),
         ]);
     }
 

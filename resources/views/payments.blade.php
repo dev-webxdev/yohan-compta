@@ -8,12 +8,11 @@
     <form method="post" action="{{ $editingPayment ? route('payments.update', $editingPayment) : route('payments.store') }}" class="form-grid">@csrf @if($editingPayment) @method('PATCH') @endif
         <label>Date du paiement<input type="date" name="payment_date" value="{{ old('payment_date', $editingPayment?->payment_date?->format('Y-m-d') ?? now()->format('Y-m-d')) }}" required @error('payment_date') aria-invalid="true" @enderror>@error('payment_date')<span class="field-error">{{ $message }}</span>@enderror</label>
         <label>Montant reçu pour les heures supplémentaires (€)<input name="amount" inputmode="decimal" value="{{ old('amount', $editingPayment ? Money::formatInput($editingPayment->amount_cents) : '') }}" placeholder="250,00" required @error('amount') aria-invalid="true" @enderror>@error('amount')<span class="field-error">{{ $message }}</span>@enderror</label>
-        <label>Heures supplémentaires payées <small>(facultatif)</small><input name="hours_paid" inputmode="numeric" data-time-normalize value="{{ old('hours_paid', $editingPayment?->hours_paid_minutes !== null ? Time::formatDuration($editingPayment->hours_paid_minutes) : '') }}" placeholder="20:00" @error('hours_paid') aria-invalid="true" @enderror>@error('hours_paid')<span class="field-error">{{ $message }}</span>@enderror</label>
+        <label>Heures supplémentaires payées <small>(facultatif, saisie libre)</small><input name="hours_paid" inputmode="numeric" data-time-normalize value="{{ old('hours_paid', $editingPayment?->hours_paid_minutes !== null ? Time::formatDuration($editingPayment->hours_paid_minutes) : '') }}" placeholder="20:00" @error('hours_paid') aria-invalid="true" @enderror>@error('hours_paid')<span class="field-error">{{ $message }}</span>@enderror</label>
         <label>Référence période <small>(facultatif)</small><input name="period_reference" value="{{ old('period_reference', $editingPayment?->period_reference ?? '') }}" placeholder="Ex. Juillet + Août" @error('period_reference') aria-invalid="true" @enderror>@error('period_reference')<span class="field-error">{{ $message }}</span>@enderror</label>
-        <label class="wide">Note <small>(facultatif)</small><textarea name="note" rows="3" placeholder="Ex. paiement partiel reçu avec la paie d’octobre" @error('note') aria-invalid="true" @enderror>{{ old('note', $editingPayment?->note ?? '') }}</textarea>@error('note')<span class="field-error">{{ $message }}</span>@enderror</label>
         <div class="wide form-actions"><button class="primary-button">{{ $editingPayment ? 'Enregistrer les modifications' : 'Enregistrer le paiement' }}</button>@if($editingPayment)<a class="primary-button secondary-button" href="{{ route('payments.index') }}">Annuler</a>@endif</div>
     </form>
-    <p class="hint">Répartition automatique : le montant rembourse d’abord les plus anciennes dettes mensuelles. Un éventuel surplus est conservé comme avance/trop-perçu.</p>
+    <p class="hint">Répartition automatique : le montant rembourse d’abord les plus anciennes dettes mensuelles. Un éventuel surplus est conservé comme avance/trop-perçu. Le nombre d’heures est informatif et peut dépasser le solde calculé.</p>
 </section>
 <section class="panel balance-panel payment-balance">
     <h2>Heures supplémentaires restantes à payer</h2>
@@ -25,10 +24,16 @@
 </div>
 <section class="panel spacer-top">
     <div class="panel-heading"><div><h2>Historique des paiements d’heures supplémentaires</h2><p>Supprimer un paiement recalcule automatiquement tous les soldes d’heures supplémentaires.</p></div></div>
+    <form method="get" action="{{ route('payments.index') }}" class="payment-filters">
+        <label>Année<select name="year"><option value="">Toutes</option>@foreach($availableYears as $year)<option value="{{ $year }}" @selected($filterYear === $year)>{{ $year }}</option>@endforeach</select></label>
+        <label>Référence<input name="q" value="{{ $search }}" maxlength="100" placeholder="Ex. Juillet"></label>
+        <button class="primary-button compact-button"><i class="fa-solid fa-filter"></i> Filtrer</button>
+        @if($filterYear !== 0 || $search !== '')<a class="primary-button secondary-button compact-button" href="{{ route('payments.index') }}">Effacer</a>@endif
+    </form>
     <div class="payment-list">
     @forelse($payments as $payment)
         <article class="payment-row">
-            <div><strong>{{ $payment->payment_date->format('d/m/Y') }}</strong><small>{{ $payment->period_reference ? $payment->period_reference.' · ' : '' }}{{ $payment->note ?: 'Paiement heures supplémentaires' }}</small></div>
+            <div><strong>{{ $payment->payment_date->format('d/m/Y') }}</strong>@if($payment->payment_date->isFuture())<span class="future-payment">Futur</span>@endif<small>{{ $payment->period_reference ?: 'Paiement heures supplémentaires' }}</small></div>
             <div class="allocation-tags">
                 @forelse(($allocations[$payment->id] ?? []) as $allocation)<span>{{ FrenchDate::month((int)substr($allocation['month'],5,2)) }} {{ substr($allocation['month'],0,4) }} · {{ Money::formatCents($allocation['amount_cents']) }}</span>@empty<span>Avance non affectée</span>@endforelse
             </div>
@@ -42,5 +47,6 @@
         <p class="muted">Aucun paiement d’heures supplémentaires enregistré.</p>
     @endforelse
     </div>
+    @if($payments->hasPages())<nav class="pagination" aria-label="Pagination des paiements">@if($payments->previousPageUrl())<a class="primary-button secondary-button compact-button" href="{{ $payments->previousPageUrl() }}"><i class="fa-solid fa-chevron-left"></i> Précédent</a>@endif<span>Page {{ $payments->currentPage() }} / {{ $payments->lastPage() }}</span>@if($payments->nextPageUrl())<a class="primary-button secondary-button compact-button" href="{{ $payments->nextPageUrl() }}">Suivant <i class="fa-solid fa-chevron-right"></i></a>@endif</nav>@endif
 </section>
 @endsection

@@ -30,9 +30,10 @@ final class AuthController
 
         $email = Str::lower(trim($data['email']));
         $throttleKey = $email.'|'.$request->ip();
+        $ipThrottleKey = 'login-ip|'.$request->ip();
 
-        if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
-            $seconds = max(1, RateLimiter::availableIn($throttleKey));
+        if (RateLimiter::tooManyAttempts($throttleKey, 5) || RateLimiter::tooManyAttempts($ipThrottleKey, 20)) {
+            $seconds = max(1, RateLimiter::availableIn($throttleKey), RateLimiter::availableIn($ipThrottleKey));
 
             throw ValidationException::withMessages([
                 'email' => 'Trop de tentatives. Réessayez dans '.$seconds.' secondes.',
@@ -48,6 +49,7 @@ final class AuthController
 
         if (!$identityMatches || !$passwordMatches) {
             RateLimiter::hit($throttleKey, 60);
+            RateLimiter::hit($ipThrottleKey, 60);
 
             throw ValidationException::withMessages([
                 'email' => 'Identifiants incorrects.',
@@ -55,6 +57,7 @@ final class AuthController
         }
 
         RateLimiter::clear($throttleKey);
+        RateLimiter::clear($ipThrottleKey);
         $request->session()->put('auth.authenticated', true);
         $request->session()->regenerate();
 
