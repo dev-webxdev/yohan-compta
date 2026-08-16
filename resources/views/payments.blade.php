@@ -12,7 +12,7 @@
         <label>Référence période <small>(facultatif)</small><input name="period_reference" value="{{ old('period_reference', $editingPayment?->period_reference ?? '') }}" placeholder="Ex. Juillet + Août" @error('period_reference') aria-invalid="true" @enderror>@error('period_reference')<span class="field-error">{{ $message }}</span>@enderror</label>
         <div class="wide form-actions"><button class="primary-button">{{ $editingPayment ? 'Enregistrer les modifications' : 'Enregistrer le paiement' }}</button>@if($editingPayment)<a class="primary-button secondary-button" href="{{ route('payments.index') }}">Annuler</a>@endif</div>
     </form>
-    <p class="hint">Répartition automatique : le montant rembourse d’abord les plus anciennes dettes mensuelles. Un éventuel surplus est conservé comme avance/trop-perçu. Le nombre d’heures est informatif et peut dépasser le solde calculé.</p>
+    <p class="hint">Répartition automatique : le montant rembourse d’abord les plus anciennes dettes mensuelles et un éventuel surplus reste en avance/trop-perçu. Si vous saisissez les heures payées, elles sont déduites telles quelles du solde d’heures, indépendamment du montant. Sans durée saisie, les heures restent estimées à partir du montant.</p>
 </section>
 <section class="panel balance-panel payment-balance">
     <h2>Heures supplémentaires restantes à payer</h2>

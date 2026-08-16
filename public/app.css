@@ -198,7 +198,7 @@ a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible,
 .driving-cell .time-input{background:#f5f9ff;border-color:#cfe0ff}
 .warehouse-cell .time-input{background:#fff9f2;border-color:#f0dcc2}
 .total-cell strong{display:inline-flex;align-items:center;justify-content:center;min-width:56px;padding:5px 8px;border-radius:6px;background:#edf4ff;color:#1768ef;font-weight:750}
-.meal-cell .meal-button{background:#fff8ed;border-color:#f0dcc2;color:#9a5d18;font-weight:650}
+.meal-cell .meal-button{background:#fff8ed;border-color:#f0dcc2;color:#9a5d18}
 .row-rest .driving-cell .time-input:disabled,.row-rest .warehouse-cell .time-input:disabled{background:#eceff2;border-color:#dfe3e8;color:#8b94a2}
 .row-needs-fill .total-cell strong{background:#fff0bd;color:#8c6400}
 .row-rest .total-cell strong{background:#e6e9ed;color:#737d8c}

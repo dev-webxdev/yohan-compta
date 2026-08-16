@@ -88,6 +88,7 @@ final class BugFixRegressionTest extends TestCase
         self::assertStringContainsString('.warehouse-cell .time-input{background:#fff9f2;', $css);
         self::assertStringContainsString('.total-cell strong{display:inline-flex;', $css);
         self::assertStringContainsString('.meal-cell .meal-button{background:#fff8ed;', $css);
+        self::assertStringNotContainsString('.meal-cell .meal-button{background:#fff8ed;border-color:#f0dcc2;color:#9a5d18;font-weight:650}', $css);
     }
 
     public function test_large_screen_layout_is_fluid_without_css_zoom(): void

@@ -20,23 +20,12 @@ final class WorkDayController
         abort_unless(DateRange::isDate($date), 404);
         $defaultStart = $settings->forDate($date)->default_start_time_minutes;
 
-        $data = $request->validate([
-            'start_time' => ['required', 'regex:/^([01]?\d|2[0-3])(?::[0-5]\d)?$/'],
-            'driving' => ['nullable', 'regex:/^\d{1,3}(?::[0-5]\d)?$/'],
-            'warehouse' => ['nullable', 'regex:/^\d{1,3}(?::[0-5]\d)?$/'],
+        $state = $request->validate([
             'is_rest' => ['sometimes', 'boolean'],
-            'meal_mode' => ['required', 'in:auto,forced'],
-            'meal_amount' => ['nullable', 'string', 'max:30'],
             'write_version' => ['nullable', 'integer', 'min:1'],
-        ], [
-            'start_time.regex' => 'Début : format HH ou HH:MM attendu.',
-            'driving.regex' => 'Conduite : format HH ou HH:MM attendu.',
-            'warehouse.regex' => 'Entrepôt : format HH ou HH:MM attendu.',
         ]);
-
-        $isRest = (bool) ($data['is_rest'] ?? false);
-        $isSunday = (int) (new DateTimeImmutable($date))->format('N') === 7;
-        $writeVersion = isset($data['write_version']) ? (int) $data['write_version'] : null;
+        $isRest = (bool) ($state['is_rest'] ?? false);
+        $writeVersion = isset($state['write_version']) ? (int) $state['write_version'] : null;
 
         if ($isRest) {
             if (!$this->persist($date, ['is_rest' => true], $defaultStart, $writeVersion)) {
@@ -45,6 +34,20 @@ final class WorkDayController
 
             return response()->json(['ok' => true, 'write_version' => $writeVersion]);
         }
+
+        $data = $request->validate([
+            'start_time' => ['required', 'regex:/^([01]?\d|2[0-3])(?::[0-5]\d)?$/'],
+            'driving' => ['nullable', 'regex:/^\d{1,3}(?::[0-5]\d)?$/'],
+            'warehouse' => ['nullable', 'regex:/^\d{1,3}(?::[0-5]\d)?$/'],
+            'meal_mode' => ['required', 'in:auto,forced'],
+            'meal_amount' => ['nullable', 'string', 'max:30'],
+        ], [
+            'start_time.regex' => 'Début : format HH ou HH:MM attendu.',
+            'driving.regex' => 'Conduite : format HH ou HH:MM attendu.',
+            'warehouse.regex' => 'Entrepôt : format HH ou HH:MM attendu.',
+        ]);
+
+        $isSunday = (int) (new DateTimeImmutable($date))->format('N') === 7;
 
         $start = Time::parseClock($data['start_time']) ?? $defaultStart;
         $driving = Time::parseDuration($data['driving'] ?? '');
