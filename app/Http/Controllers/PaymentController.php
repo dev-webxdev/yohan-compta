@@ -17,9 +17,10 @@ final class PaymentController
 {
     public function index(Request $request, ReportService $reports, SettingsService $settings): View
     {
-        $query = OvertimePayment::query()->orderByDesc('payment_date')->orderByDesc('id');
-        $payments = $query->paginate(50);
-        $editingPayment = $request->integer('edit') > 0 ? OvertimePayment::query()->find($request->integer('edit')) : null;
+        $payments = OvertimePayment::query()->orderByDesc('payment_date')->orderByDesc('id')->paginate(50);
+        $editId = $request->integer('edit');
+        $editingPayment = $editId > 0 ? OvertimePayment::query()->find($editId) : null;
+
         $paymentHours = [];
         foreach ($payments as $payment) {
             $rate = $settings->forDate($payment->payment_date->format('Y-m-d'))->hourly_net_rate_cents;
