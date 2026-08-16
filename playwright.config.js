@@ -1,5 +1,7 @@
 const {defineConfig} = require('@playwright/test');
 
+const baseURL = process.env.E2E_BASE_URL || 'http://127.0.0.1:8010';
+
 module.exports = defineConfig({
     testDir: './tests/browser',
     timeout: 30_000,
@@ -8,13 +10,13 @@ module.exports = defineConfig({
     workers: 1,
     reporter: process.env.CI ? 'github' : 'line',
     use: {
-        baseURL: 'http://127.0.0.1:8010',
+        baseURL,
         browserName: 'chromium',
         trace: 'retain-on-failure',
     },
     webServer: {
         command: 'bash tests/browser/start-server.sh',
-        url: 'http://127.0.0.1:8010/connexion',
+        url: `${baseURL}/connexion`,
         reuseExistingServer: !process.env.CI,
         timeout: 60_000,
     },
