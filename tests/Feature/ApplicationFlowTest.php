@@ -26,7 +26,7 @@ final class ApplicationFlowTest extends TestCase
         self::assertSame(31, substr_count($this->get('/mois/2026-08')->getContent(), '<tr class="work-row'));
     }
 
-    public function test_weekly_overtime_continues_across_month_boundary(): void
+    public function test_month_boundary_isolates_weekly_overtime(): void
     {
         foreach ([
             '2026-07-27' => '07:00', '2026-07-28' => '07:00', '2026-07-29' => '07:00', '2026-07-30' => '07:00',
@@ -36,18 +36,43 @@ final class ApplicationFlowTest extends TestCase
         }
 
         $reports = app(ReportService::class);
-        self::assertSame(300, $reports->week('2026-07-27')['overtime_minutes']);
-        self::assertSame(300, $reports->week('2026-08-01')['overtime_minutes']);
+        self::assertSame(0, $reports->week('2026-07-27')['overtime_minutes']);
+        self::assertSame(0, $reports->week('2026-08-01')['overtime_minutes']);
         self::assertSame(0, $reports->month('2026-07')['overtime_minutes']);
-        self::assertSame(300, $reports->month('2026-08')['overtime_minutes']);
+        self::assertSame(0, $reports->month('2026-08')['overtime_minutes']);
 
         $this->putJson('/jours/2026-07-31', ['start_time' => '07:45', 'driving' => '09:00', 'warehouse' => '', 'meal_mode' => 'auto', 'meal_amount' => ''])->assertOk();
         $week = $reports->week('2026-07-27');
-        self::assertSame(540, $week['overtime_minutes']);
-        self::assertSame(480, $week['overtime_25_minutes']);
-        self::assertSame(60, $week['overtime_50_minutes']);
+        self::assertSame(120, $week['overtime_minutes']);
+        self::assertSame(120, $week['overtime_25_minutes']);
+        self::assertSame(0, $week['overtime_50_minutes']);
         self::assertSame(120, $reports->month('2026-07')['overtime_minutes']);
-        self::assertSame(420, $reports->month('2026-08')['overtime_minutes']);
+        self::assertSame(0, $reports->month('2026-08')['overtime_minutes']);
+    }
+
+    public function test_august_31_does_not_contribute_to_september_overtime(): void
+    {
+        WorkDay::query()->create([
+            'date' => '2026-08-31',
+            'driving_minutes' => 600,
+            'warehouse_minutes' => 0,
+            'meal_allowance_mode' => 'auto',
+        ]);
+        foreach (['2026-09-01', '2026-09-02', '2026-09-03', '2026-09-04'] as $date) {
+            WorkDay::query()->create([
+                'date' => $date,
+                'driving_minutes' => 540,
+                'warehouse_minutes' => 0,
+                'meal_allowance_mode' => 'auto',
+            ]);
+        }
+
+        $reports = app(ReportService::class);
+        self::assertSame(0, $reports->month('2026-08')['overtime_minutes']);
+        self::assertSame(60, $reports->month('2026-09')['overtime_minutes']);
+        self::assertSame(0, $reports->week('2026-08-31')['overtime_minutes']);
+        self::assertSame(60, $reports->week('2026-09-01')['overtime_25_minutes']);
+        self::assertSame(0, $reports->week('2026-09-01')['overtime_50_minutes']);
     }
 
     public function test_overtime_amount_applies_25_then_50_percent_each_week(): void

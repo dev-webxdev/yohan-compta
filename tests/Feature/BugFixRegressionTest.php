@@ -253,11 +253,11 @@ final class BugFixRegressionTest extends TestCase
         $this->deleteJson('/jours/2026-08-03')->assertStatus(405);
     }
 
-    public function test_month_boundary_keeps_the_same_calendar_week(): void
+    public function test_month_boundary_splits_week_without_cross_month_hours(): void
     {
         self::assertSame('2026-08-31', WeekCalculator::weekId('2026-08-31'));
-        self::assertSame('2026-09-06', WeekCalculator::periodEnd('2026-08-31')->format('Y-m-d'));
-        self::assertSame('2026-08-31', WeekCalculator::weekId('2026-09-01'));
+        self::assertSame('2026-08-31', WeekCalculator::periodEnd('2026-08-31')->format('Y-m-d'));
+        self::assertSame('2026-09-01', WeekCalculator::weekId('2026-09-01'));
     }
 
     public function test_money_formatting_stays_exact_without_float_conversion(): void
