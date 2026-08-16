@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="/vendor/fontawesome/css/fontawesome.min.css">
     <link rel="stylesheet" href="/vendor/fontawesome/css/solid.min.css">
     <link rel="stylesheet" href="/vendor/fontawesome/css/regular.min.css">
-    <link rel="stylesheet" href="/app.css">
+    <link rel="stylesheet" href="/app.css?v={{ filemtime(public_path('app.css')) }}">
 </head>
 <body>
 @php
@@ -64,7 +64,7 @@
         <button type="button" class="confirm-dialog-submit" id="confirm-dialog-submit">Confirmer</button>
     </div>
 </dialog>
-<script src="/app.js" defer></script>
+<script src="/app.js?v={{ filemtime(public_path('app.js')) }}" defer></script>
 @stack('scripts')
 </body>
 </html>

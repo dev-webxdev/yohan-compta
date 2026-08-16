@@ -215,8 +215,7 @@ a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible,
 .dialog-copy:hover{background:#f3f7fd;border-color:#b9cbed}
 .payment-filters{display:flex;align-items:end;gap:9px;margin:12px 0}
 .payment-filters label{display:flex;flex-direction:column;gap:4px;font-size:11px;color:var(--muted)}
-.payment-filters input,.payment-filters select{height:34px;border:1px solid #d9e0e8;border-radius:6px;background:#fff;padding:0 9px;color:var(--text)}
-.payment-filters input{width:210px}
+.payment-filters select{height:34px;border:1px solid #d9e0e8;border-radius:6px;background:#fff;padding:0 9px;color:var(--text)}
 .pagination{display:flex;justify-content:center;align-items:center;gap:10px;margin-top:14px;font-size:11px;color:var(--muted)}
 .future-payment{display:inline-block;margin-left:7px;padding:2px 6px;border-radius:10px;background:#eef4ff;color:#2678ff;font-size:9px;font-weight:650}
 
@@ -225,7 +224,7 @@ a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible,
   .more-button,.rest-check,.bare-icon{min-width:40px;min-height:40px}
   .dialog-copy{height:40px;padding:0 10px}
   .payment-filters{display:grid;grid-template-columns:1fr 1fr;align-items:end}
-  .payment-filters label,.payment-filters input,.payment-filters select{width:100%}
+  .payment-filters label,.payment-filters select{width:100%}
   .pagination{justify-content:space-between}
   .future-notice{font-size:10px;margin-bottom:10px}
 }

@@ -19,15 +19,11 @@ final class PaymentController
     {
         $filterMonth = trim((string) $request->query('month', ''));
         $filterYear = $request->integer('year');
-        $search = trim((string) $request->query('q', ''));
         if ($filterMonth !== '' && !DateRange::isMonth($filterMonth)) {
             abort(404);
         }
         if ($filterYear !== 0 && !DateRange::containsYear($filterYear)) {
             abort(404);
-        }
-        if (mb_strlen($search) > 100) {
-            $search = mb_substr($search, 0, 100);
         }
 
         $query = OvertimePayment::query()->orderByDesc('payment_date')->orderByDesc('id');
@@ -36,9 +32,6 @@ final class PaymentController
             $query->whereBetween('payment_date', [$start->format('Y-m-d'), $start->modify('last day of this month')->format('Y-m-d')]);
         } elseif ($filterYear !== 0) {
             $query->whereBetween('payment_date', [$filterYear.'-01-01', $filterYear.'-12-31']);
-        }
-        if ($search !== '') {
-            $query->where('period_reference', 'like', '%'.$search.'%');
         }
 
         $payments = $query->paginate(50)->withQueryString();
@@ -67,7 +60,6 @@ final class PaymentController
             'availableMonths' => $availableMonths,
             'filterMonth' => $filterMonth,
             'filterYear' => $filterYear,
-            'search' => $search,
         ]);
     }
 

@@ -80,7 +80,7 @@ final class ApprovedAuditImprovementsTest extends TestCase
         self::assertSame('strict', config('session.same_site'));
     }
 
-    public function test_payment_history_can_be_filtered_by_available_month_and_reference(): void
+    public function test_payment_history_can_be_filtered_by_available_month_without_manual_text(): void
     {
         OvertimePayment::query()->create([
             'payment_date' => '2025-08-10',
@@ -98,7 +98,7 @@ final class ApprovedAuditImprovementsTest extends TestCase
             'period_reference' => 'Août camion',
         ]);
 
-        $this->get('/paiements?month=2026-08&q=camion')
+        $this->get('/paiements?month=2026-08')
             ->assertOk()
             ->assertSee('Août camion')
             ->assertDontSee('Juillet camion')
@@ -106,7 +106,7 @@ final class ApprovedAuditImprovementsTest extends TestCase
             ->assertSee('name="month"', false)
             ->assertSee('Juillet 2026')
             ->assertSee('Août 2026')
-            ->assertSee('name="q"', false);
+            ->assertDontSee('name="q"', false);
 
         $this->get('/paiements?month=2026-13')->assertNotFound();
     }
@@ -143,4 +143,15 @@ final class ApprovedAuditImprovementsTest extends TestCase
         self::assertStringNotContainsString('data-copy-week', $html);
         self::assertStringContainsString('.mobile-menu-backdrop', $css);
     }
+
+    public function test_custom_assets_are_versioned_after_deployments(): void
+    {
+        $this->get('/mois/2026-08')
+            ->assertOk()
+            ->assertSee('/app.css?v='.filemtime(public_path('app.css')), false)
+            ->assertSee('/app.js?v='.filemtime(public_path('app.js')), false);
+        $loginView = file_get_contents(resource_path('views/auth/login.blade.php'));
+        self::assertStringContainsString("/auth.css?v={{ filemtime(public_path('auth.css')) }}", $loginView);
+    }
+
 }

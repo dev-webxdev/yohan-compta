@@ -7,8 +7,8 @@
     <title>Connexion — {{ config('app.name') }}</title>
     <link rel="stylesheet" href="/vendor/fontawesome/css/fontawesome.min.css">
     <link rel="stylesheet" href="/vendor/fontawesome/css/solid.min.css">
-    <link rel="stylesheet" href="/app.css">
-    <link rel="stylesheet" href="/auth.css">
+    <link rel="stylesheet" href="/app.css?v={{ filemtime(public_path('app.css')) }}">
+    <link rel="stylesheet" href="/auth.css?v={{ filemtime(public_path('auth.css')) }}">
 </head>
 <body class="auth-page">
 <main class="auth-shell">

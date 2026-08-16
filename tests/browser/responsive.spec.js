@@ -154,6 +154,15 @@ test('rest checkbox supersedes a late keepalive from the previous page', async (
 
 test('weekly summary metrics stay inside their cards without overlap', async ({page}) => {
     await page.goto('/mois/2026-08');
+    const cards = page.locator('.week-card');
+    const cardCount = await cards.count();
+    expect(cardCount).toBeGreaterThan(0);
+    for (let index = 0; index < cardCount; index += 1) {
+        const card = cards.nth(index);
+        await expect(card.getByText('Montant heures sup :', {exact: true})).toBeVisible();
+        await expect(card.locator('.green-value')).toContainText('net');
+    }
+
     const layout = await page.locator('.week-card').evaluateAll(cards => cards.map(card => {
         const metrics = card.querySelector('.week-metrics');
         const children = metrics ? [...metrics.children] : [];
@@ -176,5 +185,5 @@ test('payment history exposes lightweight filters', async ({page}) => {
     await page.goto('/paiements');
     await expect(page.getByRole('heading', {name: 'Historique des paiements d’heures supplémentaires'})).toBeVisible();
     await expect(page.locator('.payment-filters select[name="month"]')).toBeVisible();
-    await expect(page.locator('.payment-filters input[name="q"]')).toBeVisible();
+    await expect(page.locator('.payment-filters input[name="q"]')).toHaveCount(0);
 });

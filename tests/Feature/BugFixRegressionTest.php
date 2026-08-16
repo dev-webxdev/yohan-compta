@@ -101,7 +101,7 @@ final class BugFixRegressionTest extends TestCase
         self::assertStringNotContainsString('zoom:', $css);
     }
 
-    public function test_week_totals_show_overtime_tiers_and_majorated_net_amount(): void
+    public function test_week_totals_show_overtime_tiers_and_net_amount(): void
     {
         $this->get('/mois/2026-08')->assertOk()->assertSee('Montant heures sup :');
         $css = file_get_contents(public_path('app.css'));
@@ -112,7 +112,7 @@ final class BugFixRegressionTest extends TestCase
         self::assertStringContainsString('.week-metrics b{font-size:10px}', $css);
         self::assertStringContainsString("Time::formatDuration(\$week['overtime_25_minutes'])", $view);
         self::assertStringContainsString("Time::formatDuration(\$week['overtime_50_minutes'])", $view);
-        self::assertStringContainsString("Money::formatCents(\$week['overtime_net_cents']) }} net majoré</b>", $view);
+        self::assertStringContainsString("Money::formatCents(\$week['overtime_net_cents']) }} net</b>", $view);
         self::assertStringNotContainsString("\$week['overtime_gross_cents']", $view);
         self::assertStringContainsString('.week-metrics{grid-template-columns:minmax(0,1fr) max-content;', $css);
         self::assertStringContainsString('.week-card{overflow:hidden}', $css);
