@@ -47,12 +47,9 @@ APP_ENV=production
 APP_DEBUG=false
 APP_URL=https://votre-domaine.example
 SESSION_SECURE_COOKIE=true
-BACKUP_RETENTION=20
 ```
 
 Terminer TLS au niveau du serveur web/reverse proxy, conserver `storage/` accessible en écriture par PHP, puis exécuter `php artisan migrate --force` à chaque déploiement. L'application ajoute automatiquement CSP, HSTS sur une URL HTTPS, anti-clickjacking, `nosniff`, une politique de référent stricte et une limitation renforcée des tentatives de connexion.
-
-Les sauvegardes SQLite de sécurité restent manuelles/associées aux restaurations ; seules les `BACKUP_RETENTION` plus récentes sont conservées afin d'éviter une croissance illimitée du stockage.
 
 ## Principes métier
 
@@ -69,8 +66,8 @@ Les sauvegardes SQLite de sécurité restent manuelles/associées aux restaurati
 - la dette globale et le détail par mois sont suivis en net ;
 - les données calculées (semaines, totaux, soldes) sont recalculées depuis les données sources ;
 - export CSV disponible pour le détail mensuel et le rapport annuel ;
-- sauvegarde manuelle, restauration et sauvegardes de sécurité SQLite disponibles dans les paramètres ;
-- aucune suppression complète d’une journée : une journée peut être modifiée, mise en repos ou recopiée depuis la veille/semaine précédente.
+- sauvegarde manuelle à télécharger et restauration SQLite disponibles dans les paramètres ;
+- aucune suppression complète d’une journée : une journée peut être modifiée, mise en repos ou recopiée depuis la veille.
 
 ## Tests
 

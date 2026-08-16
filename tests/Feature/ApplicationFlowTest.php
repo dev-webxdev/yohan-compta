@@ -169,6 +169,24 @@ final class ApplicationFlowTest extends TestCase
         $payment = OvertimePayment::query()->firstOrFail();
         self::assertSame(1300, $payment->amount_cents);
         self::assertSame(60, $payment->hours_paid_minutes);
+        self::assertSame(240, app(ReportService::class)->balance()['remaining_minutes_indicative']);
+    }
+
+    public function test_rest_day_ignores_work_fields_that_are_no_longer_relevant(): void
+    {
+        $this->putJson('/jours/2026-08-03', [
+            'start_time' => 'invalide',
+            'driving' => 'invalide',
+            'warehouse' => 'invalide',
+            'is_rest' => true,
+            'meal_mode' => 'invalide',
+            'meal_amount' => 'invalide',
+        ])->assertOk();
+
+        $day = WorkDay::query()->whereDate('date', '2026-08-03')->firstOrFail();
+        self::assertTrue($day->is_rest);
+        self::assertSame(0, $day->driving_minutes);
+        self::assertSame(0, $day->warehouse_minutes);
     }
 
     public function test_payment_hours_can_exceed_calculated_remaining_overtime(): void

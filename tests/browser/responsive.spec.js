@@ -70,6 +70,36 @@ test('day editor saves a row and reports the new total', async ({page}) => {
     await expect(page.locator('#save-state')).toContainText(/Enregistré|Toutes les modifications/);
 });
 
+test('rest checkbox saves the day as rest', async ({page}, testInfo) => {
+    await page.goto('/mois/2026-08');
+    const showMore = page.locator('#toggle-days-mobile');
+    if (await showMore.isVisible()) {
+        await showMore.click();
+    }
+
+    const dates = {
+        'mobile-390': '2026-08-18',
+        'tablet-768': '2026-08-19',
+        'desktop-1440': '2026-08-20',
+        'wide-2560': '2026-08-21',
+    };
+    const date = dates[testInfo.project.name];
+    const row = page.locator(`.work-row[data-date="${date}"]`);
+    const toggle = row.locator('.rest-toggle');
+    await expect(toggle).not.toBeChecked();
+
+    const responsePromise = page.waitForResponse(response =>
+        response.url().endsWith(`/jours/${date}`) && response.request().method() === 'PUT',
+    );
+    await toggle.check();
+    const response = await responsePromise;
+
+    expect(response.ok()).toBeTruthy();
+    await expect(toggle).toBeChecked();
+    await expect(row).toHaveClass(/row-rest/);
+    await expect(row.locator('.total-cell strong')).toHaveText('—');
+});
+
 test('payment history exposes lightweight filters', async ({page}) => {
     await page.goto('/paiements');
     await expect(page.getByRole('heading', {name: 'Historique des paiements d’heures supplémentaires'})).toBeVisible();

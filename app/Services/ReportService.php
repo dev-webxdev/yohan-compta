@@ -264,8 +264,12 @@ final class ReportService
             ->whereDate('payment_date', '<=', now()->format('Y-m-d'))
             ->orderBy('payment_date')
             ->orderBy('id')
-            ->get(['id', 'amount_cents'])
-            ->map(fn (OvertimePayment $payment) => ['id' => $payment->id, 'amount_cents' => $payment->amount_cents])
+            ->get(['id', 'amount_cents', 'hours_paid_minutes'])
+            ->map(fn (OvertimePayment $payment) => [
+                'id' => $payment->id,
+                'amount_cents' => $payment->amount_cents,
+                'hours_paid_minutes' => $payment->hours_paid_minutes,
+            ])
             ->all();
 
         return $this->allocationCache = PaymentAllocator::allocate($debts, $payments);

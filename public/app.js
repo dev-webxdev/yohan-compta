@@ -522,31 +522,4 @@
             showSaveError(error.message);
         }
     });
-
-    qa('[data-copy-week]').forEach(button => button.addEventListener('click', async () => {
-        try {
-            const week = button.dataset.copyWeek;
-            const previewResponse = await fetch(`/semaines/${week}/copie-precedente`, {headers: {Accept: 'application/json'}});
-            const preview = await previewResponse.json().catch(() => ({}));
-            if (!previewResponse.ok) throw new Error(preview.message || 'Impossible de préparer la copie.');
-            if (!preview.count) throw new Error('La semaine précédente ne contient aucune saisie à recopier.');
-            const mappings = preview.items.filter(item => item.has_source).map(item => `${item.source} → ${item.target}`).join(' · ');
-            const accepted = await askConfirmation({
-                title: 'Recopier la semaine précédente ?',
-                message: `${preview.count} jour(s) seront recopiés : ${mappings}. Les journées cibles correspondantes seront remplacées.`,
-                action: 'Recopier',
-            });
-            if (!accepted) return;
-            await flushRows(qa('.work-row'));
-            const response = await fetch(`/semaines/${week}/copie-precedente`, {
-                method: 'POST',
-                headers: {Accept: 'application/json', 'X-CSRF-TOKEN': token},
-            });
-            const data = await response.json().catch(() => ({}));
-            if (!response.ok) throw new Error(data.message || 'Impossible de recopier la semaine précédente.');
-            location.reload();
-        } catch (error) {
-            showSaveError(error.message);
-        }
-    }));
 })();

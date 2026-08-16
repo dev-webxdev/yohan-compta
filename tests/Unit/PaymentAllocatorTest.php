@@ -34,6 +34,32 @@ final class PaymentAllocatorTest extends TestCase
         self::assertSame(0, $result['by_month']['2026-08']['remaining_minutes_indicative']);
     }
 
+    public function test_explicit_paid_hours_are_independent_from_payment_amount(): void
+    {
+        $result = PaymentAllocator::allocate(
+            ['2026-08' => ['generated' => 30000, 'overtime_minutes' => 1635]],
+            [['id' => 1, 'amount_cents' => 10000, 'hours_paid_minutes' => 60]],
+        );
+
+        self::assertSame(20000, $result['by_month']['2026-08']['remaining']);
+        self::assertSame(1575, $result['by_month']['2026-08']['remaining_minutes_indicative']);
+    }
+
+    public function test_explicit_hours_follow_fifo_across_months(): void
+    {
+        $result = PaymentAllocator::allocate([
+            '2026-07' => ['generated' => 2000, 'overtime_minutes' => 120],
+            '2026-08' => ['generated' => 3000, 'overtime_minutes' => 180],
+        ], [[
+            'id' => 1,
+            'amount_cents' => 5000,
+            'hours_paid_minutes' => 150,
+        ]]);
+
+        self::assertSame(0, $result['by_month']['2026-07']['remaining_minutes_indicative']);
+        self::assertSame(150, $result['by_month']['2026-08']['remaining_minutes_indicative']);
+    }
+
     public function test_reallocation_is_deterministic_after_retroactive_debt_change(): void
     {
         $payments = [['id' => 1, 'amount_cents' => 6000]];
