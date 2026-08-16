@@ -364,8 +364,9 @@ final class ApplicationFlowTest extends TestCase
     public function test_rest_days_and_fill_states_are_distinct(): void
     {
         $html = $this->get('/mois/2026-08')->assertOk()->getContent();
-        self::assertMatchesRegularExpression('/class="work-row row-rest" data-date="2026-08-02"[^>]*data-is-rest="1"/', $html);
-        self::assertMatchesRegularExpression('/class="work-row row-needs-fill" data-date="2026-08-03"[^>]*data-is-rest="0"/', $html);
+        self::assertStringNotContainsString('data-is-rest=', $html);
+        self::assertMatchesRegularExpression('/class="work-row row-rest" data-date="2026-08-02"/', $html);
+        self::assertMatchesRegularExpression('/class="work-row row-needs-fill" data-date="2026-08-03"/', $html);
 
         $this->putJson('/jours/2026-08-02', [
             'start_time' => '07:45',
@@ -379,7 +380,7 @@ final class ApplicationFlowTest extends TestCase
         $sunday = WorkDay::query()->whereDate('date', '2026-08-02')->firstOrFail();
         self::assertFalse($sunday->is_rest);
         $html = $this->get('/mois/2026-08')->getContent();
-        self::assertMatchesRegularExpression('/class="work-row row-needs-fill" data-date="2026-08-02"[^>]*data-is-rest="0"/', $html);
+        self::assertMatchesRegularExpression('/class="work-row row-needs-fill" data-date="2026-08-02"/', $html);
 
         $this->putJson('/jours/2026-08-03', [
             'start_time' => '09:00',
@@ -408,7 +409,7 @@ final class ApplicationFlowTest extends TestCase
         self::assertSame(0, app(ReportService::class)->month('2026-08')['worked_minutes']);
 
         $html = $this->get('/mois/2026-08')->getContent();
-        self::assertMatchesRegularExpression('/class="work-row row-rest" data-date="2026-08-03"[^>]*data-is-rest="1"/', $html);
+        self::assertMatchesRegularExpression('/class="work-row row-rest" data-date="2026-08-03"/', $html);
         self::assertMatchesRegularExpression('/name="driving" value="08:00"[^>]*disabled/', $html);
 
         $this->putJson('/jours/2026-08-03', [
@@ -430,7 +431,7 @@ final class ApplicationFlowTest extends TestCase
             'meal_amount' => '',
         ])->assertOk();
         $html = $this->get('/mois/2026-08')->getContent();
-        self::assertMatchesRegularExpression('/class="work-row row-filled" data-date="2026-08-04"[^>]*data-is-rest="0"/', $html);
+        self::assertMatchesRegularExpression('/class="work-row row-filled" data-date="2026-08-04"/', $html);
     }
 
     public function test_day_deletion_endpoint_is_removed(): void

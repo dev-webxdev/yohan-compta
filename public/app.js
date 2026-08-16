@@ -235,8 +235,7 @@
     };
 
     const syncRow = row => {
-        const isRest = q('.rest-toggle', row)?.checked ?? row.dataset.isRest === '1';
-        row.dataset.isRest = isRest ? '1' : '0';
+        const isRest = q('.rest-toggle', row).checked;
         qa('[name="start_time"], [name="driving"], [name="warehouse"]', row).forEach(input => { input.disabled = isRest; });
         qa('.edit-day, .edit-meal', row).forEach(button => { button.disabled = isRest; });
 

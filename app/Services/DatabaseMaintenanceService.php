@@ -18,14 +18,9 @@ final class DatabaseMaintenanceService
 
     public function createDownloadCopy(): string
     {
-        return $this->createSnapshot(
-            rtrim(sys_get_temp_dir(), DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR.'yohan-compta-download-'.bin2hex(random_bytes(6)).'.sqlite',
-        );
-    }
-
-    private function createSnapshot(string $path): string
-    {
         $this->assertSqliteConnection();
+        $path = rtrim(sys_get_temp_dir(), DIRECTORY_SEPARATOR)
+            .DIRECTORY_SEPARATOR.'yohan-compta-download-'.bin2hex(random_bytes(6)).'.sqlite';
         $pdo = DB::connection($this->connectionName())->getPdo();
         $quotedPath = $pdo->quote($path);
 
@@ -41,12 +36,10 @@ final class DatabaseMaintenanceService
 
     public function restoreFrom(string $sourcePath): void
     {
-        $this->databaseLock->exclusive(
-            fn (): null => $this->restoreDatabaseLocked($sourcePath),
-        );
+        $this->databaseLock->exclusive(fn () => $this->restoreDatabaseLocked($sourcePath));
     }
 
-    private function restoreDatabaseLocked(string $sourcePath): null
+    private function restoreDatabaseLocked(string $sourcePath): void
     {
         $this->validateDatabaseFile($sourcePath);
         $databasePath = $this->databasePath();
@@ -99,8 +92,6 @@ final class DatabaseMaintenanceService
                 $error,
             );
         }
-
-        return null;
     }
 
     public function validateDatabaseFile(string $path): void
