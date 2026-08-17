@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="/vendor/fontawesome/css/solid.min.css">
     <link rel="stylesheet" href="/vendor/fontawesome/css/regular.min.css">
     <link rel="stylesheet" href="/app.css?v={{ filemtime(public_path('app.css')) }}">
+    <link rel="stylesheet" href="/lock-state.css?v={{ filemtime(public_path('lock-state.css')) }}">
 </head>
 <body>
 @php
