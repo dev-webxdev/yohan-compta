@@ -1,0 +1,9 @@
+.day-lock-state{display:none!important}
+.day-lock-toggle{display:inline-grid;place-items:center;width:26px;height:26px;margin-left:5px;padding:0;border:0;border-radius:7px;background:#eef1f4;color:#687386;font-size:0;line-height:1;text-decoration:none;cursor:pointer;vertical-align:middle;transition:background .15s ease,color .15s ease,transform .15s ease}
+.day-lock-toggle::before{content:"\f023";font-family:"Font Awesome 6 Free";font-size:12px;font-weight:900}
+.day-lock-toggle:hover{background:#e5e9ee;color:#3f4b5e}
+.day-lock-toggle:active{transform:scale(.94)}
+.row-temporarily-unlocked .day-lock-toggle{background:#eef4ff;color:#1768ef}
+.row-temporarily-unlocked .day-lock-toggle::before{content:"\f3c1"}
+.row-temporarily-unlocked .day-lock-toggle:hover{background:#e2edff;color:#0f5fd9}
+@media(max-width:720px){.day-lock-toggle{display:inline-grid;width:24px;height:24px;margin:1px 0 0}.day-lock-toggle::before{font-size:11px}}
