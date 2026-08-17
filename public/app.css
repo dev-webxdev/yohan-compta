@@ -219,6 +219,7 @@ a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible,
 @media(max-width:720px){
   .app-shell.mobile-menu-open .mobile-menu-backdrop{display:block;position:fixed;inset:0 0 58px;z-index:49}
   .more-button,.rest-check,.bare-icon{min-width:40px;min-height:40px}
+  .mobile-calendar{width:40px;height:40px;display:grid;place-items:center;color:#42516a;text-decoration:none;font-size:18px;border-radius:8px}
   .dialog-copy{height:40px;padding:0 10px}
   .pagination{justify-content:space-between}
   .future-notice{font-size:10px;margin-bottom:10px}

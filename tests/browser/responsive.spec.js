@@ -25,6 +25,18 @@ test('dashboard stays usable without page-level horizontal overflow', async ({pa
     const firstRow = page.locator('.work-row').first();
     await expect(firstRow).toBeVisible();
     await expect(firstRow.locator('[name="driving"]')).toHaveAttribute('aria-label', /Conduite du/);
+
+    const calendar = page.locator('.mobile-calendar');
+    if (await calendar.isVisible()) {
+        const calendarBox = await calendar.boundingBox();
+        const menuBox = await page.locator('.mobile-menu-toggle').boundingBox();
+        expect(calendarBox).not.toBeNull();
+        expect(menuBox).not.toBeNull();
+        expect(calendarBox.width).toBeGreaterThanOrEqual(40);
+        expect(calendarBox.height).toBeGreaterThanOrEqual(40);
+        expect(Math.abs((calendarBox.y + calendarBox.height / 2) - (menuBox.y + menuBox.height / 2)))
+            .toBeLessThanOrEqual(1);
+    }
 });
 
 test('mobile menu is focus-safe and closes with Escape when available', async ({page}) => {
@@ -56,7 +68,9 @@ test('day editor saves a row and reports the new total', async ({page}) => {
     await expect(page.locator('#day-dialog')).toBeVisible();
 
     const dialog = page.locator('#day-dialog');
+    await expect(dialog.locator('#dialog-end')).toHaveText('');
     await dialog.locator('input[name="driving"]').fill('01:00');
+    await expect(dialog.locator('#dialog-end')).toHaveText('08:45');
     await dialog.locator('input[name="warehouse"]').fill('');
 
     const responsePromise = page.waitForResponse(response =>

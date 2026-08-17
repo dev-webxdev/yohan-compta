@@ -427,6 +427,13 @@
         if (!forced) mealAmount.value = '';
     };
     const syncDialogComputed = () => {
+        if (form.elements.driving.value.trim() === '' && form.elements.warehouse.value.trim() === '') {
+            q('#dialog-end').textContent = '';
+            if (activeRow) {
+                q('#dialog-auto-amount').textContent = `(${formatMoney(0)})`;
+            }
+            return;
+        }
         const start = parseClock(form.elements.start_time.value);
         const driving = parseDuration(form.elements.driving.value);
         const warehouse = parseDuration(form.elements.warehouse.value);
