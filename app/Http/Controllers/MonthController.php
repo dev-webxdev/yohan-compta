@@ -33,6 +33,7 @@ final class MonthController
             $calendarDays[] = [
                 'date' => $cursor,
                 'work_day' => $workDay,
+                'is_locked' => $date < now()->format('Y-m-d'),
                 'is_rest' => $isRest,
                 'needs_fill' => !$isRest && $worked === 0,
                 'start' => $start,

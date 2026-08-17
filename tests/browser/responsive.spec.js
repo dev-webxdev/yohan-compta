@@ -55,6 +55,26 @@ test('mobile menu is focus-safe and closes with Escape when available', async ({
     await expect(toggle).toBeFocused();
 });
 
+test('past day is locked and can be temporarily unlocked', async ({page}) => {
+    await page.goto('/mois/2026-08');
+
+    const row = page.locator('.work-row[data-date="2026-08-04"]');
+    await expect(row).toHaveAttribute('data-locked', '1');
+    await expect(row.locator('[name="driving"]')).toBeDisabled();
+    await expect(row.locator('.rest-toggle')).toBeDisabled();
+
+    const unlock = row.locator('.day-lock-toggle');
+    await expect(unlock).toHaveText('Déverrouiller');
+    await unlock.click();
+    await expect(row).toHaveAttribute('data-unlocked', '1');
+    await expect(row.locator('[name="driving"]')).toBeEnabled();
+    await expect(unlock).toHaveText('Verrouiller');
+
+    await unlock.click();
+    await expect(row).toHaveAttribute('data-unlocked', '0');
+    await expect(row.locator('[name="driving"]')).toBeDisabled();
+});
+
 test('day editor saves a row and reports the new total', async ({page}) => {
     await page.goto('/mois/2026-08');
     const showMore = page.locator('#toggle-days-mobile');

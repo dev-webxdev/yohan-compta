@@ -56,7 +56,7 @@ final class ApprovedAuditImprovementsTest extends TestCase
             'meal_allowance_mode' => 'auto',
         ]);
 
-        $this->postJson('/jours/2026-08-18/copier-veille')->assertOk();
+        $this->postJson('/jours/2026-08-18/copier-veille', ['unlocked' => true])->assertOk();
 
         $target = WorkDay::query()->whereDate('date', '2026-08-18')->firstOrFail();
         self::assertSame(480, $target->start_time_minutes);

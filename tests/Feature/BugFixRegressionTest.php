@@ -5,6 +5,8 @@ namespace Tests\Feature;
 use App\Services\WeekCalculator;
 use App\Support\Money;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 final class BugFixRegressionTest extends TestCase
@@ -25,6 +27,37 @@ final class BugFixRegressionTest extends TestCase
         $response->assertDontSee('aria-label="Apparence"', false);
         $response->assertDontSee('aria-label="Notifications"', false);
         $response->assertDontSee('aria-label="Profil"', false);
+    }
+
+    public function test_past_days_are_locked_until_explicitly_unlocked_without_database_state(): void
+    {
+        Carbon::setTestNow('2026-08-17 12:00:00');
+
+        $content = $this->get('/mois/2026-08')->assertOk()->getContent();
+        self::assertMatchesRegularExpression('/data-date="2026-08-16"[^>]*data-locked="1"[^>]*data-unlocked="0"/s', $content);
+        self::assertMatchesRegularExpression('/data-date="2026-08-17"[^>]*data-locked="0"/s', $content);
+        self::assertStringContainsString('Déverrouiller', $content);
+        self::assertFalse(Schema::hasColumn('work_days', 'is_locked'));
+        self::assertFalse(Schema::hasColumn('work_days', 'locked'));
+
+        $payload = [
+            'start_time' => '07:45',
+            'driving' => '01:00',
+            'warehouse' => '',
+            'meal_mode' => 'auto',
+            'meal_amount' => '',
+        ];
+
+        $this->json('PUT', '/jours/2026-08-16', $payload)
+            ->assertStatus(423)
+            ->assertJsonPath('message', 'Cette journée est verrouillée. Déverrouillez-la avant de la modifier.');
+
+        $this->json('PUT', '/jours/2026-08-16', $payload + ['unlocked' => true])->assertOk();
+        $this->json('PUT', '/jours/2026-08-17', $payload)->assertOk();
+
+        $javascript = file_get_contents(public_path('app.js'));
+        self::assertStringContainsString("row.dataset.unlocked = unlocking ? '1' : '0';", $javascript);
+        self::assertStringContainsString("unlocked: row.dataset.unlocked === '1'", $javascript);
     }
 
     public function test_secondary_pages_render_with_their_ui_sections(): void

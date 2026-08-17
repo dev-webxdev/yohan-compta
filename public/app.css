@@ -108,12 +108,22 @@
 .rest-check span{display:none}
 .row-rest .time-input:disabled{background:#eceff2;color:#8b94a2;border-color:#dfe3e8}
 .edit-day:disabled{cursor:default;opacity:.45}
+.work-table tbody tr.row-locked{background:#f4f6f8;color:#7b8595;box-shadow:inset 3px 0 0 #8993a3}
+.work-table tbody tr.row-locked:hover{background:#eff2f5}
+.work-table tbody tr.row-temporarily-unlocked{box-shadow:inset 3px 0 0 #2678ff}
+.day-lock-state{display:inline-flex;align-items:center;gap:4px;margin-left:6px;font-size:9px;font-weight:700;color:#687386}
+.row-temporarily-unlocked .day-lock-state{color:#1768ef}
+.day-lock-toggle{margin-left:5px;border:0;background:none;padding:1px 3px;color:#1768ef;font-size:9px;font-weight:700;cursor:pointer;text-decoration:underline}
+.row-locked .time-input:disabled,.row-locked .meal-button:disabled{background:#eceff2;color:#8b94a2;border-color:#dfe3e8;cursor:not-allowed}
 
 @media(max-width:720px){
   .work-table .work-row{grid-template-columns:48px 1fr 48px 44px 62px 18px}
   .work-table td:nth-child(7){display:block}
   .rest-cell{text-align:center!important}
   .row-state-label{display:none}
+  .day-lock-state{display:none}
+  .date-cell{overflow:visible}
+  .day-lock-toggle{display:block;margin:1px 0 0;padding:0;font-size:7px;line-height:1;white-space:nowrap}
 }
 /* UX audit improvements */
 .month-toolbar,.year-nav{position:relative}

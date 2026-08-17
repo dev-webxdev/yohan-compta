@@ -19,10 +19,16 @@ final class WorkDayController
     public function store(Request $request, SettingsService $settings, string $date): JsonResponse
     {
         abort_unless(DateRange::isDate($date), 404);
+        if ($date < now()->format('Y-m-d') && !$request->boolean('unlocked')) {
+            return response()->json([
+                'message' => 'Cette journée est verrouillée. Déverrouillez-la avant de la modifier.',
+            ], 423);
+        }
         $defaultStart = $settings->forDate($date)->default_start_time_minutes;
 
         $state = $request->validate([
             'is_rest' => ['sometimes', 'boolean'],
+            'unlocked' => ['sometimes', 'boolean'],
             'write_version' => ['nullable', 'integer', 'min:1'],
         ]);
         $isRest = (bool) ($state['is_rest'] ?? false);
@@ -97,9 +103,14 @@ final class WorkDayController
         return response()->json(['ok' => true, 'write_version' => $writeVersion]);
     }
 
-    public function copyPreviousDay(string $date): JsonResponse
+    public function copyPreviousDay(Request $request, string $date): JsonResponse
     {
         abort_unless(DateRange::isDate($date), 404);
+        if ($date < now()->format('Y-m-d') && !$request->boolean('unlocked')) {
+            return response()->json([
+                'message' => 'Cette journée est verrouillée. Déverrouillez-la avant de la modifier.',
+            ], 423);
+        }
         $sourceDate = (new DateTimeImmutable($date))->modify('-1 day')->format('Y-m-d');
         if (!DateRange::isDate($sourceDate)) {
             return response()->json(['message' => 'Aucune journée précédente disponible.'], 422);

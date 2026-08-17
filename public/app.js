@@ -235,9 +235,11 @@
     };
 
     const syncRow = row => {
+        const isLocked = row.dataset.locked === '1' && row.dataset.unlocked !== '1';
         const isRest = q('.rest-toggle', row).checked;
-        qa('[name="start_time"], [name="driving"], [name="warehouse"]', row).forEach(input => { input.disabled = isRest; });
-        qa('.edit-day, .edit-meal', row).forEach(button => { button.disabled = isRest; });
+        qa('[name="start_time"], [name="driving"], [name="warehouse"]', row).forEach(input => { input.disabled = isRest || isLocked; });
+        qa('.edit-day, .edit-meal', row).forEach(button => { button.disabled = isRest || isLocked; });
+        const restToggle = q('.rest-toggle', row); if (restToggle) restToggle.disabled = isLocked;
 
         const stateLabel = q('.row-state-label', row);
         row.classList.toggle('row-rest', isRest);
@@ -273,6 +275,7 @@
         is_rest: q('.rest-toggle', row)?.checked ?? false,
         meal_mode: row.dataset.mealMode || 'auto',
         meal_amount: row.dataset.mealAmount || '',
+        unlocked: row.dataset.unlocked === '1',
     });
 
     const writeVersions = new WeakMap();
@@ -351,6 +354,7 @@
 
     const flushPendingRows = () => {
         qa('.work-row').forEach(row => {
+            if (row.dataset.locked === '1' && row.dataset.unlocked !== '1') return;
             const body = rowBody(row);
             if (savedRowStates.get(row) === JSON.stringify(body)) return;
             if (!body.is_rest && !rowValues(row)) return;
@@ -420,6 +424,28 @@
             }
         });
     });
+
+    qa('.day-lock-toggle').forEach(button => button.addEventListener('click', async () => {
+        const row = button.closest('.work-row');
+        const unlocking = row.dataset.unlocked !== '1';
+        if (!unlocking) {
+            try {
+                await flushRows([row]);
+            } catch (error) {
+                showSaveError(error.message);
+                return;
+            }
+        }
+        row.dataset.unlocked = unlocking ? '1' : '0';
+        row.classList.toggle('row-locked', !unlocking);
+        row.classList.toggle('row-temporarily-unlocked', unlocking);
+        const label = q('.day-lock-state', row);
+        if (label) label.innerHTML = unlocking
+            ? '<i class="fa-solid fa-lock-open"></i> Modifiable temporairement'
+            : '<i class="fa-solid fa-lock"></i> Verrouillé';
+        button.textContent = unlocking ? 'Verrouiller' : 'Déverrouiller';
+        syncRow(row);
+    }));
 
     const syncMealInput = () => {
         const forced = form.elements.meal_mode.value === 'forced';
@@ -520,7 +546,8 @@
             await flushRows([activeRow]);
             const response = await fetch(`/jours/${activeRow.dataset.date}/copier-veille`, {
                 method: 'POST',
-                headers: {Accept: 'application/json', 'X-CSRF-TOKEN': token},
+                headers: {'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': token},
+                body: JSON.stringify({unlocked: activeRow.dataset.unlocked === '1'}),
             });
             const data = await response.json().catch(() => ({}));
             if (!response.ok) throw new Error(data.message || 'Impossible de recopier la journée précédente.');
