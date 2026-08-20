@@ -49,4 +49,16 @@ final class Time
 
         return sprintf('%02d:%02d', intdiv($minutes, 60) % 24, $minutes % 60);
     }
+
+    public static function formatClockWithDayOffset(?int $minutes): string
+    {
+        if ($minutes === null) {
+            return '';
+        }
+
+        $clock = self::formatClock($minutes);
+        $days = intdiv(max(0, $minutes), 1440);
+
+        return $days > 0 ? $clock.' (+'.$days.' j)' : $clock;
+    }
 }

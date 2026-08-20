@@ -16,6 +16,25 @@ use Illuminate\Validation\ValidationException;
 
 final class WorkDayController
 {
+    public function show(SettingsService $settings, string $date): JsonResponse
+    {
+        abort_unless(DateRange::isDate($date), 404);
+        $setting = $settings->forDate($date);
+        $day = WorkDay::query()->whereDate('date', $date)->first();
+        $isRest = $day ? $day->is_rest : (int) (new DateTimeImmutable($date))->format('N') === 7;
+
+        return response()->json([
+            'date' => $date,
+            'start_time' => Time::formatClock($day?->start_time_minutes ?? $setting->default_start_time_minutes),
+            'driving' => $day ? Time::formatDuration($day->driving_minutes) : '',
+            'warehouse' => $day ? Time::formatDuration($day->warehouse_minutes) : '',
+            'is_rest' => $isRest,
+            'meal_mode' => $day?->meal_allowance_mode ?? 'auto',
+            'meal_amount' => $day?->meal_allowance_forced_cents !== null ? Money::formatInput($day->meal_allowance_forced_cents) : '',
+            'write_version' => (int) ($day?->client_write_version ?? 0),
+        ]);
+    }
+
     public function store(Request $request, SettingsService $settings, string $date): JsonResponse
     {
         abort_unless(DateRange::isDate($date), 404);
@@ -158,7 +177,7 @@ final class WorkDayController
     private function staleWriteResponse(string $date): JsonResponse
     {
         return response()->json([
-            'message' => 'Une modification plus récente de cette journée a déjà été enregistrée. Rechargez la page avant de continuer.',
+            'message' => 'Une modification plus récente de cette journée a déjà été enregistrée.',
             'write_version' => (int) (WorkDay::query()->whereDate('date', $date)->value('client_write_version') ?? 0),
         ], 409);
     }

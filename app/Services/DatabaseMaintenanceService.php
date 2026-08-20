@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Support\DateRange;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use PDO;
@@ -11,6 +12,26 @@ use Throwable;
 final class DatabaseMaintenanceService
 {
     private const REQUIRED_TABLES = ['migrations', 'work_days', 'setting_periods', 'overtime_payments'];
+    private const BASELINE_COLUMNS = [
+        'migrations' => ['id', 'migration', 'batch'],
+        'work_days' => ['id', 'date', 'driving_minutes', 'warehouse_minutes', 'meal_allowance_mode', 'meal_allowance_forced_cents'],
+        'setting_periods' => ['id', 'effective_from', 'weekly_threshold_minutes', 'meal_allowance_cents', 'meal_allowance_time_minutes'],
+        'overtime_payments' => ['id', 'payment_date', 'amount_cents'],
+    ];
+    private const CURRENT_COLUMNS = [
+        'migrations' => ['id', 'migration', 'batch'],
+        'work_days' => [
+            'id', 'date', 'start_time_minutes', 'driving_minutes', 'warehouse_minutes', 'is_rest',
+            'meal_allowance_mode', 'meal_allowance_forced_cents', 'client_write_version', 'created_at', 'updated_at',
+        ],
+        'setting_periods' => [
+            'id', 'effective_from', 'default_start_time_minutes', 'hourly_net_rate_cents',
+            'weekly_threshold_minutes', 'meal_allowance_cents', 'meal_allowance_time_minutes',
+        ],
+        'overtime_payments' => [
+            'id', 'payment_date', 'amount_cents', 'hours_paid_minutes', 'period_reference', 'created_at', 'updated_at',
+        ],
+    ];
 
     public function __construct(private readonly DatabaseAccessLock $databaseLock)
     {
@@ -71,6 +92,7 @@ final class DatabaseMaintenanceService
             $this->assertLiveIntegrity();
             Artisan::call('migrate', ['--force' => true]);
             $this->assertLiveIntegrity();
+            $this->assertLiveSchema();
 
             @unlink($rollbackPath);
         } catch (Throwable $error) {
@@ -129,6 +151,10 @@ final class DatabaseMaintenanceService
                 throw new RuntimeException('La base SQLite fournie ne contient pas la structure attendue (table '.$table.' manquante).');
             }
         }
+
+        $this->assertBaselineSchema($pdo);
+        $this->assertKnownMigrations($pdo);
+        $this->assertSettingsCoverage($pdo);
     }
 
     private function assertLiveIntegrity(): void
@@ -147,6 +173,80 @@ final class DatabaseMaintenanceService
                 throw new RuntimeException('La base restaurée ne contient pas la table '.$table.'.');
             }
         }
+    }
+
+    private function assertBaselineSchema(PDO $pdo): void
+    {
+        foreach (self::BASELINE_COLUMNS as $table => $requiredColumns) {
+            $this->assertPdoColumns($pdo, $table, $requiredColumns);
+        }
+
+        $settingsColumns = $this->pdoColumns($pdo, 'setting_periods');
+        if (!array_intersect(['hourly_rate_cents', 'hourly_gross_rate_cents', 'hourly_net_rate_cents'], $settingsColumns)) {
+            throw new RuntimeException('La base SQLite fournie ne contient aucun taux horaire compatible.');
+        }
+    }
+
+    private function assertKnownMigrations(PDO $pdo): void
+    {
+        $known = [];
+        foreach (glob(database_path('migrations/*.php')) ?: [] as $path) {
+            $known[] = pathinfo($path, PATHINFO_FILENAME);
+        }
+
+        $stored = $pdo->query('SELECT migration FROM migrations')->fetchAll(PDO::FETCH_COLUMN);
+        $unknown = array_values(array_diff($stored, $known));
+        if ($unknown !== []) {
+            throw new RuntimeException('Cette sauvegarde provient d’une version plus récente ou incompatible de l’application.');
+        }
+    }
+
+    private function assertSettingsCoverage(PDO $pdo): void
+    {
+        $first = $pdo->query('SELECT MIN(effective_from) FROM setting_periods')->fetchColumn();
+        if (!is_string($first) || $first === '' || $first > DateRange::MIN_DATE) {
+            throw new RuntimeException('La base SQLite fournie ne contient pas de période de paramètres couvrant les données historiques.');
+        }
+    }
+
+    private function assertLiveSchema(): void
+    {
+        $connection = DB::connection($this->connectionName());
+        foreach (self::CURRENT_COLUMNS as $table => $requiredColumns) {
+            $rows = $connection->select('PRAGMA table_info("'.$table.'")');
+            $columns = array_map(static fn (object $row): string => (string) $row->name, $rows);
+            $missing = array_values(array_diff($requiredColumns, $columns));
+            if ($missing !== []) {
+                throw new RuntimeException('La base restaurée reste incompatible après migration ('.$table.' : '.implode(', ', $missing).' manquant'.(count($missing) > 1 ? 's' : '').').');
+            }
+        }
+
+        $firstSetting = $connection->table('setting_periods')->orderBy('effective_from')->first();
+        if (!$firstSetting || (string) $firstSetting->effective_from > DateRange::MIN_DATE) {
+            throw new RuntimeException('La base restaurée ne contient pas de paramètres historiques utilisables.');
+        }
+
+        $connection->table('work_days')->limit(1)->get();
+        $connection->table('overtime_payments')->limit(1)->get();
+    }
+
+    /** @param list<string> $requiredColumns */
+    private function assertPdoColumns(PDO $pdo, string $table, array $requiredColumns): void
+    {
+        $columns = $this->pdoColumns($pdo, $table);
+        $missing = array_values(array_diff($requiredColumns, $columns));
+        if ($missing !== []) {
+            throw new RuntimeException('La base SQLite fournie contient une structure incompatible ('.$table.' : '.implode(', ', $missing).' manquant'.(count($missing) > 1 ? 's' : '').').');
+        }
+    }
+
+    /** @return list<string> */
+    private function pdoColumns(PDO $pdo, string $table): array
+    {
+        return array_map(
+            static fn (array $row): string => (string) $row['name'],
+            $pdo->query('PRAGMA table_info("'.$table.'")')->fetchAll(PDO::FETCH_ASSOC),
+        );
     }
 
     private function disconnectDatabase(): void

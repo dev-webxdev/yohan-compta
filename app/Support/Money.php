@@ -4,6 +4,8 @@ namespace App\Support;
 
 final class Money
 {
+    public const MAX_INPUT_CENTS = 999_999_999;
+
     public static function wageNumerator(int $minutes, int $hourlyRateCents): int
     {
         return $minutes * $hourlyRateCents;
@@ -59,8 +61,21 @@ final class Money
         }
 
         [$whole, $decimal] = array_pad(explode('.', $normalized, 2), 2, '');
+        $whole = ltrim($whole, '0') ?: '0';
         $decimal = str_pad($decimal, 2, '0');
+        $maxWhole = (string) intdiv(self::MAX_INPUT_CENTS, 100);
 
-        return ((int) $whole * 100) + (int) substr($decimal, 0, 2);
+        if (strlen($whole) > strlen($maxWhole)
+            || (strlen($whole) === strlen($maxWhole) && strcmp($whole, $maxWhole) > 0)) {
+            throw new \InvalidArgumentException('Montant trop élevé.');
+        }
+
+        $cents = ((int) $whole * 100) + (int) substr($decimal, 0, 2);
+
+        if ($cents > self::MAX_INPUT_CENTS) {
+            throw new \InvalidArgumentException('Montant trop élevé.');
+        }
+
+        return $cents;
     }
 }

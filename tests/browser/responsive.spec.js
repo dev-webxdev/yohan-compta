@@ -10,6 +10,14 @@ async function login(page) {
     ]);
 }
 
+async function ensureEditable(row) {
+    if (await row.getAttribute('data-locked') !== '1') return;
+    if (await row.getAttribute('data-unlocked') === '1') return;
+
+    await row.locator('.day-lock-toggle').click();
+    await expect(row).toHaveAttribute('data-unlocked', '1');
+}
+
 test.beforeEach(async ({page}) => {
     await login(page);
 });
@@ -84,14 +92,16 @@ test('day editor saves a row and reports the new total', async ({page}) => {
 
     const row = page.locator('.work-row[data-date="2026-08-17"]');
     await expect(row).toBeVisible();
+    await ensureEditable(row);
     await row.locator('.edit-day').click();
     await expect(page.locator('#day-dialog')).toBeVisible();
 
     const dialog = page.locator('#day-dialog');
+    await dialog.locator('input[name="driving"]').fill('');
+    await dialog.locator('input[name="warehouse"]').fill('');
     await expect(dialog.locator('#dialog-end')).toHaveText('');
     await dialog.locator('input[name="driving"]').fill('01:00');
     await expect(dialog.locator('#dialog-end')).toHaveText('08:45');
-    await dialog.locator('input[name="warehouse"]').fill('');
 
     const responsePromise = page.waitForResponse(response =>
         response.url().endsWith('/jours/2026-08-17') && response.request().method() === 'PUT',
@@ -120,6 +130,7 @@ test('rest checkbox persists when checked and unchecked', async ({page}, testInf
     const date = dates[testInfo.project.name];
     const row = page.locator(`.work-row[data-date="${date}"]`);
     const toggle = row.locator('.rest-toggle');
+    await ensureEditable(row);
     await expect(toggle).not.toBeChecked();
 
     const responsePromise = page.waitForResponse(response =>
@@ -139,6 +150,7 @@ test('rest checkbox persists when checked and unchecked', async ({page}, testInf
     }
     const reloadedRow = page.locator(`.work-row[data-date="${date}"]`);
     const reloadedToggle = reloadedRow.locator('.rest-toggle');
+    await ensureEditable(reloadedRow);
     await expect(reloadedToggle).toBeChecked();
 
     const uncheckResponsePromise = page.waitForResponse(response =>
@@ -175,6 +187,7 @@ test('rest checkbox supersedes a late keepalive from the previous page', async (
     const date = dates[testInfo.project.name];
     const row = page.locator(`.work-row[data-date="${date}"]`);
     const toggle = row.locator('.rest-toggle');
+    await ensureEditable(row);
     const lateKeepaliveVersion = Date.now() - 1000;
 
     const preloadStatus = await page.evaluate(async ({date, lateKeepaliveVersion}) => {
@@ -190,6 +203,7 @@ test('rest checkbox supersedes a late keepalive from the previous page', async (
                 meal_mode: 'auto',
                 meal_amount: '',
                 write_version: lateKeepaliveVersion,
+                unlocked: true,
             }),
         });
         return response.status;

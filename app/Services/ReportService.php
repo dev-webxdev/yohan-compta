@@ -33,7 +33,7 @@ final class ReportService
         return $base + [
             'paid_allocated_cents' => $paidAllocated,
             'paid_received_cents' => (int) OvertimePayment::query()
-                ->whereBetween('payment_date', [$base['start']->format('Y-m-d'), $base['end']->format('Y-m-d')])
+                ->whereBetween('payment_date', [$base['start']->format('Y-m-d'), min($base['end']->format('Y-m-d'), now()->format('Y-m-d'))])
                 ->sum('amount_cents'),
             'remaining_cents' => $remaining,
             'remaining_minutes_indicative' => $allocation['by_month'][$month]['remaining_minutes_indicative'] ?? 0,
@@ -63,7 +63,7 @@ final class ReportService
         $overtime25MinutesMonth = 0;
         $overtime50MinutesMonth = 0;
         $overtimeBaseNumerator = 0;
-        $overtimeNetPercentNumerator = 0;
+        $overtimeNet = 0;
         foreach (array_keys($weekIds) as $weekId) {
             $week = $this->week($weekId);
             $weeks[] = $week;
@@ -78,9 +78,8 @@ final class ReportService
                 $overtime25MinutesMonth += $minutes25;
                 $overtime50MinutesMonth += $minutes50;
                 $overtimeBaseNumerator += Money::wageNumerator($minutes, $setting->hourly_net_rate_cents);
-                $overtimeNetPercentNumerator += Money::wagePercentNumerator($minutes25, $setting->hourly_net_rate_cents, 125);
-                $overtimeNetPercentNumerator += Money::wagePercentNumerator($minutes50, $setting->hourly_net_rate_cents, 150);
             }
+            $overtimeNet += $week['overtime_net_cents'];
         }
 
         $workedMinutes = 0;
@@ -99,6 +98,7 @@ final class ReportService
             $workedMinutes += $worked;
             $mealCents += PayrollMath::mealAllowanceCents(
                 $endTime,
+                $worked,
                 $day->meal_allowance_mode,
                 $day->meal_allowance_forced_cents,
                 $setting->meal_allowance_time_minutes,
@@ -108,7 +108,6 @@ final class ReportService
         }
 
         $workNet = Money::numeratorToCents($netNumerator);
-        $overtimeNet = Money::percentNumeratorToCents($overtimeNetPercentNumerator);
         $overtimeBaseNet = Money::numeratorToCents($overtimeBaseNumerator);
         $normalNet = max(0, $workNet - $overtimeBaseNet);
 
@@ -148,13 +147,27 @@ final class ReportService
         $threshold = $this->settings->forDate($start->format('Y-m-d'))->weekly_threshold_minutes;
         $result = WeekCalculator::calculate($weekId, $minutesByDate, $threshold);
         $netPercentNumerator = 0;
+        $netNumeratorByDate = [];
         foreach ($result['overtime_by_date'] as $date => $minutes) {
             if ($minutes <= 0) {
                 continue;
             }
             $setting = $this->settings->forDate($date);
-            $netPercentNumerator += Money::wagePercentNumerator($result['overtime_25_by_date'][$date], $setting->hourly_net_rate_cents, 125);
-            $netPercentNumerator += Money::wagePercentNumerator($result['overtime_50_by_date'][$date], $setting->hourly_net_rate_cents, 150);
+            $dateNumerator = Money::wagePercentNumerator($result['overtime_25_by_date'][$date], $setting->hourly_net_rate_cents, 125)
+                + Money::wagePercentNumerator($result['overtime_50_by_date'][$date], $setting->hourly_net_rate_cents, 150);
+            $netNumeratorByDate[$date] = $dateNumerator;
+            $netPercentNumerator += $dateNumerator;
+        }
+
+        $overtimeNet = Money::percentNumeratorToCents($netPercentNumerator);
+        $allocatedNet = 0;
+        $cumulativeNumerator = 0;
+        $overtimeNetByDate = [];
+        foreach ($netNumeratorByDate as $date => $numerator) {
+            $cumulativeNumerator += $numerator;
+            $cumulativeCents = Money::percentNumeratorToCents($cumulativeNumerator);
+            $overtimeNetByDate[$date] = $cumulativeCents - $allocatedNet;
+            $allocatedNet = $cumulativeCents;
         }
 
         return [
@@ -168,7 +181,8 @@ final class ReportService
             'overtime_by_date' => $result['overtime_by_date'],
             'overtime_25_by_date' => $result['overtime_25_by_date'],
             'overtime_50_by_date' => $result['overtime_50_by_date'],
-            'overtime_net_cents' => Money::percentNumeratorToCents($netPercentNumerator),
+            'overtime_net_by_date' => $overtimeNetByDate,
+            'overtime_net_cents' => $overtimeNet,
         ];
         } finally {
             $this->endCalculation();
@@ -192,6 +206,7 @@ final class ReportService
             'remaining_cents' => 0,
             'remaining_minutes_indicative' => 0,
         ];
+        $receivedByMonth = $this->receivedPaymentsByMonth($year);
 
         for ($month = 1; $month <= 12; $month++) {
             $key = sprintf('%04d-%02d', $year, $month);
@@ -200,9 +215,7 @@ final class ReportService
             $remaining = max(0, $base['overtime_net_cents'] - $paidAllocated);
             $item = $base + [
                 'paid_allocated_cents' => $paidAllocated,
-                'paid_received_cents' => (int) OvertimePayment::query()
-                    ->whereBetween('payment_date', [$base['start']->format('Y-m-d'), $base['end']->format('Y-m-d')])
-                    ->sum('amount_cents'),
+                'paid_received_cents' => $receivedByMonth[$key] ?? 0,
                 'remaining_cents' => $remaining,
                 'remaining_minutes_indicative' => $allocation['by_month'][$key]['remaining_minutes_indicative'] ?? 0,
             ];
@@ -218,7 +231,7 @@ final class ReportService
         }
     }
 
-    /** @return array{generated:int,paid:int,remaining:int,credit:int,by_month:array<string,array<string,int>>,remaining_minutes_indicative:int} */
+    /** @return array{generated:int,paid:int,remaining:int,credit:int,by_month:array<string,array<string,int>>,remaining_minutes_indicative:int,unallocated_paid_minutes:int} */
     public function balance(): array
     {
         $this->beginCalculation();
@@ -233,6 +246,7 @@ final class ReportService
             'credit' => max(0, $snapshot['paid'] - $snapshot['generated']),
             'by_month' => $snapshot['by_month'],
             'remaining_minutes_indicative' => $remainingMinutes,
+            'unallocated_paid_minutes' => $snapshot['unallocated_paid_minutes'],
         ];
         } finally {
             $this->endCalculation();
@@ -245,6 +259,17 @@ final class ReportService
         $this->beginCalculation();
         try {
             return $this->allocationSnapshot()['by_payment'];
+        } finally {
+            $this->endCalculation();
+        }
+    }
+
+    /** @return array<int,array<int,array{month:string,minutes:int,indicative:bool}>> */
+    public function paymentHourAllocations(): array
+    {
+        $this->beginCalculation();
+        try {
+            return $this->allocationSnapshot()['by_payment_hours'];
         } finally {
             $this->endCalculation();
         }
@@ -290,6 +315,24 @@ final class ReportService
             ->all();
 
         return $this->allocationCache = PaymentAllocator::allocate($debts, $payments);
+    }
+
+    /** @return array<string,int> */
+    private function receivedPaymentsByMonth(int $year): array
+    {
+        $start = sprintf('%04d-01-01', $year);
+        $end = min(sprintf('%04d-12-31', $year), now()->format('Y-m-d'));
+        if ($end < $start) {
+            return [];
+        }
+
+        return OvertimePayment::query()
+            ->selectRaw('substr(payment_date, 1, 7) as payment_month, SUM(amount_cents) as total')
+            ->whereBetween('payment_date', [$start, $end])
+            ->groupBy('payment_month')
+            ->pluck('total', 'payment_month')
+            ->map(static fn ($value): int => (int) $value)
+            ->all();
     }
 
     private function workDaysBetween(DateTimeImmutable $start, DateTimeImmutable $end): Collection
