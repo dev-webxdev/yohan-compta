@@ -127,6 +127,67 @@
         else confirmForm.requestSubmit();
     }));
 
+    const settingsForm = q('[data-settings-form]');
+    if (settingsForm) {
+        const dateInput = q('[name="effective_from"]', settingsForm);
+        const dateHint = q('#settings-date-hint');
+        let dateRequest = null;
+        let confirmedRetroactive = false;
+        const fieldNames = ['default_start_time', 'hourly_net_rate', 'weekly_threshold', 'meal_allowance', 'meal_allowance_time'];
+
+        const loadSettingsDate = async () => {
+            const date = dateInput?.value;
+            if (!date) return;
+            dateRequest?.abort();
+            dateRequest = new AbortController();
+            try {
+                const response = await fetch(`${settingsForm.dataset.valuesUrl}?date=${encodeURIComponent(date)}`, {
+                    headers: {Accept: 'application/json'},
+                    signal: dateRequest.signal,
+                });
+                if (response.status === 401) {
+                    location.href = '/connexion';
+                    return;
+                }
+                if (!response.ok) throw new Error('Impossible de charger les paramètres de cette date.');
+                const values = await response.json();
+                fieldNames.forEach(name => {
+                    const input = q(`[name="${name}"]`, settingsForm);
+                    if (input && Object.hasOwn(values, name)) input.value = values[name];
+                });
+                settingsForm.dataset.exactPeriod = values.exact ? '1' : '0';
+                const messages = [];
+                if (values.exact) messages.push('Une configuration existe déjà exactement à cette date : elle sera modifiée.');
+                if (values.weekly_threshold_effective_from !== date) {
+                    const formatted = values.weekly_threshold_effective_from.split('-').reverse().join('/');
+                    messages.push(`Si le seuil hebdomadaire change, il sera utilisé à partir du prochain segment de calcul (${formatted}).`);
+                }
+                if (dateHint) dateHint.textContent = messages.join(' ');
+            } catch (error) {
+                if (error.name !== 'AbortError' && dateHint) dateHint.textContent = error.message;
+            }
+        };
+
+        dateInput?.addEventListener('change', () => {
+            confirmedRetroactive = false;
+            void loadSettingsDate();
+        });
+
+        settingsForm.addEventListener('submit', async event => {
+            if (confirmedRetroactive || !dateInput || dateInput.value >= settingsForm.dataset.today) return;
+            event.preventDefault();
+            const accepted = await askConfirmation({
+                title: settingsForm.dataset.exactPeriod === '1' ? 'Modifier ces paramètres historiques ?' : 'Appliquer des paramètres dans le passé ?',
+                message: `Les calculs et l’affectation FIFO pourront être recalculés à partir du ${dateInput.value.split('-').reverse().join('/')}.`,
+                action: 'Enregistrer quand même',
+            });
+            if (!accepted) return;
+            confirmedRetroactive = true;
+            if (event.submitter) settingsForm.requestSubmit(event.submitter);
+            else settingsForm.requestSubmit();
+        });
+    }
+
     const dialog = q('#day-dialog');
     if (!dialog) return;
 
@@ -164,6 +225,10 @@
 
     const formatDuration = minutes => `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
     const formatClock = minutes => formatDuration(((minutes % 1440) + 1440) % 1440);
+    const formatClockWithDayOffset = minutes => {
+        const days = Math.floor(Math.max(0, minutes) / 1440);
+        return `${formatClock(minutes)}${days > 0 ? ` (+${days} j)` : ''}`;
+    };
     const formatMoney = cents => {
         const whole = Math.floor(cents / 100);
         const decimal = cents % 100;
@@ -210,6 +275,9 @@
                 headers: {Accept: 'text/html'},
                 signal: summaryRefreshController.signal,
             });
+            if (response.status === 401) {
+                throw new Error('Session expirée — reconnectez-vous pour continuer.');
+            }
             if (!response.ok) throw new Error('Actualisation impossible');
             const freshDocument = new DOMParser().parseFromString(await response.text(), 'text/html');
             ['.dashboard-kpis', '#weeks', '#balance', '.below-fold-summary'].forEach(selector => {
@@ -221,7 +289,7 @@
         } catch (error) {
             if (error.name !== 'AbortError') {
                 setState('Enregistré · totaux à actualiser', 'warning');
-                showSaveError('La saisie est enregistrée, mais les totaux n’ont pas pu être actualisés. Rechargez la page.');
+                showSaveError(error.message.includes('Session expirée') ? error.message : 'La saisie est enregistrée, mais les totaux n’ont pas pu être actualisés. Rechargez la page.');
             }
         }
     };
@@ -259,13 +327,34 @@
         row.classList.toggle('row-filled', !needsFill);
         if (stateLabel) stateLabel.textContent = needsFill ? 'À remplir' : '';
         q('.total-cell strong', row).textContent = formatDuration(values.worked);
-        q('.end-value', row).textContent = formatClock(values.end);
+        q('.end-value', row).textContent = formatClockWithDayOffset(values.end);
 
         const forced = (row.dataset.mealMode || 'auto') === 'forced';
         const mealCents = forced
             ? parseMoney(row.dataset.mealAmount)
-            : values.end >= Number(row.dataset.mealThreshold || 0) ? Number(row.dataset.mealDefault || 0) : 0;
+            : values.worked > 0 && values.end >= Number(row.dataset.mealThreshold || 0) ? Number(row.dataset.mealDefault || 0) : 0;
         q('.meal-button', row).innerHTML = `${formatMoney(mealCents)} <i class="fa-solid fa-chevron-down"></i>`;
+    };
+
+    const applyServerRow = (row, data) => {
+        q('[name="start_time"]', row).value = data.start_time;
+        q('[name="driving"]', row).value = data.driving;
+        q('[name="warehouse"]', row).value = data.warehouse;
+        q('.rest-toggle', row).checked = Boolean(data.is_rest);
+        row.dataset.mealMode = data.meal_mode || 'auto';
+        row.dataset.mealAmount = data.meal_amount || '';
+        row.dataset.writeVersion = String(data.write_version || 0);
+        writeVersions.set(row, Number(data.write_version || 0));
+        syncRow(row);
+        savedRowStates.set(row, JSON.stringify(rowBody(row)));
+        setRowSaveState(row, 'saved', 'État serveur rechargé');
+    };
+
+    const reloadServerRow = async row => {
+        const response = await fetch(`/jours/${row.dataset.date}`, {headers: {Accept: 'application/json'}});
+        if (response.status === 401) throw new Error('Session expirée — reconnectez-vous avant de continuer.');
+        if (!response.ok) throw new Error('Impossible de recharger cette journée.');
+        applyServerRow(row, await response.json());
     };
 
     const rowBody = row => ({
@@ -307,21 +396,52 @@
             .then(async () => {
                 setState('Enregistrement…', 'saving');
                 setRowSaveState(row, 'saving', 'Enregistrement en cours');
-                const response = await fetch(`/jours/${row.dataset.date}`, {
-                    method: 'PUT',
-                    headers: {'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': token},
-                    body: JSON.stringify({...body, write_version: writeVersion}),
-                    keepalive: true,
-                });
+                let response;
+                try {
+                    response = await fetch(`/jours/${row.dataset.date}`, {
+                        method: 'PUT',
+                        headers: {'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': token},
+                        body: JSON.stringify({...body, write_version: writeVersion}),
+                        keepalive: true,
+                    });
+                } catch (_) {
+                    const message = navigator.onLine
+                        ? 'Connexion interrompue — la modification n’est pas enregistrée.'
+                        : 'Hors ligne — la modification n’est pas enregistrée.';
+                    if (saveVersions.get(row) === version) {
+                        setState(message, 'error');
+                        setRowSaveState(row, 'error', message);
+                        showSaveError(message);
+                    }
+                    throw new Error(message);
+                }
                 if (!response.ok) {
                     const data = await response.json().catch(() => ({}));
-                    const message = data.errors
+                    const message = response.status === 401
+                        ? 'Session expirée — reconnectez-vous avant de continuer.'
+                        : data.errors
                         ? Object.values(data.errors).flat()[0]
                         : data.message || `Erreur lors de l’enregistrement (${response.status}).`;
                     if (saveVersions.get(row) === version) {
                         setState(message, 'error');
                         setRowSaveState(row, 'error', message);
                         showSaveError(message);
+                    }
+                    if (response.status === 409) {
+                        const accepted = await askConfirmation({
+                            title: 'Conflit sur cette journée',
+                            message: 'Une version plus récente existe sur le serveur. Recharger uniquement cette journée ?',
+                            action: 'Recharger cette journée',
+                        });
+                        if (accepted) {
+                            try {
+                                await reloadServerRow(row);
+                                setState('Journée rechargée depuis le serveur', 'saved');
+                                return;
+                            } catch (reloadError) {
+                                showSaveError(reloadError.message);
+                            }
+                        }
                     }
                     throw new Error(message);
                 }
@@ -350,6 +470,30 @@
     qa('.work-row').forEach(row => {
         syncRow(row);
         savedRowStates.set(row, JSON.stringify(rowBody(row)));
+    });
+
+    const hasDirtyInvalidRows = () => qa('.work-row').some(row => {
+        const body = rowBody(row);
+        return savedRowStates.get(row) !== JSON.stringify(body) && !body.is_rest && !rowValues(row);
+    });
+
+    window.addEventListener('beforeunload', event => {
+        if (!hasDirtyInvalidRows()) return;
+        event.preventDefault();
+        event.returnValue = '';
+    });
+
+    window.addEventListener('offline', () => {
+        setState('Hors ligne — modifications non enregistrées', 'error');
+        showSaveError('Connexion perdue. Les modifications en attente seront retentées au retour du réseau.');
+    });
+
+    window.addEventListener('online', () => {
+        setState('Connexion rétablie — synchronisation…', 'saving');
+        qa('.work-row').forEach(row => {
+            const body = rowBody(row);
+            if (savedRowStates.get(row) !== JSON.stringify(body) && (body.is_rest || rowValues(row))) void saveRow(row).catch(() => {});
+        });
     });
 
     const flushPendingRows = () => {
@@ -465,9 +609,10 @@
         const warehouse = parseDuration(form.elements.warehouse.value);
         if (start === null || driving === null || warehouse === null) return;
         const end = start + driving + warehouse;
-        q('#dialog-end').textContent = formatClock(end);
+        const worked = driving + warehouse;
+        q('#dialog-end').textContent = formatClockWithDayOffset(end);
         if (activeRow) {
-            const cents = end >= Number(activeRow.dataset.mealThreshold || 0) ? Number(activeRow.dataset.mealDefault || 0) : 0;
+            const cents = worked > 0 && end >= Number(activeRow.dataset.mealThreshold || 0) ? Number(activeRow.dataset.mealDefault || 0) : 0;
             q('#dialog-auto-amount').textContent = `(${formatMoney(cents)})`;
         }
     };

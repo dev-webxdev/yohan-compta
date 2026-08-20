@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\OvertimePayment;
 use App\Services\ReportService;
-use App\Services\SettingsService;
 use App\Support\DateRange;
 use App\Support\Money;
 use App\Support\Time;
@@ -15,17 +14,18 @@ use Illuminate\View\View;
 
 final class PaymentController
 {
-    public function index(Request $request, ReportService $reports, SettingsService $settings): View
+    public function index(Request $request, ReportService $reports): View
     {
         $payments = OvertimePayment::query()->orderByDesc('payment_date')->orderByDesc('id')->paginate(50);
         $editId = $request->integer('edit');
         $editingPayment = $editId > 0 ? OvertimePayment::query()->find($editId) : null;
+        $hourAllocations = $reports->paymentHourAllocations();
 
         $paymentHours = [];
         foreach ($payments as $payment) {
-            $rate = $settings->forDate($payment->payment_date->format('Y-m-d'))->hourly_net_rate_cents;
+            $allocatedMinutes = array_sum(array_column($hourAllocations[$payment->id] ?? [], 'minutes'));
             $paymentHours[$payment->id] = [
-                'minutes' => $payment->hours_paid_minutes ?? (int) round($payment->amount_cents * 60 / max(1, $rate)),
+                'minutes' => $payment->hours_paid_minutes ?? ($allocatedMinutes > 0 ? $allocatedMinutes : null),
                 'indicative' => $payment->hours_paid_minutes === null,
             ];
         }
@@ -35,6 +35,7 @@ final class PaymentController
             'editingPayment' => $editingPayment,
             'paymentHours' => $paymentHours,
             'allocations' => $reports->paymentAllocations(),
+            'hourAllocations' => $hourAllocations,
             'balance' => $reports->balance(),
         ]);
     }

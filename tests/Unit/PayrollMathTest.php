@@ -23,10 +23,11 @@ final class PayrollMathTest extends TestCase
 
     public function test_meal_threshold_and_forced_mode(): void
     {
-        self::assertSame(0, PayrollMath::mealAllowanceCents(854, 'auto', null, 855, 1600));
-        self::assertSame(1600, PayrollMath::mealAllowanceCents(855, 'auto', null, 855, 1600));
-        self::assertSame(1600, PayrollMath::mealAllowanceCents(870, 'auto', null, 855, 1600));
-        self::assertSame(750, PayrollMath::mealAllowanceCents(600, 'forced', 750, 855, 1600));
+        self::assertSame(0, PayrollMath::mealAllowanceCents(854, 60, 'auto', null, 855, 1600));
+        self::assertSame(1600, PayrollMath::mealAllowanceCents(855, 60, 'auto', null, 855, 1600));
+        self::assertSame(1600, PayrollMath::mealAllowanceCents(870, 60, 'auto', null, 855, 1600));
+        self::assertSame(0, PayrollMath::mealAllowanceCents(900, 0, 'auto', null, 855, 1600));
+        self::assertSame(750, PayrollMath::mealAllowanceCents(600, 0, 'forced', 750, 855, 1600));
     }
 
     public function test_money_keeps_precision_until_display(): void

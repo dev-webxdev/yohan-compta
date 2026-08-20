@@ -7,7 +7,7 @@ final class PaymentAllocator
     /**
      * @param array<string,array{generated:int,overtime_minutes:int}> $debts Ordered oldest to newest.
      * @param array<int,array{id:int,amount_cents:int,hours_paid_minutes?:?int}> $payments Ordered by payment date then id.
-     * @return array{generated:int,paid:int,by_month:array<string,array{generated:int,paid:int,remaining:int,overtime_minutes:int,remaining_minutes_indicative:int}>,by_payment:array<int,array<int,array{month:string,amount_cents:int}>>}
+     * @return array{generated:int,paid:int,by_month:array<string,array{generated:int,paid:int,remaining:int,overtime_minutes:int,remaining_minutes_indicative:int}>,by_payment:array<int,array<int,array{month:string,amount_cents:int}>>,by_payment_hours:array<int,array<int,array{month:string,minutes:int,indicative:bool}>>,unallocated_paid_minutes:int}
      */
     public static function allocate(array $debts, array $payments): array
     {
@@ -35,6 +35,8 @@ final class PaymentAllocator
 
         $paid = 0;
         $byPayment = [];
+        $byPaymentHours = [];
+        $unallocatedPaidMinutes = 0;
         foreach ($payments as $payment) {
             $paymentId = (int) $payment['id'];
             $remainingPayment = max(0, (int) $payment['amount_cents']);
@@ -63,11 +65,16 @@ final class PaymentAllocator
                         break;
                     }
                     $allocatedMinutes = min($remainingMinutes, $debt['remaining_minutes_indicative']);
+                    if ($allocatedMinutes <= 0) {
+                        continue;
+                    }
                     $explicitPaidMinutes[$month] += $allocatedMinutes;
                     $debt['remaining_minutes_indicative'] -= $allocatedMinutes;
                     $remainingMinutes -= $allocatedMinutes;
+                    $byPaymentHours[$paymentId][] = ['month' => $month, 'minutes' => $allocatedMinutes, 'indicative' => false];
                 }
                 unset($debt);
+                $unallocatedPaidMinutes += $remainingMinutes;
                 continue;
             }
 
@@ -75,11 +82,16 @@ final class PaymentAllocator
                 $month = $allocation['month'];
                 $debt = &$byMonth[$month];
                 $implicitPaidCents[$month] += $allocation['amount_cents'];
+                $beforeMinutes = $debt['remaining_minutes_indicative'];
                 $debt['remaining_minutes_indicative'] = max(0, self::indicativeMinutes(
                     $debt['overtime_minutes'],
                     $debt['generated'],
                     max(0, $debt['generated'] - $implicitPaidCents[$month]),
                 ) - $explicitPaidMinutes[$month]);
+                $allocatedMinutes = max(0, $beforeMinutes - $debt['remaining_minutes_indicative']);
+                if ($allocatedMinutes > 0) {
+                    $byPaymentHours[$paymentId][] = ['month' => $month, 'minutes' => $allocatedMinutes, 'indicative' => true];
+                }
                 unset($debt);
             }
         }
@@ -89,6 +101,8 @@ final class PaymentAllocator
             'paid' => $paid,
             'by_month' => $byMonth,
             'by_payment' => $byPayment,
+            'by_payment_hours' => $byPaymentHours,
+            'unallocated_paid_minutes' => $unallocatedPaidMinutes,
         ];
     }
 

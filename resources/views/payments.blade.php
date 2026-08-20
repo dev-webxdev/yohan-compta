@@ -20,6 +20,7 @@
     <div class="balance-line"><span>Montant total des heures supplémentaires</span><strong>{{ Money::formatCents($balance['generated']) }}</strong></div>
     <div class="balance-line"><span>Montant déjà payé</span><strong>{{ Money::formatCents($balance['paid']) }}</strong></div>
     @if($balance['credit'] > 0)<div class="credit">Avance / trop-perçu : {{ Money::formatCents($balance['credit']) }}</div>@endif
+    @if($balance['unallocated_paid_minutes'] > 0)<div class="credit">Heures payées en avance : {{ Time::formatDuration($balance['unallocated_paid_minutes']) }}</div>@endif
 </section>
 </div>
 <section class="panel spacer-top">
@@ -29,9 +30,14 @@
         <article class="payment-row">
             <div><strong>{{ $payment->payment_date->format('d/m/Y') }}</strong>@if($payment->payment_date->isFuture())<span class="future-payment">Futur</span>@endif<small>{{ $payment->period_reference ?: 'Paiement heures supplémentaires' }}</small></div>
             <div class="allocation-tags">
-                @forelse(($allocations[$payment->id] ?? []) as $allocation)<span>{{ FrenchDate::month((int)substr($allocation['month'],5,2)) }} {{ substr($allocation['month'],0,4) }} · {{ Money::formatCents($allocation['amount_cents']) }}</span>@empty<span>Avance non affectée</span>@endforelse
+                @if($payment->payment_date->isFuture())
+                    <span>Sera affecté à partir du {{ $payment->payment_date->format('d/m/Y') }}</span>
+                @else
+                    @forelse(($allocations[$payment->id] ?? []) as $allocation)<span>Montant · {{ FrenchDate::month((int)substr($allocation['month'],5,2)) }} {{ substr($allocation['month'],0,4) }} · {{ Money::formatCents($allocation['amount_cents']) }}</span>@empty<span>Avance non affectée</span>@endforelse
+                    @foreach(($hourAllocations[$payment->id] ?? []) as $allocation)<span>Heures · {{ FrenchDate::month((int)substr($allocation['month'],5,2)) }} {{ substr($allocation['month'],0,4) }} · {{ $allocation['indicative']?'≈ ':'' }}{{ Time::formatDuration($allocation['minutes']) }}</span>@endforeach
+                @endif
             </div>
-            <div class="payment-amount">{{ Money::formatCents($payment->amount_cents) }}<small>Heures sup payées : {{ $paymentHours[$payment->id]['indicative'] ? '≈ ' : '' }}{{ Time::formatDuration($paymentHours[$payment->id]['minutes']) }}</small></div>
+            <div class="payment-amount">{{ Money::formatCents($payment->amount_cents) }}<small>Heures sup payées : @if($paymentHours[$payment->id]['minutes'] === null)non affectées pour le moment @else{{ $paymentHours[$payment->id]['indicative'] ? '≈ ' : '' }}{{ Time::formatDuration($paymentHours[$payment->id]['minutes']) }}@endif</small></div>
             <div class="payment-actions">
                 <a class="primary-button secondary-button compact-button" href="{{ route('payments.index', ['edit' => $payment->id]) }}"><i class="fa-solid fa-pen"></i> Modifier</a>
                 <form method="post" action="{{ route('payments.destroy', $payment) }}" data-confirm data-confirm-title="Supprimer ce paiement ?" data-confirm-message="Le paiement sera supprimé et les soldes d’heures supplémentaires seront recalculés." data-confirm-action="Supprimer" data-confirm-danger="1">@csrf @method('DELETE')<button class="danger-button compact-button"><i class="fa-solid fa-trash"></i> Supprimer</button></form>

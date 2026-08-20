@@ -43,6 +43,7 @@ final class MonthController
                 'meal_threshold' => $setting->meal_allowance_time_minutes,
                 'meal' => $workDay && !$isRest ? PayrollMath::mealAllowanceCents(
                     $end,
+                    $worked,
                     $workDay->meal_allowance_mode,
                     $workDay->meal_allowance_forced_cents,
                     $setting->meal_allowance_time_minutes,
