@@ -32,7 +32,7 @@ final class LibraryTest extends TestCase
         parent::tearDown();
     }
 
-    public function test_library_starts_empty_and_exposes_explorer_interface(): void
+    public function test_library_starts_empty_requires_a_folder_for_upload_and_exposes_trash(): void
     {
         self::assertSame(0, DocumentFolder::query()->count());
         self::assertSame(0, LibraryDocument::query()->count());
@@ -42,12 +42,18 @@ final class LibraryTest extends TestCase
             ->assertSee('Bibliothèque')
             ->assertSee('Aucun dossier n’est créé automatiquement.')
             ->assertSee('Nouveau dossier')
-            ->assertSee('Importer un fichier')
-            ->assertSee('Ce dossier est vide')
+            ->assertSee('Corbeille')
+            ->assertDontSee('Ajouter une image')
+            ->assertSee('Votre bibliothèque est vide')
             ->assertSee('Bibliothèque</span>', false);
+
+        $this->get('/bibliotheque/corbeille')
+            ->assertOk()
+            ->assertSee('La corbeille est vide')
+            ->assertSee('Retour à la bibliothèque');
     }
 
-    public function test_folder_crud_breadcrumb_upload_download_and_recursive_delete(): void
+    public function test_folder_trash_requires_exact_name_can_restore_and_force_delete_recursively(): void
     {
         $this->post('/bibliotheque/dossiers', ['name' => '2026'])->assertRedirect('/bibliotheque');
         $year = DocumentFolder::query()->where('name', '2026')->firstOrFail();
@@ -57,58 +63,141 @@ final class LibraryTest extends TestCase
         $august = DocumentFolder::query()->where('parent_id', $year->id)->where('name', 'Août')->firstOrFail();
 
         $this->get('/bibliotheque/'.$august->id)
-            ->assertOk()->assertSee('2026')->assertSee('Août')->assertSee('Ce dossier est vide');
+            ->assertOk()->assertSee('2026')->assertSee('Août')->assertSee('Ajouter une image')->assertSee('Ce dossier est vide');
 
         $this->patch('/bibliotheque/dossiers/'.$august->id, ['name' => 'Aout 2026'])
             ->assertRedirect('/bibliotheque/'.$year->id);
         self::assertSame('Aout 2026', $august->fresh()->name);
 
-        $file = UploadedFile::fake()->createWithContent('bulletin-aout.txt', 'salaire-aout');
-        $this->post('/bibliotheque/fichiers', ['folder_id' => $august->id, 'document' => $file])
-            ->assertRedirect('/bibliotheque/'.$august->id);
+        $this->post('/bibliotheque/fichiers', [
+            'folder_id' => $august->id,
+            'document' => UploadedFile::fake()->image('bulletin-aout.png', 40, 30),
+        ])->assertRedirect('/bibliotheque/'.$august->id);
 
         $document = LibraryDocument::query()->firstOrFail();
         self::assertSame($august->id, $document->folder_id);
-        self::assertSame('bulletin-aout.txt', $document->original_name);
+        self::assertSame('bulletin-aout.png', $document->original_name);
+        self::assertSame('image/png', $document->mime_type);
         $storedPath = app(LibraryService::class)->libraryPath().DIRECTORY_SEPARATOR.$document->storage_name;
         self::assertFileExists($storedPath);
-        self::assertSame('salaire-aout', file_get_contents($storedPath));
 
         $download = $this->get('/bibliotheque/fichiers/'.$document->id.'/telecharger')->assertOk();
-        self::assertStringContainsString('bulletin-aout.txt', (string) $download->headers->get('content-disposition'));
+        self::assertStringContainsString('bulletin-aout.png', (string) $download->headers->get('content-disposition'));
 
-        $this->delete('/bibliotheque/dossiers/'.$year->id)->assertRedirect('/bibliotheque');
-        self::assertSame(0, DocumentFolder::query()->count());
-        self::assertSame(0, LibraryDocument::query()->count());
+        $this->from('/bibliotheque')->delete('/bibliotheque/dossiers/'.$year->id, ['confirmation_name' => '2026 '])
+            ->assertRedirect('/bibliotheque')->assertSessionHasErrors('confirmation_name');
+        self::assertFalse($year->fresh()->trashed());
+
+        $this->delete('/bibliotheque/dossiers/'.$year->id, ['confirmation_name' => '2026'])->assertRedirect('/bibliotheque');
+        $trashedYear = DocumentFolder::withTrashed()->findOrFail($year->id);
+        self::assertTrue($trashedYear->trashed());
+        self::assertDatabaseHas('document_folders', ['id' => $august->id, 'deleted_at' => null]);
+        self::assertDatabaseHas('library_documents', ['id' => $document->id, 'deleted_at' => null]);
+        self::assertFileExists($storedPath);
+        $this->get('/bibliotheque/'.$august->id)->assertNotFound();
+        $this->get('/bibliotheque/fichiers/'.$document->id.'/telecharger')->assertNotFound();
+
+        $this->get('/bibliotheque/corbeille')->assertOk()->assertSee('2026');
+        $this->post('/bibliotheque/corbeille/dossiers/'.$year->id.'/restaurer')->assertRedirect('/bibliotheque/corbeille');
+        self::assertFalse(DocumentFolder::query()->findOrFail($year->id)->trashed());
+        $this->get('/bibliotheque/'.$august->id)->assertOk()->assertSee('bulletin-aout.png');
+
+        $this->delete('/bibliotheque/dossiers/'.$year->id, ['confirmation_name' => '2026'])->assertRedirect('/bibliotheque');
+        $this->from('/bibliotheque/corbeille')->delete('/bibliotheque/corbeille/dossiers/'.$year->id, ['confirmation_name' => '2025'])
+            ->assertRedirect('/bibliotheque/corbeille')->assertSessionHasErrors('confirmation_name');
+        self::assertNotNull(DocumentFolder::withTrashed()->find($year->id));
+        self::assertFileExists($storedPath);
+
+        $this->delete('/bibliotheque/corbeille/dossiers/'.$year->id, ['confirmation_name' => '2026'])
+            ->assertRedirect('/bibliotheque/corbeille');
+        self::assertNull(DocumentFolder::withTrashed()->find($year->id));
+        self::assertNull(DocumentFolder::withTrashed()->find($august->id));
+        self::assertNull(LibraryDocument::withTrashed()->find($document->id));
         self::assertFileDoesNotExist($storedPath);
     }
 
-    public function test_duplicate_folder_name_is_rejected_only_within_same_parent(): void
+    public function test_upload_accepts_only_real_images_inside_an_active_folder(): void
     {
-        $this->post('/bibliotheque/dossiers', ['name' => '2026'])->assertRedirect('/bibliotheque');
-        $this->from('/bibliotheque')->post('/bibliotheque/dossiers', ['name' => '2026'])
-            ->assertRedirect('/bibliotheque')->assertSessionHasErrors('name');
+        $this->post('/bibliotheque/dossiers', ['name' => 'Photos'])->assertRedirect('/bibliotheque');
+        $folder = DocumentFolder::query()->where('name', 'Photos')->firstOrFail();
 
-        $year = DocumentFolder::query()->where('name', '2026')->firstOrFail();
-        $this->post('/bibliotheque/dossiers', ['parent_id' => $year->id, 'name' => '2026'])
-            ->assertRedirect('/bibliotheque/'.$year->id);
+        $this->from('/bibliotheque')->post('/bibliotheque/fichiers', [
+            'document' => UploadedFile::fake()->image('racine.png'),
+        ])->assertRedirect('/bibliotheque')->assertSessionHasErrors('folder_id');
+        self::assertDatabaseCount('library_documents', 0);
 
-        self::assertSame(2, DocumentFolder::query()->count());
-    }
+        $this->from('/bibliotheque/'.$folder->id)->post('/bibliotheque/fichiers', [
+            'folder_id' => $folder->id,
+            'document' => UploadedFile::fake()->createWithContent('attaque.jpg', "<?php echo 'danger';"),
+        ])->assertRedirect('/bibliotheque/'.$folder->id)->assertSessionHasErrors('document');
+        self::assertDatabaseCount('library_documents', 0);
 
-    public function test_file_can_be_stored_at_library_root_and_deleted(): void
-    {
+        $this->from('/bibliotheque/'.$folder->id)->post('/bibliotheque/fichiers', [
+            'folder_id' => $folder->id,
+            'document' => UploadedFile::fake()->createWithContent('notes.txt', 'not-an-image'),
+        ])->assertRedirect('/bibliotheque/'.$folder->id)->assertSessionHasErrors('document');
+        self::assertDatabaseCount('library_documents', 0);
+
+        $png = UploadedFile::fake()->image('source.png', 20, 20);
+        $this->from('/bibliotheque/'.$folder->id)->post('/bibliotheque/fichiers', [
+            'folder_id' => $folder->id,
+            'document' => UploadedFile::fake()->createWithContent('image-renommee.jpg', file_get_contents($png->getRealPath())),
+        ])->assertRedirect('/bibliotheque/'.$folder->id)->assertSessionHasErrors('document');
+        self::assertDatabaseCount('library_documents', 0);
+
         $this->post('/bibliotheque/fichiers', [
-            'document' => UploadedFile::fake()->createWithContent('racine.txt', 'root-file'),
-        ])->assertRedirect('/bibliotheque');
+            'folder_id' => $folder->id,
+            'document' => UploadedFile::fake()->image('photo.webp', 24, 24),
+        ])->assertRedirect('/bibliotheque/'.$folder->id);
 
         $document = LibraryDocument::query()->firstOrFail();
-        self::assertNull($document->folder_id);
+        self::assertSame($folder->id, $document->folder_id);
+        self::assertSame('image/webp', $document->mime_type);
+    }
+
+    public function test_document_trash_restore_and_permanent_delete_preserve_file_until_final_deletion(): void
+    {
+        $folder = DocumentFolder::query()->create(['name' => 'Images']);
+        $this->post('/bibliotheque/fichiers', [
+            'folder_id' => $folder->id,
+            'document' => UploadedFile::fake()->image('preuve.png', 30, 30),
+        ])->assertRedirect('/bibliotheque/'.$folder->id);
+
+        $document = LibraryDocument::query()->firstOrFail();
         $path = app(LibraryService::class)->libraryPath().DIRECTORY_SEPARATOR.$document->storage_name;
         self::assertFileExists($path);
 
-        $this->delete('/bibliotheque/fichiers/'.$document->id)->assertRedirect('/bibliotheque');
-        self::assertDatabaseCount('library_documents', 0);
+        $this->delete('/bibliotheque/fichiers/'.$document->id)->assertRedirect('/bibliotheque/'.$folder->id);
+        self::assertNull(LibraryDocument::query()->find($document->id));
+        self::assertTrue(LibraryDocument::withTrashed()->findOrFail($document->id)->trashed());
+        self::assertFileExists($path);
+        $this->get('/bibliotheque/fichiers/'.$document->id.'/telecharger')->assertNotFound();
+        $this->get('/bibliotheque/corbeille')->assertOk()->assertSee('preuve.png');
+
+        $this->post('/bibliotheque/corbeille/fichiers/'.$document->id.'/restaurer')->assertRedirect('/bibliotheque/corbeille');
+        self::assertFalse(LibraryDocument::query()->findOrFail($document->id)->trashed());
+        self::assertFileExists($path);
+
+        $this->delete('/bibliotheque/fichiers/'.$document->id)->assertRedirect('/bibliotheque/'.$folder->id);
+        $this->delete('/bibliotheque/corbeille/fichiers/'.$document->id)->assertRedirect('/bibliotheque/corbeille');
+        self::assertNull(LibraryDocument::withTrashed()->find($document->id));
         self::assertFileDoesNotExist($path);
+    }
+
+    public function test_duplicate_active_folder_name_is_rejected_but_trashed_name_can_be_reused(): void
+    {
+        $this->post('/bibliotheque/dossiers', ['name' => '2026'])->assertRedirect('/bibliotheque');
+        $original = DocumentFolder::query()->where('name', '2026')->firstOrFail();
+        $this->from('/bibliotheque')->post('/bibliotheque/dossiers', ['name' => '2026'])
+            ->assertRedirect('/bibliotheque')->assertSessionHasErrors('name');
+
+        $this->delete('/bibliotheque/dossiers/'.$original->id, ['confirmation_name' => '2026'])->assertRedirect('/bibliotheque');
+        $this->post('/bibliotheque/dossiers', ['name' => '2026'])->assertRedirect('/bibliotheque');
+        self::assertSame(1, DocumentFolder::query()->where('name', '2026')->count());
+        self::assertSame(2, DocumentFolder::withTrashed()->where('name', '2026')->count());
+
+        $this->post('/bibliotheque/corbeille/dossiers/'.$original->id.'/restaurer')
+            ->assertRedirect('/bibliotheque/corbeille')->assertSessionHasErrors('trash');
+        self::assertTrue(DocumentFolder::withTrashed()->findOrFail($original->id)->trashed());
     }
 }

@@ -305,32 +305,48 @@ test('salary tracking works across responsive layouts', async ({page}, testInfo)
 
 test('document library works across responsive layouts', async ({page}, testInfo) => {
     const rootName = `E2E ${testInfo.project.name}`;
+    const imageName = `photo-${testInfo.project.name}.png`;
+    const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9ZVZ8AAAAASUVORK5CYII=', 'base64');
 
     await page.goto('/bibliotheque');
-    await expect(page.getByRole('heading', {name: 'Bibliothèque'})).toBeVisible();
+    await expect(page.getByRole('heading', {name: 'Bibliothèque', exact: true})).toBeVisible();
     await expect(page.getByText('Aucun dossier n’est créé automatiquement.')).toBeVisible();
+    await expect(page.locator('.library-upload-form')).toHaveCount(0);
+    await expect(page.getByText('Corbeille', {exact: true})).toBeVisible();
 
     let overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     expect(overflow).toBeLessThanOrEqual(1);
+
+    const createDetails = page.locator('.library-create-details');
+    await page.getByText('Nouveau dossier', {exact: true}).click();
+    await expect(createDetails).toHaveAttribute('open', '');
+    await page.locator('.library-content-panel').click({position: {x: 10, y: 10}});
+    await expect(createDetails).not.toHaveAttribute('open', '');
 
     await page.getByText('Nouveau dossier', {exact: true}).click();
     const createForm = page.locator('.library-popover-form');
     await createForm.locator('input[name="name"]').fill(rootName);
     await Promise.all([
         page.waitForURL(/\/bibliotheque$/),
-        createForm.getByRole('button', {name: 'Créer'}).click(),
+        createForm.getByRole('button', {name: 'Créer le dossier'}).click(),
     ]);
 
-    const rootCard = page.locator('.library-folder-card').filter({hasText: rootName});
+    let rootCard = page.locator('.library-folder-card').filter({hasText: rootName});
     await expect(rootCard).toBeVisible();
+    await rootCard.locator('.library-item-menu summary').click();
+    await expect(rootCard.locator('.library-item-menu')).toHaveAttribute('open', '');
+    await page.locator('.library-title-block').click();
+    await expect(rootCard.locator('.library-item-menu')).not.toHaveAttribute('open', '');
+
     await rootCard.locator('.library-folder-link').click();
     await expect(page.locator('.library-current-folder')).toContainText(rootName);
+    await expect(page.getByText('Ajouter une image', {exact: true})).toBeVisible();
 
     await page.getByText('Nouveau dossier', {exact: true}).click();
     await page.locator('.library-popover-form input[name="name"]').fill('Août');
     await Promise.all([
         page.waitForURL(/\/bibliotheque\/\d+$/),
-        page.locator('.library-popover-form').getByRole('button', {name: 'Créer'}).click(),
+        page.locator('.library-popover-form').getByRole('button', {name: 'Créer le dossier'}).click(),
     ]);
 
     const child = page.locator('.library-folder-card').filter({hasText: 'Août'});
@@ -343,23 +359,70 @@ test('document library works across responsive layouts', async ({page}, testInfo
         response.url().endsWith('/bibliotheque/fichiers') && response.request().method() === 'POST',
     );
     await page.locator('.library-upload-form input[type="file"]').setInputFiles({
-        name: `bulletin-${testInfo.project.name}.txt`,
-        mimeType: 'text/plain',
-        buffer: Buffer.from(`document ${testInfo.project.name}`),
+        name: imageName,
+        mimeType: 'image/png',
+        buffer: png,
     });
     expect((await uploadResponse).status()).toBe(302);
-    await expect(page.getByText(`bulletin-${testInfo.project.name}.txt`, {exact: true})).toBeVisible();
+    await expect(page.getByText(imageName, {exact: true})).toBeVisible();
 
     overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     expect(overflow).toBeLessThanOrEqual(1);
 
     await page.goto('/bibliotheque');
-    const cleanupCard = page.locator('.library-folder-card').filter({hasText: rootName});
-    await cleanupCard.locator('.library-item-menu summary').click();
-    await cleanupCard.getByRole('button', {name: 'Supprimer le dossier'}).click();
+    rootCard = page.locator('.library-folder-card').filter({hasText: rootName});
+    await rootCard.locator('.library-item-menu summary').click();
+    const deleteForm = rootCard.locator('.library-delete-folder-form');
+    const deleteButton = deleteForm.getByRole('button', {name: 'Mettre à la corbeille'});
+    await expect(deleteButton).toBeDisabled();
+    await deleteForm.locator('input[name="confirmation_name"]').fill(`${rootName} `);
+    await expect(deleteButton).toBeDisabled();
+    await deleteForm.locator('input[name="confirmation_name"]').fill(rootName);
+    await expect(deleteButton).toBeEnabled();
+    await deleteButton.click();
     await expect(page.locator('#confirm-dialog')).toBeVisible();
     await Promise.all([
         page.waitForURL(/\/bibliotheque$/),
+        page.locator('#confirm-dialog-submit').click(),
+    ]);
+    await expect(page.getByText(rootName, {exact: true})).toHaveCount(0);
+
+    await page.getByRole('link', {name: /Corbeille/}).click();
+    await expect(page.getByRole('heading', {name: 'Corbeille'})).toBeVisible();
+    let trashCard = page.locator('.library-trash-card').filter({hasText: rootName});
+    await expect(trashCard).toBeVisible();
+    await Promise.all([
+        page.waitForURL(/\/bibliotheque\/corbeille$/),
+        trashCard.getByRole('button', {name: 'Restaurer'}).click(),
+    ]);
+    await expect(page.getByText(rootName, {exact: true})).toHaveCount(0);
+
+    await page.goto('/bibliotheque');
+    rootCard = page.locator('.library-folder-card').filter({hasText: rootName});
+    await expect(rootCard).toBeVisible();
+    await rootCard.locator('.library-item-menu summary').click();
+    const secondDeleteForm = rootCard.locator('.library-delete-folder-form');
+    await secondDeleteForm.locator('input[name="confirmation_name"]').fill(rootName);
+    await secondDeleteForm.getByRole('button', {name: 'Mettre à la corbeille'}).click();
+    await expect(page.locator('#confirm-dialog')).toBeVisible();
+    await Promise.all([
+        page.waitForURL(/\/bibliotheque$/),
+        page.locator('#confirm-dialog-submit').click(),
+    ]);
+
+    await page.getByRole('link', {name: /Corbeille/}).click();
+    trashCard = page.locator('.library-trash-card').filter({hasText: rootName});
+    const permanentDetails = trashCard.locator('.library-permanent-delete');
+    await permanentDetails.locator('summary').click();
+    const permanentForm = permanentDetails.locator('.library-permanent-delete-form');
+    const permanentButton = permanentForm.getByRole('button', {name: 'Supprimer définitivement'});
+    await expect(permanentButton).toBeDisabled();
+    await permanentForm.locator('input[name="confirmation_name"]').fill(rootName);
+    await expect(permanentButton).toBeEnabled();
+    await permanentButton.click();
+    await expect(page.locator('#confirm-dialog')).toBeVisible();
+    await Promise.all([
+        page.waitForURL(/\/bibliotheque\/corbeille$/),
         page.locator('#confirm-dialog-submit').click(),
     ]);
     await expect(page.getByText(rootName, {exact: true})).toHaveCount(0);

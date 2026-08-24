@@ -148,8 +148,9 @@ final class DatabaseMaintenanceTest extends TestCase
         $folder = DocumentFolder::query()->create(['name' => 'Documents actuels']);
         $document = app(LibraryService::class)->storeDocument(
             $folder->id,
-            UploadedFile::fake()->createWithContent('actuel.txt', 'a-conserver'),
+            UploadedFile::fake()->image('actuel.png', 24, 24),
         );
+        $expectedImage = file_get_contents(app(LibraryService::class)->documentPath($document));
         WorkDay::query()->delete();
 
         try {
@@ -158,8 +159,8 @@ final class DatabaseMaintenanceTest extends TestCase
             self::assertTrue(WorkDay::query()->whereDate('date', '2026-07-01')->exists());
             self::assertSame('Documents actuels', DocumentFolder::query()->findOrFail($folder->id)->name);
             $restoredDocument = LibraryDocument::query()->findOrFail($document->id);
-            self::assertSame('actuel.txt', $restoredDocument->original_name);
-            self::assertSame('a-conserver', file_get_contents(app(LibraryService::class)->documentPath($restoredDocument)));
+            self::assertSame('actuel.png', $restoredDocument->original_name);
+            self::assertSame($expectedImage, file_get_contents(app(LibraryService::class)->documentPath($restoredDocument)));
         } finally {
             @unlink($sourceBackup);
         }
@@ -191,8 +192,9 @@ final class DatabaseMaintenanceTest extends TestCase
         $folder = DocumentFolder::query()->create(['name' => '2026']);
         $document = app(LibraryService::class)->storeDocument(
             $folder->id,
-            UploadedFile::fake()->createWithContent('bulletin.txt', 'contenu-sauvegarde'),
+            UploadedFile::fake()->image('bulletin.png', 32, 24),
         );
+        $expectedImage = file_get_contents(app(LibraryService::class)->documentPath($document));
         $archive = app(DatabaseMaintenanceService::class)->createApplicationBackup();
 
         try {
@@ -203,9 +205,10 @@ final class DatabaseMaintenanceTest extends TestCase
             self::assertNotFalse($zip->locateName('library/'.$document->storage_name));
             $zip->close();
 
-            app(LibraryService::class)->deleteFolder($folder);
-            self::assertDatabaseCount('document_folders', 0);
-            self::assertDatabaseCount('library_documents', 0);
+            app(LibraryService::class)->trashFolder($folder);
+            app(LibraryService::class)->forceDeleteFolder(DocumentFolder::onlyTrashed()->findOrFail($folder->id));
+            self::assertSame(0, DocumentFolder::withTrashed()->count());
+            self::assertSame(0, LibraryDocument::withTrashed()->count());
 
             app(DatabaseMaintenanceService::class)->restoreFrom($archive);
 
@@ -213,7 +216,35 @@ final class DatabaseMaintenanceTest extends TestCase
             $restored = LibraryDocument::query()->where('folder_id', $restoredFolder->id)->firstOrFail();
             $path = app(LibraryService::class)->libraryPath().DIRECTORY_SEPARATOR.$restored->storage_name;
             self::assertFileExists($path);
-            self::assertSame('contenu-sauvegarde', file_get_contents($path));
+            self::assertSame($expectedImage, file_get_contents($path));
+        } finally {
+            @unlink($archive);
+        }
+    }
+
+    public function test_complete_backup_restores_trash_state_and_trashed_file(): void
+    {
+        $folder = DocumentFolder::query()->create(['name' => 'Corbeille sauvegardée']);
+        $document = app(LibraryService::class)->storeDocument(
+            $folder->id,
+            UploadedFile::fake()->image('supprimee.png', 20, 20),
+        );
+        $path = app(LibraryService::class)->libraryPath().DIRECTORY_SEPARATOR.$document->storage_name;
+        app(LibraryService::class)->trashDocument($document);
+        self::assertTrue(LibraryDocument::onlyTrashed()->whereKey($document->id)->exists());
+        self::assertFileExists($path);
+
+        $archive = app(DatabaseMaintenanceService::class)->createApplicationBackup();
+        try {
+            app(LibraryService::class)->forceDeleteDocument(LibraryDocument::onlyTrashed()->findOrFail($document->id));
+            self::assertFileDoesNotExist($path);
+
+            app(DatabaseMaintenanceService::class)->restoreFrom($archive);
+
+            $restored = LibraryDocument::onlyTrashed()->where('original_name', 'supprimee.png')->firstOrFail();
+            self::assertSame($folder->id, $restored->folder_id);
+            self::assertFileExists(app(LibraryService::class)->libraryPath().DIRECTORY_SEPARATOR.$restored->storage_name);
+            $this->get('/bibliotheque/corbeille')->assertOk()->assertSee('supprimee.png');
         } finally {
             @unlink($archive);
         }

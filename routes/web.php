@@ -37,6 +37,11 @@ Route::middleware('auth.local')->group(function (): void {
     Route::post('/bibliotheque/fichiers', [LibraryController::class, 'storeDocument'])->name('library.documents.store');
     Route::get('/bibliotheque/fichiers/{document}/telecharger', [LibraryController::class, 'download'])->name('library.documents.download');
     Route::delete('/bibliotheque/fichiers/{document}', [LibraryController::class, 'destroyDocument'])->name('library.documents.destroy');
+    Route::get('/bibliotheque/corbeille', [LibraryController::class, 'trash'])->name('library.trash');
+    Route::post('/bibliotheque/corbeille/dossiers/{folder}/restaurer', [LibraryController::class, 'restoreFolder'])->whereNumber('folder')->name('library.trash.folders.restore');
+    Route::delete('/bibliotheque/corbeille/dossiers/{folder}', [LibraryController::class, 'forceDestroyFolder'])->whereNumber('folder')->name('library.trash.folders.destroy');
+    Route::post('/bibliotheque/corbeille/fichiers/{document}/restaurer', [LibraryController::class, 'restoreDocument'])->whereNumber('document')->name('library.trash.documents.restore');
+    Route::delete('/bibliotheque/corbeille/fichiers/{document}', [LibraryController::class, 'forceDestroyDocument'])->whereNumber('document')->name('library.trash.documents.destroy');
     Route::get('/bibliotheque/{folder?}', [LibraryController::class, 'index'])->whereNumber('folder')->name('library.index');
 
     Route::get('/salaires', [SalaryController::class, 'index'])->name('salaries.index');

@@ -4,9 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 final class LibraryDocument extends Model
 {
+    use SoftDeletes;
+
     protected $fillable = ['folder_id', 'original_name', 'storage_name', 'mime_type', 'size_bytes'];
 
     protected function casts(): array
@@ -16,6 +19,6 @@ final class LibraryDocument extends Model
 
     public function folder(): BelongsTo
     {
-        return $this->belongsTo(DocumentFolder::class, 'folder_id');
+        return $this->belongsTo(DocumentFolder::class, 'folder_id')->withTrashed();
     }
 }

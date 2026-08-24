@@ -8,7 +8,7 @@
     <form method="post" action="{{ $editingSalary ? route('salaries.update', $editingSalary) : route('salaries.store') }}" class="form-grid salary-form">@csrf @if($editingSalary) @method('PATCH') @endif
         <label>Mois<input type="month" name="month" max="{{ now()->format('Y-m') }}" value="{{ old('month', $editingSalary?->month ?? now()->format('Y-m')) }}" required @error('month') aria-invalid="true" @enderror>@error('month')<span class="field-error">{{ $message }}</span>@enderror</label>
         <label>Salaire net reçu (€)<input name="net_amount" inputmode="decimal" value="{{ old('net_amount', $editingSalary ? Money::formatInput($editingSalary->net_amount_cents) : '') }}" placeholder="1850,00" required @error('net_amount') aria-invalid="true" @enderror>@error('net_amount')<span class="field-error">{{ $message }}</span>@enderror</label>
-        <div class="wide form-actions"><button class="primary-button"><i class="fa-solid fa-floppy-disk"></i> {{ $editingSalary ? 'Enregistrer les modifications' : 'Enregistrer le salaire' }}</button>@if($editingSalary)<a class="primary-button secondary-button" href="{{ route('salaries.index') }}">Annuler</a>@endif</div>
+        <div class="wide form-actions"><button class="primary-button salary-save-button"><i class="fa-solid fa-floppy-disk"></i> {{ $editingSalary ? 'Enregistrer les modifications' : 'Enregistrer le salaire' }}</button>@if($editingSalary)<a class="primary-button secondary-button salary-cancel-button" href="{{ route('salaries.index') }}"><i class="fa-solid fa-xmark"></i> Annuler</a>@endif</div>
     </form>
 </section>
 
@@ -49,7 +49,7 @@
         <tr>
             <td><a href="{{ route('month.show', $salary->month) }}">{{ FrenchDate::month((int)substr($salary->month, 5, 2)) }} {{ substr($salary->month, 0, 4) }}</a></td>
             <td><strong class="salary-amount">{{ Money::formatCents($salary->net_amount_cents) }}</strong></td>
-            <td><div class="salary-row-actions"><a class="primary-button secondary-button compact-button" href="{{ route('salaries.index', ['edit' => $salary->id]) }}"><i class="fa-solid fa-pen"></i> Modifier</a><form method="post" action="{{ route('salaries.destroy', $salary) }}" data-confirm data-confirm-title="Supprimer ce salaire ?" data-confirm-message="Le salaire de {{ strtolower(FrenchDate::month((int)substr($salary->month,5,2))) }} {{ substr($salary->month,0,4) }} sera supprimé." data-confirm-action="Supprimer" data-confirm-danger="1">@csrf @method('DELETE')<button class="danger-button compact-button"><i class="fa-solid fa-trash"></i> Supprimer</button></form></div></td>
+            <td><div class="salary-row-actions"><a class="salary-action-button salary-edit-button" href="{{ route('salaries.index', ['edit' => $salary->id]) }}"><i class="fa-solid fa-pen"></i> Modifier</a><form method="post" action="{{ route('salaries.destroy', $salary) }}" data-confirm data-confirm-title="Supprimer ce salaire ?" data-confirm-message="Le salaire de {{ strtolower(FrenchDate::month((int)substr($salary->month,5,2))) }} {{ substr($salary->month,0,4) }} sera supprimé." data-confirm-action="Supprimer" data-confirm-danger="1">@csrf @method('DELETE')<button class="salary-action-button salary-delete-button"><i class="fa-regular fa-trash-can"></i> Supprimer</button></form></div></td>
         </tr>
     @empty
         <tr><td colspan="3" class="salary-table-empty">Aucun salaire enregistré.</td></tr>
