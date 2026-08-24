@@ -477,13 +477,8 @@ test('document library works across responsive layouts', async ({page}, testInfo
     await page.goto('/bibliotheque');
     rootCard = page.locator('.library-folder-card').filter({hasText: rootName});
     await rootCard.locator('.library-item-menu summary').click();
-    const deleteForm = rootCard.locator('.library-delete-folder-form');
+    const deleteForm = rootCard.locator('form[data-confirm]');
     const deleteButton = deleteForm.getByRole('button', {name: 'Mettre à la corbeille'});
-    await expect(deleteButton).toBeDisabled();
-    await deleteForm.locator('input[name="confirmation_name"]').fill(`${rootName} `);
-    await expect(deleteButton).toBeDisabled();
-    await deleteForm.locator('input[name="confirmation_name"]').fill(rootName);
-    await expect(deleteButton).toBeEnabled();
     await deleteButton.click();
     await expect(page.locator('#confirm-dialog')).toBeVisible();
     await Promise.all([
@@ -506,8 +501,7 @@ test('document library works across responsive layouts', async ({page}, testInfo
     rootCard = page.locator('.library-folder-card').filter({hasText: rootName});
     await expect(rootCard).toBeVisible();
     await rootCard.locator('.library-item-menu summary').click();
-    const secondDeleteForm = rootCard.locator('.library-delete-folder-form');
-    await secondDeleteForm.locator('input[name="confirmation_name"]').fill(rootName);
+    const secondDeleteForm = rootCard.locator('form[data-confirm]');
     await secondDeleteForm.getByRole('button', {name: 'Mettre à la corbeille'}).click();
     await expect(page.locator('#confirm-dialog')).toBeVisible();
     await Promise.all([
@@ -517,13 +511,8 @@ test('document library works across responsive layouts', async ({page}, testInfo
 
     await page.getByRole('link', {name: /Corbeille/}).click();
     trashCard = page.locator('.library-trash-card').filter({hasText: rootName});
-    const permanentDetails = trashCard.locator('.library-permanent-delete');
-    await permanentDetails.locator('summary').click();
-    const permanentForm = permanentDetails.locator('.library-permanent-delete-form');
+    const permanentForm = trashCard.locator('form[data-confirm]');
     const permanentButton = permanentForm.getByRole('button', {name: 'Supprimer définitivement'});
-    await expect(permanentButton).toBeDisabled();
-    await permanentForm.locator('input[name="confirmation_name"]').fill(rootName);
-    await expect(permanentButton).toBeEnabled();
     await permanentButton.click();
     await expect(page.locator('#confirm-dialog')).toBeVisible();
     await Promise.all([

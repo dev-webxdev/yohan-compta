@@ -90,7 +90,6 @@ final class DatabaseMaintenanceTest extends TestCase
         MonthlySalary::query()->create([
             'month' => '2026-08',
             'net_amount_cents' => 185000,
-            'note' => 'Sauvegarde salaire',
         ]);
 
         $copy = app(DatabaseMaintenanceService::class)->createDownloadCopy();

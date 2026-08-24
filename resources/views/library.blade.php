@@ -35,7 +35,6 @@
         </div>
     </div>
     @error('document')<div class="field-error library-upload-error">{{ $message }}</div>@enderror
-    @error('confirmation_name')<div class="field-error library-upload-error">{{ $message }}</div>@enderror
 
     <nav class="library-breadcrumbs" aria-label="Fil d’Ariane">
         <a href="{{ route('library.index') }}"><i class="fa-solid fa-house"></i><span>Documents</span></a>
@@ -85,14 +84,7 @@
                                 <label>Renommer<input name="name" value="{{ $item->name }}" maxlength="120" required></label>
                                 <button class="primary-button compact-button"><i class="fa-solid fa-check"></i> Enregistrer</button>
                             </form>
-                            <form method="post" action="{{ route('library.folders.destroy', $item) }}" class="library-delete-folder-form" data-folder-delete-name="{{ $item->name }}" data-confirm data-confirm-title="Déplacer ce dossier dans la corbeille ?" data-confirm-message="Le dossier « {{ $item->name }} » et tout son contenu seront placés dans la corbeille. Vous pourrez les restaurer." data-confirm-action="Mettre à la corbeille" data-confirm-danger="1">@csrf @method('DELETE')
-                                <div class="library-danger-zone">
-                                    <strong><i class="fa-solid fa-shield-halved"></i> Suppression sécurisée</strong>
-                                    <p>Saisissez exactement <code>{{ $item->name }}</code> pour déverrouiller l’action.</p>
-                                    <input name="confirmation_name" autocomplete="off" aria-label="Nom du dossier à confirmer" placeholder="{{ $item->name }}" required>
-                                    <button class="danger-button compact-button" data-folder-delete-submit disabled><i class="fa-regular fa-trash-can"></i> Mettre à la corbeille</button>
-                                </div>
-                            </form>
+                            <form method="post" action="{{ route('library.folders.destroy', $item) }}" data-confirm data-confirm-title="Déplacer ce dossier dans la corbeille ?" data-confirm-message="Le dossier « {{ $item->name }} » et tout son contenu seront placés dans la corbeille. Vous pourrez les restaurer." data-confirm-action="Mettre à la corbeille" data-confirm-danger="1">@csrf @method('DELETE')<button class="danger-button compact-button"><i class="fa-regular fa-trash-can"></i> Mettre à la corbeille</button></form>
                         </div>
                     </details>
                 </article>

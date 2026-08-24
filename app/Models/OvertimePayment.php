@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 final class OvertimePayment extends Model
 {
-    protected $fillable = ['payment_date', 'amount_cents', 'hours_paid_minutes', 'period_reference'];
+    protected $fillable = ['payment_date', 'amount_cents', 'hours_paid_minutes'];
 
     protected function casts(): array
     {

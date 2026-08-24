@@ -31,9 +31,9 @@ final class DatabaseMaintenanceService
             'weekly_threshold_minutes', 'meal_allowance_cents', 'meal_allowance_time_minutes',
         ],
         'overtime_payments' => [
-            'id', 'payment_date', 'amount_cents', 'hours_paid_minutes', 'period_reference', 'created_at', 'updated_at',
+            'id', 'payment_date', 'amount_cents', 'hours_paid_minutes', 'created_at', 'updated_at',
         ],
-        'monthly_salaries' => ['id', 'month', 'net_amount_cents', 'note', 'created_at', 'updated_at'],
+        'monthly_salaries' => ['id', 'month', 'net_amount_cents', 'created_at', 'updated_at'],
         'document_folders' => ['id', 'parent_id', 'name', 'created_at', 'updated_at', 'deleted_at'],
         'library_documents' => ['id', 'folder_id', 'original_name', 'storage_name', 'mime_type', 'size_bytes', 'created_at', 'updated_at', 'deleted_at'],
         'document_links' => ['id', 'document_id', 'target_type', 'target_key', 'created_at', 'updated_at'],

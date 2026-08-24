@@ -253,17 +253,6 @@ final class ReportService
         }
     }
 
-    /** @return array<int,array<int,array{month:string,amount_cents:int}>> */
-    public function paymentAllocations(): array
-    {
-        $this->beginCalculation();
-        try {
-            return $this->allocationSnapshot()['by_payment'];
-        } finally {
-            $this->endCalculation();
-        }
-    }
-
     /** @return array<int,array<int,array{month:string,minutes:int,indicative:bool}>> */
     public function paymentHourAllocations(): array
     {

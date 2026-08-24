@@ -56,7 +56,7 @@ final class LibraryTest extends TestCase
             ->assertSee('Retour aux documents');
     }
 
-    public function test_folder_trash_requires_exact_name_can_restore_and_force_delete_recursively(): void
+    public function test_folder_trash_can_restore_and_force_delete_recursively(): void
     {
         $this->post('/bibliotheque/dossiers', ['name' => '2026'])->assertRedirect('/bibliotheque');
         $year = DocumentFolder::query()->where('name', '2026')->firstOrFail();
@@ -87,11 +87,7 @@ final class LibraryTest extends TestCase
         $download = $this->get('/bibliotheque/fichiers/'.$document->id.'/telecharger')->assertOk();
         self::assertStringContainsString('bulletin-aout.png', (string) $download->headers->get('content-disposition'));
 
-        $this->from('/bibliotheque')->delete('/bibliotheque/dossiers/'.$year->id, ['confirmation_name' => '2026 '])
-            ->assertRedirect('/bibliotheque')->assertSessionHasErrors('confirmation_name');
-        self::assertFalse($year->fresh()->trashed());
-
-        $this->delete('/bibliotheque/dossiers/'.$year->id, ['confirmation_name' => '2026'])->assertRedirect('/bibliotheque');
+        $this->delete('/bibliotheque/dossiers/'.$year->id)->assertRedirect('/bibliotheque');
         $trashedYear = DocumentFolder::withTrashed()->findOrFail($year->id);
         self::assertTrue($trashedYear->trashed());
         self::assertDatabaseHas('document_folders', ['id' => $august->id, 'deleted_at' => null]);
@@ -105,14 +101,8 @@ final class LibraryTest extends TestCase
         self::assertFalse(DocumentFolder::query()->findOrFail($year->id)->trashed());
         $this->get('/bibliotheque/'.$august->id)->assertOk()->assertSee('bulletin-aout.png');
 
-        $this->delete('/bibliotheque/dossiers/'.$year->id, ['confirmation_name' => '2026'])->assertRedirect('/bibliotheque');
-        $this->from('/bibliotheque/corbeille')->delete('/bibliotheque/corbeille/dossiers/'.$year->id, ['confirmation_name' => '2025'])
-            ->assertRedirect('/bibliotheque/corbeille')->assertSessionHasErrors('confirmation_name');
-        self::assertNotNull(DocumentFolder::withTrashed()->find($year->id));
-        self::assertFileExists($storedPath);
-
-        $this->delete('/bibliotheque/corbeille/dossiers/'.$year->id, ['confirmation_name' => '2026'])
-            ->assertRedirect('/bibliotheque/corbeille');
+        $this->delete('/bibliotheque/dossiers/'.$year->id)->assertRedirect('/bibliotheque');
+        $this->delete('/bibliotheque/corbeille/dossiers/'.$year->id)->assertRedirect('/bibliotheque/corbeille');
         self::assertNull(DocumentFolder::withTrashed()->find($year->id));
         self::assertNull(DocumentFolder::withTrashed()->find($august->id));
         self::assertNull(LibraryDocument::withTrashed()->find($document->id));
@@ -277,7 +267,7 @@ final class LibraryTest extends TestCase
         $this->from('/bibliotheque')->post('/bibliotheque/dossiers', ['name' => '2026'])
             ->assertRedirect('/bibliotheque')->assertSessionHasErrors('name');
 
-        $this->delete('/bibliotheque/dossiers/'.$original->id, ['confirmation_name' => '2026'])->assertRedirect('/bibliotheque');
+        $this->delete('/bibliotheque/dossiers/'.$original->id)->assertRedirect('/bibliotheque');
         $this->post('/bibliotheque/dossiers', ['name' => '2026'])->assertRedirect('/bibliotheque');
         self::assertSame(1, DocumentFolder::query()->where('name', '2026')->count());
         self::assertSame(2, DocumentFolder::withTrashed()->where('name', '2026')->count());

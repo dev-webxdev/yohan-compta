@@ -138,11 +138,9 @@ final class ApplicationFlowTest extends TestCase
         $beforeAugust = app(ReportService::class)->month('2026-08')['overtime_net_cents'];
         self::assertGreaterThan(0, $beforeJuly + $beforeAugust);
 
-        $this->post('/paiements', ['payment_date' => '2026-10-15', 'amount' => '50,00', 'hours_paid' => '', 'note' => 'partiel'])->assertRedirect('/paiements');
+        $this->post('/paiements', ['payment_date' => '2026-10-15', 'amount' => '50,00', 'hours_paid' => ''])->assertRedirect('/paiements');
         self::assertSame(1, OvertimePayment::query()->count());
-        $payment = OvertimePayment::query()->firstOrFail();
-        self::assertSame(5000, $payment->amount_cents);
-        self::assertNotEmpty(app(ReportService::class)->paymentAllocations()[$payment->id] ?? []);
+        self::assertSame(5000, OvertimePayment::query()->firstOrFail()->amount_cents);
 
         self::assertSame($beforeJuly, app(ReportService::class)->month('2026-07')['overtime_net_cents']);
         self::assertSame($beforeAugust, app(ReportService::class)->month('2026-08')['overtime_net_cents']);

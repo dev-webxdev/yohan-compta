@@ -92,16 +92,6 @@
         if (event.key === 'Escape') dismissableDetails.forEach(details => { details.open = false; });
     });
 
-    qa('.library-delete-folder-form[data-folder-delete-name]').forEach(form => {
-        const input = q('input[name="confirmation_name"]', form);
-        const submit = q('[data-folder-delete-submit]', form);
-        const sync = () => {
-            if (submit) submit.disabled = !input || input.value !== form.dataset.folderDeleteName;
-        };
-        input?.addEventListener('input', sync);
-        sync();
-    });
-
     const confirmationDialog = q('#confirm-dialog');
     const confirmationTitle = q('#confirm-dialog-title');
     const confirmationMessage = q('#confirm-dialog-message');

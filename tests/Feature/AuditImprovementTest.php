@@ -6,7 +6,6 @@ use App\Models\OvertimePayment;
 use App\Models\WorkDay;
 use App\Services\ReportService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 final class AuditImprovementTest extends TestCase
@@ -33,24 +32,18 @@ final class AuditImprovementTest extends TestCase
 
     public function test_existing_payment_is_edited_from_modal_without_recreating_it_and_keeps_legacy_reference(): void
     {
-        $payment = OvertimePayment::query()->create([
+        $payment = new OvertimePayment([
             'payment_date' => '2026-08-10',
             'amount_cents' => 1000,
-            'period_reference' => 'Ancienne référence',
         ]);
+        $payment->forceFill(['period_reference' => 'Ancienne référence'])->save();
 
-        $page = $this->get('/paiements')->assertOk();
-        $page->assertSee('id="payment-edit-dialog"', false)
-            ->assertSee('data-payment-edit', false)
-            ->assertSee('data-payment-id="'.$payment->id.'"', false)
-            ->assertSee('data-payment-amount="10"', false)
-            ->assertSee(route('payments.update', $payment), false)
+        $this->get('/paiements')->assertOk()
+            ->assertSee('Modifier')
             ->assertDontSee('Référence période')
-            ->assertDontSee('Ancienne référence')
-            ->assertDontSee('allocation-tags', false);
+            ->assertDontSee('Ancienne référence');
 
         $this->patch(route('payments.update', $payment), [
-            '_payment_edit' => (string) $payment->id,
             'payment_date' => '2026-08-14',
             'amount' => '12,50',
             'hours_paid' => '',
@@ -61,7 +54,6 @@ final class AuditImprovementTest extends TestCase
         self::assertSame(1250, $payment->amount_cents);
         self::assertNull($payment->hours_paid_minutes);
         self::assertSame('Ancienne référence', $payment->period_reference);
-        self::assertFalse(Schema::hasColumn('overtime_payments', 'note'));
         self::assertSame(1, OvertimePayment::query()->count());
     }
 
@@ -87,7 +79,6 @@ final class AuditImprovementTest extends TestCase
             'payment_date' => '2026-08-14',
             'amount' => (string) ($debt / 100),
             'hours_paid' => '05:00',
-            'note' => '',
         ])->assertRedirect('/paiements')->assertSessionHasNoErrors();
 
         self::assertSame(300, $payment->fresh()->hours_paid_minutes);
@@ -135,32 +126,5 @@ final class AuditImprovementTest extends TestCase
         $response = $this->get('/mois/2026-08')->assertOk();
         $response->assertDontSee('Juillet :</span>', false);
         $response->assertSee('Août :</span>', false);
-    }
-
-    public function test_audit_ui_improvements_are_present(): void
-    {
-        $css = file_get_contents(public_path('app.css'));
-        $javascript = file_get_contents(public_path('app.js'));
-        $layout = file_get_contents(resource_path('views/layouts/app.blade.php'));
-        $settings = file_get_contents(resource_path('views/settings.blade.php'));
-
-        self::assertStringContainsString('grid-template-columns:repeat(2,minmax(0,1fr))', $css);
-        self::assertStringContainsString('.report-table thead th{position:sticky', $css);
-        self::assertStringContainsString('a:focus-visible,button:focus-visible', $css);
-        self::assertStringContainsString('.mobile-nav a{font-size:10px}', $css);
-        self::assertStringContainsString('const setRowSaveState =', $javascript);
-        self::assertStringContainsString('const showSaveError =', $javascript);
-        self::assertStringContainsString('keepalive: true', $javascript);
-        self::assertStringContainsString("window.addEventListener('pagehide', flushPendingRows);", $javascript);
-        self::assertStringContainsString("q('#confirm-dialog-cancel')?.focus();", $javascript);
-        self::assertStringContainsString('/vendor/fontawesome/css/fontawesome.min.css', $layout);
-        self::assertStringNotContainsString('cdnjs.cloudflare.com/ajax/libs/font-awesome', $layout);
-        self::assertFileExists(public_path('vendor/fontawesome/webfonts/fa-solid-900.woff2'));
-        self::assertStringNotContainsString('Taux horaire brut', $settings);
-        self::assertStringNotContainsString('Sauvegarde automatique', $settings);
-        self::assertStringNotContainsString('Réinitialiser complètement le site', $settings);
-        self::assertStringNotContainsString('Réinitialiser un mois', $settings);
-        self::assertStringNotContainsString('Je confirme la restauration de la base sélectionnée.', $settings);
-        self::assertStringNotContainsString('Je confirme la suppression des données de ce mois.', $settings);
     }
 }

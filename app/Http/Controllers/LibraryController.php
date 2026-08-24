@@ -74,9 +74,8 @@ final class LibraryController
         return $this->backToFolder($folder->parent_id)->with('status', 'Dossier renommé.');
     }
 
-    public function destroyFolder(Request $request, DocumentFolder $folder, LibraryService $library): RedirectResponse
+    public function destroyFolder(DocumentFolder $folder, LibraryService $library): RedirectResponse
     {
-        $this->validateFolderConfirmation($request, $folder);
         $parentId = $folder->parent_id;
         $library->trashFolder($folder);
 
@@ -95,10 +94,9 @@ final class LibraryController
         return redirect()->route('library.trash')->with('status', 'Dossier restauré.');
     }
 
-    public function forceDestroyFolder(Request $request, int $folder, LibraryService $library): RedirectResponse
+    public function forceDestroyFolder(int $folder, LibraryService $library): RedirectResponse
     {
         $trashedFolder = DocumentFolder::onlyTrashed()->findOrFail($folder);
-        $this->validateFolderConfirmation($request, $trashedFolder);
         $library->forceDeleteFolder($trashedFolder);
 
         return redirect()->route('library.trash')->with('status', 'Dossier supprimé définitivement.');
@@ -108,12 +106,10 @@ final class LibraryController
     {
         $data = $request->validate([
             'folder_id' => ['required', 'integer', Rule::exists('document_folders', 'id')->whereNull('deleted_at')],
-            'document' => ['required', 'file', 'max:10240', 'extensions:jpg,jpeg,png,webp,gif,pdf', 'mimes:jpg,jpeg,png,webp,gif,pdf'],
+            'document' => ['required', 'file', 'max:10240'],
         ], [
             'folder_id.required' => 'Ouvrez un dossier avant d’ajouter un document.',
             'document.max' => 'Le document ne doit pas dépasser 10 Mo.',
-            'document.extensions' => 'Seuls les fichiers PDF, JPG, PNG, WEBP et GIF sont autorisés.',
-            'document.mimes' => 'Seuls les fichiers PDF, JPG, PNG, WEBP et GIF sont autorisés.',
         ]);
 
         try {
@@ -165,19 +161,6 @@ final class LibraryController
         $library->forceDeleteDocument($trashedDocument);
 
         return redirect()->route('library.trash')->with('status', 'Fichier supprimé définitivement.');
-    }
-
-    private function validateFolderConfirmation(Request $request, DocumentFolder $folder): void
-    {
-        $data = $request->validate([
-            'confirmation_name' => ['required', 'string', 'max:120'],
-        ], ['confirmation_name.required' => 'Saisissez exactement le nom du dossier pour confirmer.']);
-
-        if ($data['confirmation_name'] !== $folder->name) {
-            throw ValidationException::withMessages([
-                'confirmation_name' => 'Le nom saisi ne correspond pas exactement à « '.$folder->name.' ».',
-            ]);
-        }
     }
 
     private function backToFolder(int|string|null $folderId): RedirectResponse

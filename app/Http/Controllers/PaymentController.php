@@ -48,7 +48,7 @@ final class PaymentController
 
     public function update(Request $request, OvertimePayment $payment): RedirectResponse
     {
-        $payment->update($this->paymentPayload($request, $payment));
+        $payment->update($this->paymentPayload($request));
 
         return redirect()->route('payments.index')->with('status', 'Paiement modifié. Les soldes ont été recalculés automatiquement.');
     }
@@ -60,8 +60,8 @@ final class PaymentController
         return redirect()->route('payments.index')->with('status', 'Paiement supprimé. Les soldes ont été recalculés.');
     }
 
-    /** @return array{payment_date:string,amount_cents:int,hours_paid_minutes:?int,period_reference:?string} */
-    private function paymentPayload(Request $request, ?OvertimePayment $payment = null): array
+    /** @return array{payment_date:string,amount_cents:int,hours_paid_minutes:?int} */
+    private function paymentPayload(Request $request): array
     {
         $data = $request->validate([
             'payment_date' => [
@@ -93,7 +93,6 @@ final class PaymentController
             'payment_date' => $data['payment_date'],
             'amount_cents' => $amountCents,
             'hours_paid_minutes' => $hoursMinutes,
-            'period_reference' => $payment?->period_reference,
         ];
     }
 }

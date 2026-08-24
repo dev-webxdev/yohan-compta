@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 final class MonthlySalary extends Model
 {
-    protected $fillable = ['month', 'net_amount_cents', 'note'];
+    protected $fillable = ['month', 'net_amount_cents'];
 
     protected function casts(): array
     {

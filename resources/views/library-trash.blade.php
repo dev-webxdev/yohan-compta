@@ -15,7 +15,6 @@
         <div class="library-toolbar-actions"><a class="primary-button secondary-button" href="{{ route('library.index') }}"><i class="fa-solid fa-arrow-left"></i> Retour aux documents</a></div>
     </div>
     @error('trash')<div class="field-error library-upload-error">{{ $message }}</div>@enderror
-    @error('confirmation_name')<div class="field-error library-upload-error">{{ $message }}</div>@enderror
 </section>
 
 <section class="panel library-content-panel">
@@ -30,14 +29,7 @@
                     </div>
                     <div class="library-trash-actions">
                         <form method="post" action="{{ route('library.trash.folders.restore', ['folder' => $item->id]) }}">@csrf<button class="library-restore-button"><i class="fa-solid fa-rotate-left"></i> Restaurer</button></form>
-                        <details class="library-permanent-delete" data-dismissable-details>
-                            <summary class="library-permanent-delete-trigger"><i class="fa-solid fa-trash-can"></i> Supprimer définitivement</summary>
-                            <form method="post" action="{{ route('library.trash.folders.destroy', ['folder' => $item->id]) }}" class="library-delete-folder-form library-permanent-delete-form" data-folder-delete-name="{{ $item->name }}" data-confirm data-confirm-title="Supprimer définitivement ce dossier ?" data-confirm-message="Le dossier « {{ $item->name }} », ses sous-dossiers et leurs fichiers seront définitivement effacés. Cette action est irréversible." data-confirm-action="Supprimer définitivement" data-confirm-danger="1">@csrf @method('DELETE')
-                                <p>Saisissez exactement <code>{{ $item->name }}</code>.</p>
-                                <input name="confirmation_name" autocomplete="off" aria-label="Nom du dossier à confirmer définitivement" required>
-                                <button class="danger-button compact-button" data-folder-delete-submit disabled><i class="fa-solid fa-trash-can"></i> Supprimer définitivement</button>
-                            </form>
-                        </details>
+                        <form method="post" action="{{ route('library.trash.folders.destroy', ['folder' => $item->id]) }}" data-confirm data-confirm-title="Supprimer définitivement ce dossier ?" data-confirm-message="Le dossier « {{ $item->name }} », ses sous-dossiers et leurs fichiers seront définitivement effacés. Cette action est irréversible." data-confirm-action="Supprimer définitivement" data-confirm-danger="1">@csrf @method('DELETE')<button class="danger-button compact-button"><i class="fa-solid fa-trash-can"></i> Supprimer définitivement</button></form>
                     </div>
                 </article>
             @endforeach
