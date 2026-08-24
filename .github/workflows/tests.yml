@@ -13,15 +13,11 @@ jobs:
     runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
-      - uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.4'
-          extensions: pdo_sqlite
-          coverage: none
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: npm
+      - name: Verify runner toolchain
+        run: |
+          php -r 'exit(PHP_VERSION_ID >= 80400 && PHP_VERSION_ID < 80500 ? 0 : 1);'
+          php -r 'exit(extension_loaded("pdo_sqlite") ? 0 : 1);'
+          node -e 'process.exit(Number(process.versions.node.split(".")[0]) === 26 ? 0 : 1)'
       - name: Validate Composer
         run: composer validate --strict
       - name: Install dependencies
@@ -39,7 +35,7 @@ jobs:
         run: php artisan test
       - name: Install browser test dependencies
         run: npm ci --no-audit --no-fund
-      - name: Install Chromium
-        run: npx playwright install --with-deps chromium
+      - name: Verify Chromium
+        run: npx playwright install chromium
       - name: Browser tests
         run: npm run test:e2e
