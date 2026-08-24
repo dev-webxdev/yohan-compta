@@ -259,3 +259,42 @@ test('payment history is shown without filter controls', async ({page}) => {
     await expect(page.getByRole('heading', {name: 'Historique des paiements d’heures supplémentaires'})).toBeVisible();
     await expect(page.locator('.payment-filters')).toHaveCount(0);
 });
+
+
+test('salary tracking works across responsive layouts', async ({page}, testInfo) => {
+    const months = {
+        'mobile-390': '2026-01',
+        'tablet-768': '2026-02',
+        'desktop-1440': '2026-03',
+        'wide-2560': '2026-04',
+    };
+    const month = months[testInfo.project.name];
+
+    await page.goto('/salaires?year=2026');
+    await expect(page.getByRole('heading', {name: 'Suivi des salaires'})).toBeVisible();
+    await expect(page.getByRole('heading', {name: 'Enregistrer un salaire'})).toBeVisible();
+
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    expect(overflow).toBeLessThanOrEqual(1);
+
+    await page.locator('input[name="month"]').fill(month);
+    await page.locator('input[name="net_amount"]').fill('1850,50');
+    await page.locator('textarea[name="note"]').fill(`E2E ${testInfo.project.name}`);
+    await Promise.all([
+        page.waitForURL(/\/salaires\?year=2026$/),
+        page.getByRole('button', {name: /Enregistrer le salaire/}).click(),
+    ]);
+
+    await expect(page.getByText('1 850,50 €').first()).toBeVisible();
+    await expect(page.locator('.salary-chart-point')).toHaveCount(1);
+
+    const salaryRow = page.locator('.salary-table tbody tr').filter({hasText: `E2E ${testInfo.project.name}`});
+    await expect(salaryRow).toBeVisible();
+    await salaryRow.getByRole('button', {name: /Supprimer/}).click();
+    await expect(page.locator('#confirm-dialog')).toBeVisible();
+    await Promise.all([
+        page.waitForURL(/\/salaires\?year=2026$/),
+        page.locator('#confirm-dialog-submit').click(),
+    ]);
+    await expect(page.getByText(`E2E ${testInfo.project.name}`)).toHaveCount(0);
+});

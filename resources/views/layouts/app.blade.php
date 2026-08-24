@@ -24,6 +24,7 @@
     <nav class="sidebar-nav">
         <a class="{{ request()->routeIs('month.*') ? 'active' : '' }}" href="{{ $dashboardUrl }}" @if(request()->routeIs('month.*')) aria-current="page" @endif><i class="fa-solid fa-table-columns"></i><span>Tableau de bord</span></a>
         <a class="{{ request()->routeIs('payments.*') ? 'active' : '' }}" href="{{ route('payments.index') }}" @if(request()->routeIs('payments.*')) aria-current="page" @endif><i class="fa-solid fa-money-check-dollar"></i><span>Heures supplémentaires</span></a>
+        <a class="{{ request()->routeIs('salaries.*') ? 'active' : '' }}" href="{{ route('salaries.index', ['year' => now()->year]) }}" @if(request()->routeIs('salaries.*')) aria-current="page" @endif><i class="fa-solid fa-wallet"></i><span>Salaires</span></a>
         <a class="{{ request()->routeIs('year.*') ? 'active' : '' }}" href="{{ route('year.show', ['year' => now()->year]) }}" @if(request()->routeIs('year.*')) aria-current="page" @endif><i class="fa-solid fa-chart-column"></i><span>Rapports</span></a>
         <a class="{{ request()->routeIs('settings.*') ? 'active' : '' }}" href="{{ route('settings.index') }}" @if(request()->routeIs('settings.*')) aria-current="page" @endif><i class="fa-solid fa-gear"></i><span>Paramètres</span></a>
     </nav>
@@ -51,6 +52,7 @@
 <nav class="mobile-nav" aria-label="Navigation mobile">
     <a class="{{ request()->routeIs('month.*') ? 'active' : '' }}" href="{{ $dashboardUrl }}" @if(request()->routeIs('month.*')) aria-current="page" @endif><i class="fa-solid fa-house"></i><span>Tableau</span></a>
     <a class="{{ request()->routeIs('payments.*') ? 'active' : '' }}" href="{{ route('payments.index') }}" @if(request()->routeIs('payments.*')) aria-current="page" @endif><i class="fa-solid fa-money-check-dollar"></i><span>Heures sup</span></a>
+    <a class="{{ request()->routeIs('salaries.*') ? 'active' : '' }}" href="{{ route('salaries.index', ['year' => now()->year]) }}" @if(request()->routeIs('salaries.*')) aria-current="page" @endif><i class="fa-solid fa-wallet"></i><span>Salaires</span></a>
     <a class="{{ request()->routeIs('year.*') ? 'active' : '' }}" href="{{ route('year.show', ['year' => now()->year]) }}" @if(request()->routeIs('year.*')) aria-current="page" @endif><i class="fa-solid fa-chart-column"></i><span>Rapports</span></a>
     <a class="{{ request()->routeIs('settings.*') ? 'active' : '' }}" href="{{ route('settings.index') }}" @if(request()->routeIs('settings.*')) aria-current="page" @endif><i class="fa-solid fa-gear"></i><span>Paramètres</span></a>
 </nav>

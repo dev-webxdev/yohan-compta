@@ -6,6 +6,7 @@ use App\Http\Controllers\ExportController;
 use App\Http\Controllers\MonthController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\SalaryController;
 use App\Http\Controllers\WorkDayController;
 use App\Http\Controllers\YearController;
 use Illuminate\Support\Facades\Route;
@@ -28,6 +29,11 @@ Route::middleware('auth.local')->group(function (): void {
     Route::post('/paiements', [PaymentController::class, 'store'])->name('payments.store');
     Route::patch('/paiements/{payment}', [PaymentController::class, 'update'])->name('payments.update');
     Route::delete('/paiements/{payment}', [PaymentController::class, 'destroy'])->name('payments.destroy');
+
+    Route::get('/salaires', [SalaryController::class, 'index'])->name('salaries.index');
+    Route::post('/salaires', [SalaryController::class, 'store'])->name('salaries.store');
+    Route::patch('/salaires/{salary}', [SalaryController::class, 'update'])->name('salaries.update');
+    Route::delete('/salaires/{salary}', [SalaryController::class, 'destroy'])->name('salaries.destroy');
 
     Route::get('/annee/{year?}', YearController::class)->where('year', '\\d{4}')->name('year.show');
     Route::get('/annee/{year}/export.csv', [ExportController::class, 'year'])->where('year', '\\d{4}')->name('year.export');

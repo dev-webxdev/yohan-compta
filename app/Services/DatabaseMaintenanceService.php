@@ -31,6 +31,7 @@ final class DatabaseMaintenanceService
         'overtime_payments' => [
             'id', 'payment_date', 'amount_cents', 'hours_paid_minutes', 'period_reference', 'created_at', 'updated_at',
         ],
+        'monthly_salaries' => ['id', 'month', 'net_amount_cents', 'note', 'created_at', 'updated_at'],
     ];
 
     public function __construct(private readonly DatabaseAccessLock $databaseLock)
@@ -228,6 +229,7 @@ final class DatabaseMaintenanceService
 
         $connection->table('work_days')->limit(1)->get();
         $connection->table('overtime_payments')->limit(1)->get();
+        $connection->table('monthly_salaries')->limit(1)->get();
     }
 
     /** @param list<string> $requiredColumns */

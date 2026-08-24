@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\MonthlySalary;
 use App\Models\WorkDay;
 use App\Services\DatabaseMaintenanceService;
 use Illuminate\Support\Facades\Artisan;
@@ -70,12 +71,18 @@ final class DatabaseMaintenanceTest extends TestCase
             'warehouse_minutes' => 60,
             'meal_allowance_mode' => 'auto',
         ]);
+        MonthlySalary::query()->create([
+            'month' => '2026-08',
+            'net_amount_cents' => 185000,
+            'note' => 'Sauvegarde salaire',
+        ]);
 
         $copy = app(DatabaseMaintenanceService::class)->createDownloadCopy();
         try {
             self::assertFileExists($copy);
             $pdo = new PDO('sqlite:'.$copy);
             self::assertSame(1, (int) $pdo->query("SELECT COUNT(*) FROM work_days WHERE date = '2026-08-14'")->fetchColumn());
+            self::assertSame(185000, (int) $pdo->query("SELECT net_amount_cents FROM monthly_salaries WHERE month = '2026-08'")->fetchColumn());
             self::assertSame('ok', $pdo->query('PRAGMA integrity_check')->fetchColumn());
         } finally {
             @unlink($copy);
