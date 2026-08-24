@@ -13,13 +13,14 @@ use RuntimeException;
 
 final class LibraryService
 {
-    private const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
-    private const IMAGE_EXTENSION_MIMES = [
+    private const MAX_DOCUMENT_BYTES = 10 * 1024 * 1024;
+    private const DOCUMENT_EXTENSION_MIMES = [
         'jpg' => 'image/jpeg',
         'jpeg' => 'image/jpeg',
         'png' => 'image/png',
         'webp' => 'image/webp',
         'gif' => 'image/gif',
+        'pdf' => 'application/pdf',
     ];
 
     /** @return array{folder:?DocumentFolder,breadcrumbs:list<DocumentFolder>,folders:mixed,documents:mixed,trash_count:int} */
@@ -37,6 +38,7 @@ final class LibraryService
                 ->get(),
             'documents' => LibraryDocument::query()
                 ->where('folder_id', $folder?->id)
+                ->with('links')
                 ->orderBy('original_name')
                 ->get(),
             'trash_count' => $this->trashCount(),
@@ -48,7 +50,7 @@ final class LibraryService
     {
         return [
             'folders' => DocumentFolder::onlyTrashed()->with('parent')->orderByDesc('deleted_at')->get(),
-            'documents' => LibraryDocument::onlyTrashed()->with('folder')->orderByDesc('deleted_at')->get(),
+            'documents' => LibraryDocument::onlyTrashed()->with(['folder', 'links'])->orderByDesc('deleted_at')->get(),
             'trash_count' => $this->trashCount(),
         ];
     }
@@ -104,7 +106,7 @@ final class LibraryService
     public function storeDocument(int $folderId, UploadedFile $file): LibraryDocument
     {
         $this->accessibleFolder($folderId);
-        $mimeType = $this->verifiedImageMime($file);
+        $mimeType = $this->verifiedDocumentMime($file);
 
         File::ensureDirectoryExists($this->libraryPath());
         $storageName = (string) Str::uuid();
@@ -221,32 +223,46 @@ final class LibraryService
         $this->assertFolderAccessible($parent);
     }
 
-    private function verifiedImageMime(UploadedFile $file): string
+    private function verifiedDocumentMime(UploadedFile $file): string
     {
         if (!$file->isValid()) {
             throw new RuntimeException('Le fichier envoyé est invalide.');
         }
-        if (($file->getSize() ?: 0) > self::MAX_IMAGE_BYTES) {
-            throw new RuntimeException('L’image ne doit pas dépasser 10 Mo.');
+        if (($file->getSize() ?: 0) > self::MAX_DOCUMENT_BYTES) {
+            throw new RuntimeException('Le document ne doit pas dépasser 10 Mo.');
         }
 
         $extension = strtolower($file->getClientOriginalExtension());
-        $expectedMime = self::IMAGE_EXTENSION_MIMES[$extension] ?? null;
+        $expectedMime = self::DOCUMENT_EXTENSION_MIMES[$extension] ?? null;
         if ($expectedMime === null) {
-            throw new RuntimeException('Seules les images JPG, PNG, WEBP et GIF sont autorisées.');
+            throw new RuntimeException('Seuls les fichiers PDF, JPG, PNG, WEBP et GIF sont autorisés.');
         }
 
         $path = $file->getRealPath();
         if (!is_string($path) || $path === '' || !is_file($path)) {
-            throw new RuntimeException('Impossible de vérifier l’image importée.');
+            throw new RuntimeException('Impossible de vérifier le document importé.');
         }
 
         $detectedMime = (new \finfo(FILEINFO_MIME_TYPE))->file($path);
+        if (!is_string($detectedMime) || $detectedMime !== $expectedMime) {
+            throw new RuntimeException('Le fichier fourni ne correspond pas à son extension ou n’est pas sûr.');
+        }
+
+        if ($expectedMime === 'application/pdf') {
+            $handle = fopen($path, 'rb');
+            $header = $handle ? fread($handle, 5) : false;
+            if (is_resource($handle)) {
+                fclose($handle);
+            }
+            if ($header !== '%PDF-') {
+                throw new RuntimeException('Le fichier fourni n’est pas un PDF valide.');
+            }
+            return $detectedMime;
+        }
+
         $imageInfo = @getimagesize($path);
         $imageMime = is_array($imageInfo) ? ($imageInfo['mime'] ?? null) : null;
-        if (!is_string($detectedMime) || !is_string($imageMime)
-            || $detectedMime !== $imageMime
-            || $detectedMime !== $expectedMime) {
+        if (!is_string($imageMime) || $detectedMime !== $imageMime) {
             throw new RuntimeException('Le fichier fourni n’est pas une image valide et sûre.');
         }
 

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\DocumentFolder;
 use App\Models\LibraryDocument;
+use App\Services\DocumentLinkService;
 use App\Services\LibraryService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -14,9 +15,27 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 final class LibraryController
 {
-    public function index(LibraryService $library, ?int $folder = null): View
+    public function index(Request $request, LibraryService $library, DocumentLinkService $links, ?int $folder = null): View
     {
-        return view('library', $library->browse($folder));
+        $target = trim((string) $request->query('target', ''));
+        $linkedDocuments = collect();
+        if ($target !== '') {
+            try {
+                $linkedDocuments = $links->documentsForToken($target);
+            } catch (\RuntimeException) {
+                abort(404);
+            }
+        }
+
+        $data = $library->browse($folder);
+        $data['associationTargets'] = $links->targetOptions();
+        $data['associationFilter'] = $target;
+        $data['linkedDocuments'] = $linkedDocuments;
+        $data['linkLabels'] = $data['documents']->mapWithKeys(fn (LibraryDocument $document): array => [
+            $document->id => $document->links->mapWithKeys(fn ($link): array => [$link->id => $links->label($link)])->all(),
+        ])->all();
+
+        return view('library', $data);
     }
 
     public function trash(LibraryService $library): View
@@ -89,13 +108,12 @@ final class LibraryController
     {
         $data = $request->validate([
             'folder_id' => ['required', 'integer', Rule::exists('document_folders', 'id')->whereNull('deleted_at')],
-            'document' => ['required', 'file', 'max:10240', 'extensions:jpg,jpeg,png,webp,gif', 'mimes:jpg,jpeg,png,webp,gif', 'image'],
+            'document' => ['required', 'file', 'max:10240', 'extensions:jpg,jpeg,png,webp,gif,pdf', 'mimes:jpg,jpeg,png,webp,gif,pdf'],
         ], [
-            'folder_id.required' => 'Ouvrez un dossier avant d’ajouter une image.',
-            'document.max' => 'L’image ne doit pas dépasser 10 Mo.',
-            'document.extensions' => 'Seules les images JPG, PNG, WEBP et GIF sont autorisées.',
-            'document.mimes' => 'Seules les images JPG, PNG, WEBP et GIF sont autorisées.',
-            'document.image' => 'Le fichier fourni doit être une image valide.',
+            'folder_id.required' => 'Ouvrez un dossier avant d’ajouter un document.',
+            'document.max' => 'Le document ne doit pas dépasser 10 Mo.',
+            'document.extensions' => 'Seuls les fichiers PDF, JPG, PNG, WEBP et GIF sont autorisés.',
+            'document.mimes' => 'Seuls les fichiers PDF, JPG, PNG, WEBP et GIF sont autorisés.',
         ]);
 
         try {
@@ -104,7 +122,7 @@ final class LibraryController
             throw ValidationException::withMessages(['document' => $error->getMessage()]);
         }
 
-        return $this->backToFolder($data['folder_id'])->with('status', 'Image ajoutée.');
+        return $this->backToFolder($data['folder_id'])->with('status', 'Document ajouté.');
     }
 
     public function download(LibraryDocument $document, LibraryService $library): BinaryFileResponse

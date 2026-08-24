@@ -23,7 +23,8 @@ final class BugFixRegressionTest extends TestCase
         $response->assertSee('Heures supplémentaires</span>', false);
         $response->assertSee('Heures sup</span>', false);
         $response->assertSee('Rapports</span>', false);
-        $response->assertSee('Bibliothèque</span>', false);
+        $response->assertSee('Documents</span>', false);
+        $response->assertSee('Planning</span>', false);
         $response->assertDontSee('Ajouter un jour');
         $response->assertDontSee('aria-label="Apparence"', false);
         $response->assertDontSee('aria-label="Notifications"', false);
@@ -236,7 +237,7 @@ final class BugFixRegressionTest extends TestCase
         $javascript = file_get_contents(public_path('app.js'));
 
         self::assertStringContainsString('const refreshDashboardSummary = async () =>', $javascript);
-        self::assertStringContainsString("['.dashboard-kpis', '#weeks', '#balance', '.below-fold-summary']", $javascript);
+        self::assertStringContainsString("['.anomaly-panel', '.dashboard-kpis', '#weeks', '#balance', '.below-fold-summary']", $javascript);
         self::assertStringContainsString('void refreshDashboardSummary();', $javascript);
         self::assertStringContainsString('autosaveTimers.set(row, setTimeout', $javascript);
         self::assertStringContainsString('const saveQueues = new WeakMap();', $javascript);

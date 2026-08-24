@@ -353,7 +353,7 @@
             }
             if (!response.ok) throw new Error('Actualisation impossible');
             const freshDocument = new DOMParser().parseFromString(await response.text(), 'text/html');
-            ['.dashboard-kpis', '#weeks', '#balance', '.below-fold-summary'].forEach(selector => {
+            ['.anomaly-panel', '.dashboard-kpis', '#weeks', '#balance', '.below-fold-summary'].forEach(selector => {
                 const current = q(selector);
                 const fresh = q(selector, freshDocument);
                 if (current && fresh) current.innerHTML = fresh.innerHTML;
@@ -378,11 +378,13 @@
     const syncRow = row => {
         const isLocked = row.dataset.locked === '1' && row.dataset.unlocked !== '1';
         const isRest = q('.rest-toggle', row).checked;
-        qa('[name="start_time"], [name="driving"], [name="warehouse"]', row).forEach(input => { input.disabled = isRest || isLocked; });
-        qa('.edit-day, .edit-meal', row).forEach(button => { button.disabled = isRest || isLocked; });
-        const restToggle = q('.rest-toggle', row); if (restToggle) restToggle.disabled = isLocked;
+        const isLeave = row.dataset.leave === '1';
+        qa('[name="start_time"], [name="driving"], [name="warehouse"]', row).forEach(input => { input.disabled = isRest || isLeave || isLocked; });
+        qa('.edit-day, .edit-meal', row).forEach(button => { button.disabled = isRest || isLeave || isLocked; });
+        const restToggle = q('.rest-toggle', row); if (restToggle) restToggle.disabled = isLeave || isLocked;
 
         const stateLabel = q('.row-state-label', row);
+        if (isLeave) return;
         row.classList.toggle('row-rest', isRest);
         if (isRest) {
             row.classList.remove('row-needs-fill', 'row-filled');
@@ -414,6 +416,8 @@
         q('[name="driving"]', row).value = data.driving;
         q('[name="warehouse"]', row).value = data.warehouse;
         q('.rest-toggle', row).checked = Boolean(data.is_rest);
+        row.dataset.leave = data.is_leave ? '1' : '0';
+        row.classList.toggle('row-leave', Boolean(data.is_leave));
         row.dataset.mealMode = data.meal_mode || 'auto';
         row.dataset.mealAmount = data.meal_amount || '';
         row.dataset.writeVersion = String(data.write_version || 0);

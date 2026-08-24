@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\DocumentFolder;
+use App\Models\DocumentLink;
 use App\Models\LibraryDocument;
 use App\Models\MonthlySalary;
 use App\Models\WorkDay;
@@ -366,6 +367,53 @@ final class DatabaseMaintenanceTest extends TestCase
     {
         $this->expectException(RuntimeException::class);
         app(DatabaseMaintenanceService::class)->safetyBackupPath('../database.sqlite');
+    }
+
+    public function test_complete_backup_restores_planning_and_document_associations(): void
+    {
+        $folder = DocumentFolder::query()->create(['name' => 'Documents liés']);
+        $document = app(LibraryService::class)->storeDocument(
+            $folder->id,
+            UploadedFile::fake()->image('justificatif.png', 20, 20),
+        );
+        WorkDay::query()->create([
+            'date' => '2026-08-22',
+            'planned_minutes' => 450,
+            'is_leave' => true,
+            'driving_minutes' => 0,
+            'warehouse_minutes' => 0,
+            'meal_allowance_mode' => 'auto',
+        ]);
+        DocumentLink::query()->create([
+            'document_id' => $document->id,
+            'target_type' => 'day',
+            'target_key' => '2026-08-22',
+        ]);
+
+        $archive = app(DatabaseMaintenanceService::class)->createApplicationBackup();
+        try {
+            WorkDay::query()->whereDate('date', '2026-08-22')->update([
+                'planned_minutes' => null,
+                'is_leave' => false,
+            ]);
+            DocumentLink::query()->delete();
+
+            app(DatabaseMaintenanceService::class)->restoreFrom($archive);
+
+            $restoredDay = WorkDay::query()->whereDate('date', '2026-08-22')->firstOrFail();
+            self::assertSame(450, $restoredDay->planned_minutes);
+            self::assertTrue($restoredDay->is_leave);
+            self::assertDatabaseHas('document_links', [
+                'document_id' => $document->id,
+                'target_type' => 'day',
+                'target_key' => '2026-08-22',
+            ]);
+            self::assertFileExists(
+                app(LibraryService::class)->libraryPath().DIRECTORY_SEPARATOR.$document->storage_name,
+            );
+        } finally {
+            @unlink($archive);
+        }
     }
 
 }

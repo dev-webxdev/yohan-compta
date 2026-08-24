@@ -1,5 +1,5 @@
 @extends('layouts.app')
-@section('title', 'Corbeille · Bibliothèque')
+@section('title', 'Corbeille · Documents')
 @section('content')
 @php
     $formatBytes = static function (int $bytes): string {
@@ -12,7 +12,7 @@
 <section class="panel library-toolbar-panel">
     <div class="library-heading">
         <div class="library-title-block"><span class="library-title-icon library-trash-title-icon"><i class="fa-regular fa-trash-can"></i></span><div><h2>Corbeille</h2><p>Restaurez un élément supprimé ou effacez-le définitivement.</p></div></div>
-        <div class="library-toolbar-actions"><a class="primary-button secondary-button" href="{{ route('library.index') }}"><i class="fa-solid fa-arrow-left"></i> Retour à la bibliothèque</a></div>
+        <div class="library-toolbar-actions"><a class="primary-button secondary-button" href="{{ route('library.index') }}"><i class="fa-solid fa-arrow-left"></i> Retour aux documents</a></div>
     </div>
     @error('trash')<div class="field-error library-upload-error">{{ $message }}</div>@enderror
     @error('confirmation_name')<div class="field-error library-upload-error">{{ $message }}</div>@enderror
@@ -45,15 +45,15 @@
     @endif
 
     @if($documents->isNotEmpty())
-        <div class="library-section-title library-files-title"><div><i class="fa-regular fa-images"></i><h3>Images supprimées</h3></div><span>{{ $documents->count() }}</span></div>
+        <div class="library-section-title library-files-title"><div><i class="fa-regular fa-file-lines"></i><h3>Documents supprimés</h3></div><span>{{ $documents->count() }}</span></div>
         <div class="library-file-list">
             @foreach($documents as $document)
                 <article class="library-file-row library-trash-file-row">
-                    <div class="library-file-icon is-trashed"><i class="fa-regular fa-image"></i></div>
+                    <div class="library-file-icon is-trashed"><i class="{{ $document->mime_type === 'application/pdf' ? 'fa-regular fa-file-pdf' : 'fa-regular fa-image' }}"></i></div>
                     <div class="library-file-name"><strong>{{ $document->original_name }}</strong><small>{{ $formatBytes($document->size_bytes) }} · supprimé le {{ $document->deleted_at?->format('d/m/Y à H:i') }}@if($document->folder) · {{ $document->folder->name }}@endif</small></div>
                     <div class="library-file-actions">
                         <form method="post" action="{{ route('library.trash.documents.restore', ['document' => $document->id]) }}">@csrf<button class="library-restore-button compact-button"><i class="fa-solid fa-rotate-left"></i> Restaurer</button></form>
-                        <form method="post" action="{{ route('library.trash.documents.destroy', ['document' => $document->id]) }}" data-confirm data-confirm-title="Supprimer définitivement cette image ?" data-confirm-message="« {{ $document->original_name }} » sera définitivement effacée. Cette action est irréversible." data-confirm-action="Supprimer définitivement" data-confirm-danger="1">@csrf @method('DELETE')<button class="danger-button compact-button"><i class="fa-solid fa-trash-can"></i> Supprimer définitivement</button></form>
+                        <form method="post" action="{{ route('library.trash.documents.destroy', ['document' => $document->id]) }}" data-confirm data-confirm-title="Supprimer définitivement ce document ?" data-confirm-message="« {{ $document->original_name }} » sera définitivement effacé. Cette action est irréversible." data-confirm-action="Supprimer définitivement" data-confirm-danger="1">@csrf @method('DELETE')<button class="danger-button compact-button"><i class="fa-solid fa-trash-can"></i> Supprimer définitivement</button></form>
                     </div>
                 </article>
             @endforeach

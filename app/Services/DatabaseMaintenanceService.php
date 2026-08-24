@@ -23,8 +23,8 @@ final class DatabaseMaintenanceService
     private const CURRENT_COLUMNS = [
         'migrations' => ['id', 'migration', 'batch'],
         'work_days' => [
-            'id', 'date', 'start_time_minutes', 'driving_minutes', 'warehouse_minutes', 'is_rest',
-            'meal_allowance_mode', 'meal_allowance_forced_cents', 'client_write_version', 'created_at', 'updated_at',
+            'id', 'date', 'start_time_minutes', 'driving_minutes', 'warehouse_minutes', 'planned_minutes', 'is_rest',
+            'is_leave', 'meal_allowance_mode', 'meal_allowance_forced_cents', 'client_write_version', 'created_at', 'updated_at',
         ],
         'setting_periods' => [
             'id', 'effective_from', 'default_start_time_minutes', 'hourly_net_rate_cents',
@@ -36,6 +36,7 @@ final class DatabaseMaintenanceService
         'monthly_salaries' => ['id', 'month', 'net_amount_cents', 'note', 'created_at', 'updated_at'],
         'document_folders' => ['id', 'parent_id', 'name', 'created_at', 'updated_at', 'deleted_at'],
         'library_documents' => ['id', 'folder_id', 'original_name', 'storage_name', 'mime_type', 'size_bytes', 'created_at', 'updated_at', 'deleted_at'],
+        'document_links' => ['id', 'document_id', 'target_type', 'target_key', 'created_at', 'updated_at'],
     ];
     private const SAFETY_BACKUP_FILENAME_PATTERN = '/^yohan-compta-before-restore-\d{8}-\d{6}-[a-f0-9]{6}\.zip$/';
 
@@ -257,26 +258,28 @@ final class DatabaseMaintenanceService
         }
     }
 
-    /** @return array{folders:list<array<string,mixed>>,documents:list<array<string,mixed>>} */
+    /** @return array{folders:list<array<string,mixed>>,documents:list<array<string,mixed>>,links:list<array<string,mixed>>} */
     private function captureLibraryState(): array
     {
         $connection = DB::connection($this->connectionName());
         $schema = $connection->getSchemaBuilder();
         if (!$schema->hasTable('document_folders') || !$schema->hasTable('library_documents')) {
-            return ['folders' => [], 'documents' => []];
+            return ['folders' => [], 'documents' => [], 'links' => []];
         }
 
         return [
             'folders' => $connection->table('document_folders')->orderBy('id')->get()->map(fn ($row): array => (array) $row)->all(),
             'documents' => $connection->table('library_documents')->orderBy('id')->get()->map(fn ($row): array => (array) $row)->all(),
+            'links' => $schema->hasTable('document_links') ? $connection->table('document_links')->orderBy('id')->get()->map(fn ($row): array => (array) $row)->all() : [],
         ];
     }
 
-    /** @param array{folders:list<array<string,mixed>>,documents:list<array<string,mixed>>} $state */
+    /** @param array{folders:list<array<string,mixed>>,documents:list<array<string,mixed>>,links:list<array<string,mixed>>} $state */
     private function restoreLibraryState(array $state): void
     {
         $connection = DB::connection($this->connectionName());
         $connection->transaction(function () use ($connection, $state): void {
+            $connection->table('document_links')->delete();
             $connection->table('library_documents')->delete();
             $connection->table('document_folders')->delete();
 
@@ -285,6 +288,9 @@ final class DatabaseMaintenanceService
             }
             foreach ($state['documents'] as $document) {
                 $connection->table('library_documents')->insert($document);
+            }
+            foreach ($state['links'] as $link) {
+                $connection->table('document_links')->insert($link);
             }
         });
     }
@@ -346,12 +352,12 @@ final class DatabaseMaintenanceService
             $hadLibrary = is_dir($currentLibrary);
 
             if ($hadLibrary && !rename($currentLibrary, $rollbackLibrary)) {
-                throw new RuntimeException('Impossible de mettre la bibliothèque actuelle en sécurité avant restauration.');
+                throw new RuntimeException('Impossible de mettre les Documents actuels en sécurité avant restauration.');
             }
 
             try {
                 if (!rename($librarySource, $currentLibrary)) {
-                    throw new RuntimeException('Impossible d’installer les fichiers de la bibliothèque restaurée.');
+                    throw new RuntimeException('Impossible d’installer les Documents restaurés.');
                 }
                 $this->restoreDatabaseLocked($databaseSource);
                 if ($hadLibrary) {
@@ -401,7 +407,7 @@ final class DatabaseMaintenanceService
 
         foreach ($pdo->query('SELECT storage_name FROM library_documents')->fetchAll(PDO::FETCH_COLUMN) as $storageName) {
             if (!is_string($storageName) || $storageName === '' || !is_file($libraryPath.DIRECTORY_SEPARATOR.basename($storageName))) {
-                throw new RuntimeException('La sauvegarde de bibliothèque est incomplète : au moins un fichier est manquant.');
+                throw new RuntimeException('La sauvegarde des Documents est incomplète : au moins un fichier est manquant.');
             }
         }
     }
@@ -545,6 +551,7 @@ final class DatabaseMaintenanceService
         $connection->table('monthly_salaries')->limit(1)->get();
         $connection->table('document_folders')->limit(1)->get();
         $connection->table('library_documents')->limit(1)->get();
+        $connection->table('document_links')->limit(1)->get();
     }
 
     /** @param list<string> $requiredColumns */

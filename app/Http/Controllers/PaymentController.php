@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\DocumentLink;
 use App\Models\OvertimePayment;
+use App\Services\DocumentLinkService;
 use App\Services\ReportService;
 use App\Support\DateRange;
 use App\Support\Money;
@@ -14,7 +16,7 @@ use Illuminate\View\View;
 
 final class PaymentController
 {
-    public function index(ReportService $reports): View
+    public function index(ReportService $reports, DocumentLinkService $links): View
     {
         $payments = OvertimePayment::query()->orderByDesc('payment_date')->orderByDesc('id')->paginate(50);
         $hourAllocations = $reports->paymentHourAllocations();
@@ -32,6 +34,7 @@ final class PaymentController
             'payments' => $payments,
             'paymentHours' => $paymentHours,
             'balance' => $reports->balance(),
+            'documentCounts' => $links->counts('payment', $payments->pluck('id')->map(fn ($id): int => (int) $id)->all()),
         ]);
     }
 
@@ -52,6 +55,7 @@ final class PaymentController
 
     public function destroy(OvertimePayment $payment): RedirectResponse
     {
+        DocumentLink::query()->where('target_type', 'payment')->where('target_key', (string) $payment->id)->delete();
         $payment->delete();
         return redirect()->route('payments.index')->with('status', 'Paiement supprimé. Les soldes ont été recalculés.');
     }

@@ -2,10 +2,12 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DatabaseController;
+use App\Http\Controllers\DocumentLinkController;
 use App\Http\Controllers\ExportController;
 use App\Http\Controllers\MonthController;
 use App\Http\Controllers\LibraryController;
 use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\PlanningController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\SalaryController;
 use App\Http\Controllers\WorkDayController;
@@ -26,6 +28,9 @@ Route::middleware('auth.local')->group(function (): void {
     Route::put('/jours/{date}', [WorkDayController::class, 'store'])->where('date', '\\d{4}-\\d{2}-\\d{2}')->name('days.store');
     Route::post('/jours/{date}/copier-veille', [WorkDayController::class, 'copyPreviousDay'])->where('date', '\\d{4}-\\d{2}-\\d{2}')->name('days.copy-previous');
 
+    Route::get('/planning', [PlanningController::class, 'index'])->name('planning.index');
+    Route::put('/planning/{date}', [PlanningController::class, 'update'])->where('date', '\\d{4}-\\d{2}-\\d{2}')->name('planning.update');
+
     Route::get('/paiements', [PaymentController::class, 'index'])->name('payments.index');
     Route::post('/paiements', [PaymentController::class, 'store'])->name('payments.store');
     Route::patch('/paiements/{payment}', [PaymentController::class, 'update'])->name('payments.update');
@@ -37,6 +42,8 @@ Route::middleware('auth.local')->group(function (): void {
     Route::post('/bibliotheque/fichiers', [LibraryController::class, 'storeDocument'])->name('library.documents.store');
     Route::get('/bibliotheque/fichiers/{document}/telecharger', [LibraryController::class, 'download'])->name('library.documents.download');
     Route::delete('/bibliotheque/fichiers/{document}', [LibraryController::class, 'destroyDocument'])->name('library.documents.destroy');
+    Route::post('/bibliotheque/fichiers/{document}/associations', [DocumentLinkController::class, 'store'])->name('library.documents.links.store');
+    Route::delete('/bibliotheque/fichiers/{document}/associations/{link}', [DocumentLinkController::class, 'destroy'])->name('library.documents.links.destroy');
     Route::get('/bibliotheque/corbeille', [LibraryController::class, 'trash'])->name('library.trash');
     Route::post('/bibliotheque/corbeille/dossiers/{folder}/restaurer', [LibraryController::class, 'restoreFolder'])->whereNumber('folder')->name('library.trash.folders.restore');
     Route::delete('/bibliotheque/corbeille/dossiers/{folder}', [LibraryController::class, 'forceDestroyFolder'])->whereNumber('folder')->name('library.trash.folders.destroy');

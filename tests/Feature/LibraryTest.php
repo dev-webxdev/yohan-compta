@@ -3,7 +3,10 @@
 namespace Tests\Feature;
 
 use App\Models\DocumentFolder;
+use App\Models\DocumentLink;
 use App\Models\LibraryDocument;
+use App\Models\MonthlySalary;
+use App\Models\OvertimePayment;
 use App\Services\LibraryService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -39,18 +42,18 @@ final class LibraryTest extends TestCase
 
         $this->get('/bibliotheque')
             ->assertOk()
-            ->assertSee('Bibliothèque')
+            ->assertSee('Documents')
             ->assertSee('Aucun dossier n’est créé automatiquement.')
             ->assertSee('Nouveau dossier')
             ->assertSee('Corbeille')
-            ->assertDontSee('Ajouter une image')
-            ->assertSee('Votre bibliothèque est vide')
-            ->assertSee('Bibliothèque</span>', false);
+            ->assertDontSee('Ajouter un document')
+            ->assertSee('Votre espace Documents est vide')
+            ->assertSee('Documents</span>', false);
 
         $this->get('/bibliotheque/corbeille')
             ->assertOk()
             ->assertSee('La corbeille est vide')
-            ->assertSee('Retour à la bibliothèque');
+            ->assertSee('Retour aux documents');
     }
 
     public function test_folder_trash_requires_exact_name_can_restore_and_force_delete_recursively(): void
@@ -63,7 +66,7 @@ final class LibraryTest extends TestCase
         $august = DocumentFolder::query()->where('parent_id', $year->id)->where('name', 'Août')->firstOrFail();
 
         $this->get('/bibliotheque/'.$august->id)
-            ->assertOk()->assertSee('2026')->assertSee('Août')->assertSee('Ajouter une image')->assertSee('Ce dossier est vide');
+            ->assertOk()->assertSee('2026')->assertSee('Août')->assertSee('Ajouter un document')->assertSee('Ce dossier est vide');
 
         $this->patch('/bibliotheque/dossiers/'.$august->id, ['name' => 'Aout 2026'])
             ->assertRedirect('/bibliotheque/'.$year->id);
@@ -153,6 +156,89 @@ final class LibraryTest extends TestCase
         $document = LibraryDocument::query()->firstOrFail();
         self::assertSame($folder->id, $document->folder_id);
         self::assertSame('image/webp', $document->mime_type);
+    }
+
+    public function test_pdf_documents_are_accepted_and_kept_secure(): void
+    {
+        $folder = DocumentFolder::query()->create(['name' => 'Bulletins']);
+        $pdf = "%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\ntrailer\n<< /Root 1 0 R >>\n%%EOF\n";
+
+        $this->post('/bibliotheque/fichiers', [
+            'folder_id' => $folder->id,
+            'document' => UploadedFile::fake()->createWithContent('bulletin.pdf', $pdf),
+        ])->assertRedirect('/bibliotheque/'.$folder->id);
+
+        $document = LibraryDocument::query()->firstOrFail();
+        self::assertSame('application/pdf', $document->mime_type);
+        self::assertSame('bulletin.pdf', $document->original_name);
+        self::assertFileExists(app(LibraryService::class)->libraryPath().DIRECTORY_SEPARATOR.$document->storage_name);
+        $this->get('/bibliotheque/'.$folder->id)->assertOk()->assertSee('PDF');
+    }
+
+    public function test_document_can_be_associated_with_salary_and_opened_from_salary_page(): void
+    {
+        $salary = MonthlySalary::query()->create([
+            'month' => '2026-08',
+            'net_amount_cents' => 190000,
+        ]);
+        $folder = DocumentFolder::query()->create(['name' => 'Paie']);
+        $this->post('/bibliotheque/fichiers', [
+            'folder_id' => $folder->id,
+            'document' => UploadedFile::fake()->image('bulletin.png', 32, 24),
+        ])->assertRedirect('/bibliotheque/'.$folder->id);
+        $document = LibraryDocument::query()->firstOrFail();
+
+        $this->post('/bibliotheque/fichiers/'.$document->id.'/associations', [
+            'target' => 'salary:'.$salary->id,
+        ])->assertRedirect();
+
+        $link = DocumentLink::query()->firstOrFail();
+        self::assertSame($document->id, $link->document_id);
+        self::assertSame('salary', $link->target_type);
+        self::assertSame((string) $salary->id, $link->target_key);
+
+        $this->get('/salaires')
+            ->assertOk()
+            ->assertSee('Documents associés : 1')
+            ->assertSee('target=salary%3A'.$salary->id, false);
+        $this->get('/bibliotheque?target=salary%3A'.$salary->id)
+            ->assertOk()
+            ->assertSee('Documents associés')
+            ->assertSee('bulletin.png');
+
+        $this->delete('/bibliotheque/fichiers/'.$document->id.'/associations/'.$link->id)->assertRedirect();
+        self::assertDatabaseCount('document_links', 0);
+    }
+
+    public function test_document_association_is_visible_from_overtime_payment(): void
+    {
+        $payment = OvertimePayment::query()->create([
+            'payment_date' => '2026-08-20',
+            'amount_cents' => 12500,
+        ]);
+        $folder = DocumentFolder::query()->create(['name' => 'Paiements']);
+        $this->post('/bibliotheque/fichiers', [
+            'folder_id' => $folder->id,
+            'document' => UploadedFile::fake()->image('virement.png', 28, 20),
+        ])->assertRedirect('/bibliotheque/'.$folder->id);
+        $document = LibraryDocument::query()->firstOrFail();
+
+        $this->post('/bibliotheque/fichiers/'.$document->id.'/associations', [
+            'target' => 'payment:'.$payment->id,
+        ])->assertRedirect();
+
+        self::assertDatabaseHas('document_links', [
+            'document_id' => $document->id,
+            'target_type' => 'payment',
+            'target_key' => (string) $payment->id,
+        ]);
+        $this->get('/paiements')
+            ->assertOk()
+            ->assertSee('Documents associés : 1')
+            ->assertSee('target=payment%3A'.$payment->id, false);
+        $this->get('/bibliotheque?target=payment%3A'.$payment->id)
+            ->assertOk()
+            ->assertSee('virement.png');
     }
 
     public function test_document_trash_restore_and_permanent_delete_preserve_file_until_final_deletion(): void

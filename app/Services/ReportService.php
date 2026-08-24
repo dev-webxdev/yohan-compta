@@ -86,7 +86,7 @@ final class ReportService
         $mealCents = 0;
         $netNumerator = 0;
         foreach ($days as $day) {
-            if ($day->is_rest) {
+            if ($day->is_rest || $day->is_leave) {
                 continue;
             }
 
@@ -141,7 +141,7 @@ final class ReportService
         for ($cursor = $start; $cursor <= $end; $cursor = $cursor->modify('+1 day')) {
             $date = $cursor->format('Y-m-d');
             $day = $days->get($date);
-            $minutesByDate[$date] = $day && !$day->is_rest ? $day->driving_minutes + $day->warehouse_minutes : 0;
+            $minutesByDate[$date] = $day && !$day->is_rest && !$day->is_leave ? $day->driving_minutes + $day->warehouse_minutes : 0;
         }
 
         $threshold = $this->settings->forDate($start->format('Y-m-d'))->weekly_threshold_minutes;

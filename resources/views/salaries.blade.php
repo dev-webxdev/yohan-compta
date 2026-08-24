@@ -48,7 +48,7 @@
     @forelse($report['rows'] as $salary)
         <tr>
             <td><a href="{{ route('month.show', $salary->month) }}">{{ FrenchDate::month((int)substr($salary->month, 5, 2)) }} {{ substr($salary->month, 0, 4) }}</a></td>
-            <td><strong class="salary-amount">{{ Money::formatCents($salary->net_amount_cents) }}</strong></td>
+            <td><strong class="salary-amount">{{ Money::formatCents($salary->net_amount_cents) }}</strong>@if(($documentCounts[$salary->id]??0)>0)<a class="associated-documents-link" href="{{ route('library.index',['target'=>'salary:'.$salary->id]) }}"><i class="fa-solid fa-paperclip"></i> Documents associés : {{ $documentCounts[$salary->id] }}</a>@endif</td>
             <td><div class="salary-row-actions"><a class="salary-action-button salary-edit-button" href="{{ route('salaries.index', ['edit' => $salary->id]) }}"><i class="fa-solid fa-pen"></i> Modifier</a><form method="post" action="{{ route('salaries.destroy', $salary) }}" data-confirm data-confirm-title="Supprimer ce salaire ?" data-confirm-message="Le salaire de {{ strtolower(FrenchDate::month((int)substr($salary->month,5,2))) }} {{ substr($salary->month,0,4) }} sera supprimé." data-confirm-action="Supprimer" data-confirm-danger="1">@csrf @method('DELETE')<button class="salary-action-button salary-delete-button"><i class="fa-regular fa-trash-can"></i> Supprimer</button></form></div></td>
         </tr>
     @empty

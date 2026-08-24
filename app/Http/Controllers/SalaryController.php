@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\DocumentLink;
 use App\Models\MonthlySalary;
+use App\Services\DocumentLinkService;
 use App\Services\SalaryReportService;
 use App\Support\DateRange;
 use App\Support\Money;
@@ -14,16 +16,18 @@ use Illuminate\View\View;
 
 final class SalaryController
 {
-    public function index(Request $request, SalaryReportService $reports): View
+    public function index(Request $request, SalaryReportService $reports, DocumentLinkService $links): View
     {
         $filters = $request->validate([
             'edit' => ['nullable', 'integer', 'min:1'],
         ]);
         $editId = isset($filters['edit']) ? (int) $filters['edit'] : 0;
 
+        $report = $reports->build();
         return view('salaries', [
-            'report' => $reports->build(),
+            'report' => $report,
             'editingSalary' => $editId > 0 ? MonthlySalary::query()->find($editId) : null,
+            'documentCounts' => $links->counts('salary', $report['rows']->pluck('id')->map(fn ($id): int => (int) $id)->all()),
         ]);
     }
 
@@ -43,6 +47,7 @@ final class SalaryController
 
     public function destroy(MonthlySalary $salary): RedirectResponse
     {
+        DocumentLink::query()->where('target_type', 'salary')->where('target_key', (string) $salary->id)->delete();
         $salary->delete();
 
         return redirect()->route('salaries.index')->with('status', 'Salaire supprimé.');

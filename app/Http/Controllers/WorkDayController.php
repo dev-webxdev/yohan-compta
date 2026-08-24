@@ -29,6 +29,8 @@ final class WorkDayController
             'driving' => $day ? Time::formatDuration($day->driving_minutes) : '',
             'warehouse' => $day ? Time::formatDuration($day->warehouse_minutes) : '',
             'is_rest' => $isRest,
+            'is_leave' => (bool) ($day?->is_leave ?? false),
+            'planned' => $day?->planned_minutes !== null ? Time::formatDuration($day->planned_minutes) : '',
             'meal_mode' => $day?->meal_allowance_mode ?? 'auto',
             'meal_amount' => $day?->meal_allowance_forced_cents !== null ? Money::formatInput($day->meal_allowance_forced_cents) : '',
             'write_version' => (int) ($day?->client_write_version ?? 0),
@@ -54,7 +56,7 @@ final class WorkDayController
         $writeVersion = isset($state['write_version']) ? (int) $state['write_version'] : null;
 
         if ($isRest) {
-            if (!$this->persist($date, ['is_rest' => true], $defaultStart, $writeVersion)) {
+            if (!$this->persist($date, ['is_rest' => true, 'is_leave' => false], $defaultStart, $writeVersion)) {
                 return $this->staleWriteResponse($date);
             }
 
@@ -100,7 +102,10 @@ final class WorkDayController
             && $data['meal_mode'] === 'auto'
             && !$isSunday;
 
-        if ($isEmpty && $writeVersion === null) {
+        $existingPlanning = WorkDay::query()->whereDate('date', $date)->first(['planned_minutes', 'is_leave']);
+        $hasPlanning = $existingPlanning && ($existingPlanning->planned_minutes !== null || $existingPlanning->is_leave);
+
+        if ($isEmpty && $writeVersion === null && !$hasPlanning) {
             WorkDay::query()->whereDate('date', $date)->delete();
 
             return response()->json(['ok' => true]);
@@ -111,6 +116,7 @@ final class WorkDayController
             'driving_minutes' => $driving,
             'warehouse_minutes' => $warehouse,
             'is_rest' => false,
+            'is_leave' => false,
             'meal_allowance_mode' => $data['meal_mode'],
             'meal_allowance_forced_cents' => $forcedCents,
         ];
@@ -189,7 +195,9 @@ final class WorkDayController
             'start_time_minutes' => $source->start_time_minutes,
             'driving_minutes' => $source->driving_minutes,
             'warehouse_minutes' => $source->warehouse_minutes,
+            'planned_minutes' => $source->planned_minutes,
             'is_rest' => $source->is_rest,
+            'is_leave' => $source->is_leave,
             'meal_allowance_mode' => $source->meal_allowance_mode,
             'meal_allowance_forced_cents' => $source->meal_allowance_forced_cents,
         ];

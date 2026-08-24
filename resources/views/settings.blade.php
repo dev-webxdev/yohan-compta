@@ -17,11 +17,11 @@
 </form></section>
 
 <section class="panel database-maintenance">
-<div class="panel-heading"><div><h2>Sauvegarde et restauration</h2><p>La sauvegarde complète inclut la base SQLite et les fichiers de la bibliothèque.</p></div></div>
+<div class="panel-heading"><div><h2>Sauvegarde et restauration</h2><p>La sauvegarde complète inclut la base SQLite et tous les fichiers de Documents.</p></div></div>
 <div class="database-actions">
-<article class="maintenance-card"><div><h3>Sauvegarder toutes les données</h3><p>Télécharger une archive ZIP avec la base SQLite et tous les fichiers de la bibliothèque.</p></div><a class="primary-button" href="{{ route('settings.database.backup') }}"><i class="fa-solid fa-download"></i> Télécharger la sauvegarde</a></article>
+<article class="maintenance-card"><div><h3>Sauvegarder toutes les données</h3><p>Télécharger une archive ZIP avec la base SQLite et tous les fichiers de Documents.</p></div><a class="primary-button" href="{{ route('settings.database.backup') }}"><i class="fa-solid fa-download"></i> Télécharger la sauvegarde</a></article>
 
-<article class="maintenance-card"><div><h3>Restaurer une sauvegarde</h3><p>Les ZIP restaurent toutes les données. Les anciennes sauvegardes SQLite restaurent la base en conservant la bibliothèque actuelle. Une sauvegarde complète de sécurité est créée avant le remplacement.</p></div><form method="post" action="{{ route('settings.database.restore') }}" enctype="multipart/form-data" data-confirm data-confirm-title="Restaurer cette sauvegarde ?" data-confirm-message="Une sauvegarde complète de l’état actuel sera créée, puis les données seront remplacées." data-confirm-action="Restaurer">@csrf
+<article class="maintenance-card"><div><h3>Restaurer une sauvegarde</h3><p>Les ZIP restaurent toutes les données. Les anciennes sauvegardes SQLite restaurent la base en conservant les Documents actuels. Une sauvegarde complète de sécurité est créée avant le remplacement.</p></div><form method="post" action="{{ route('settings.database.restore') }}" enctype="multipart/form-data" data-confirm data-confirm-title="Restaurer cette sauvegarde ?" data-confirm-message="Une sauvegarde complète de l’état actuel sera créée, puis les données seront remplacées." data-confirm-action="Restaurer">@csrf
 <input type="hidden" name="confirmed" value="1">
 <input type="file" name="database_file" accept=".zip,.sqlite,.db,application/zip,application/vnd.sqlite3,application/octet-stream" required @error('database_file') aria-invalid="true" @enderror>@error('database_file')<span class="field-error">{{ $message }}</span>@enderror
 <button class="primary-button"><i class="fa-solid fa-upload"></i> Restaurer la sauvegarde</button>
@@ -30,7 +30,7 @@
 </section>
 
 <section class="panel backup-library">
-<div class="panel-heading"><div><h2>Sauvegardes de sécurité</h2><p>Créées automatiquement avant chaque restauration. Elles contiennent la base SQLite et toute la bibliothèque.</p></div></div>
+<div class="panel-heading"><div><h2>Sauvegardes de sécurité</h2><p>Créées automatiquement avant chaque restauration. Elles contiennent la base SQLite et tous les Documents.</p></div></div>
 <div class="backup-list">
 @forelse($backups as $backup)
 <article class="backup-row">
