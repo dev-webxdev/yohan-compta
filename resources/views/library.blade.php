@@ -16,9 +16,9 @@
             <div><h2>Bibliothèque</h2><p>Organisez vos images dans vos propres dossiers. Aucun dossier n’est créé automatiquement.</p></div>
         </div>
         <div class="library-toolbar-actions">
-            <a class="library-trash-link" href="{{ route('library.trash') }}"><i class="fa-regular fa-trash-can"></i><span>Corbeille</span>@if($trash_count)<strong>{{ $trash_count }}</strong>@endif</a>
+            <a class="primary-button secondary-button library-toolbar-button library-trash-link" href="{{ route('library.trash') }}"><i class="fa-regular fa-trash-can"></i><span>Corbeille</span>@if($trash_count)<strong>{{ $trash_count }}</strong>@endif</a>
             <details class="library-create-details" data-dismissable-details @if($errors->has('name')) open @endif>
-                <summary class="primary-button secondary-button"><i class="fa-solid fa-folder-plus"></i> Nouveau dossier</summary>
+                <summary class="primary-button secondary-button library-toolbar-button"><i class="fa-solid fa-folder-plus"></i> Nouveau dossier</summary>
                 <form method="post" action="{{ route('library.folders.store') }}" class="library-popover-form">@csrf
                     @if($folder)<input type="hidden" name="parent_id" value="{{ $folder->id }}">@endif
                     <label>Nom du dossier<input name="name" value="{{ old('name') }}" maxlength="120" required autofocus @error('name') aria-invalid="true" @enderror></label>
@@ -29,7 +29,7 @@
             @if($folder)
                 <form method="post" action="{{ route('library.documents.store') }}" enctype="multipart/form-data" class="library-upload-form">@csrf
                     <input type="hidden" name="folder_id" value="{{ $folder->id }}">
-                    <label class="primary-button library-upload-button"><i class="fa-solid fa-image"></i> Ajouter une image<input type="file" name="document" accept=".jpg,.jpeg,.png,.webp,.gif,image/jpeg,image/png,image/webp,image/gif" required></label>
+                    <label class="primary-button library-toolbar-button library-upload-button"><i class="fa-solid fa-image"></i> Ajouter une image<input type="file" name="document" accept=".jpg,.jpeg,.png,.webp,.gif,image/jpeg,image/png,image/webp,image/gif" required></label>
                 </form>
             @endif
         </div>

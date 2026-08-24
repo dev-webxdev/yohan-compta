@@ -367,6 +367,19 @@ test('document library works across responsive layouts', async ({page}, testInfo
     await expect(page.locator('.library-upload-form')).toHaveCount(0);
     await expect(page.getByText('Corbeille', {exact: true})).toBeVisible();
 
+    const rootToolbarControls = page.locator('.library-toolbar-button');
+    await expect(rootToolbarControls).toHaveCount(2);
+    const rootToolbarMetrics = await rootToolbarControls.evaluateAll(elements => elements.map(element => {
+        const style = getComputedStyle(element);
+        return {
+            height: element.getBoundingClientRect().height,
+            fontSize: style.fontSize,
+            fontWeight: style.fontWeight,
+            borderRadius: style.borderRadius,
+        };
+    }));
+    expect(rootToolbarMetrics[0]).toEqual(rootToolbarMetrics[1]);
+
     let overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     expect(overflow).toBeLessThanOrEqual(1);
 
@@ -394,6 +407,19 @@ test('document library works across responsive layouts', async ({page}, testInfo
     await rootCard.locator('.library-folder-link').click();
     await expect(page.locator('.library-current-folder')).toContainText(rootName);
     await expect(page.getByText('Ajouter une image', {exact: true})).toBeVisible();
+
+    const folderToolbarControls = page.locator('.library-toolbar-button');
+    await expect(folderToolbarControls).toHaveCount(3);
+    const folderToolbarMetrics = await folderToolbarControls.evaluateAll(elements => elements.map(element => {
+        const style = getComputedStyle(element);
+        return {
+            height: element.getBoundingClientRect().height,
+            fontSize: style.fontSize,
+            fontWeight: style.fontWeight,
+            borderRadius: style.borderRadius,
+        };
+    }));
+    expect(new Set(folderToolbarMetrics.map(metrics => JSON.stringify(metrics))).size).toBe(1);
 
     await page.getByText('Nouveau dossier', {exact: true}).click();
     await page.locator('.library-popover-form input[name="name"]').fill('Août');
