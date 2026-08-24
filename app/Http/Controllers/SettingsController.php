@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\SettingPeriod;
+use App\Services\DatabaseMaintenanceService;
 use App\Services\WeekCalculator;
 use App\Services\SettingsService;
 use App\Support\DateRange;
@@ -20,7 +21,7 @@ final class SettingsController
 {
     private const FIELDS = ['default_start_time_minutes', 'hourly_net_rate_cents', 'weekly_threshold_minutes', 'meal_allowance_cents', 'meal_allowance_time_minutes'];
 
-    public function index(SettingsService $settings): View
+    public function index(SettingsService $settings, DatabaseMaintenanceService $database): View
     {
         return view('settings', [
             'current' => $settings->forDate(now()->format('Y-m-d')),
@@ -28,6 +29,7 @@ final class SettingsController
                 ->whereDate('effective_from', '>', now()->format('Y-m-d'))
                 ->orderBy('effective_from')
                 ->first(),
+            'backups' => $database->safetyBackups(),
         ]);
     }
 

@@ -37,6 +37,7 @@ final class DatabaseMaintenanceService
         'document_folders' => ['id', 'parent_id', 'name', 'created_at', 'updated_at', 'deleted_at'],
         'library_documents' => ['id', 'folder_id', 'original_name', 'storage_name', 'mime_type', 'size_bytes', 'created_at', 'updated_at', 'deleted_at'],
     ];
+    private const SAFETY_BACKUP_FILENAME_PATTERN = '/^yohan-compta-before-restore-\d{8}-\d{6}-[a-f0-9]{6}\.zip$/';
 
     public function __construct(private readonly DatabaseAccessLock $databaseLock)
     {
@@ -62,63 +63,137 @@ final class DatabaseMaintenanceService
 
     public function createApplicationBackup(): string
     {
-        return $this->databaseLock->exclusive(function (): string {
-            $databaseCopy = $this->createDownloadCopy();
-            $archivePath = rtrim(sys_get_temp_dir(), DIRECTORY_SEPARATOR)
-                .DIRECTORY_SEPARATOR.'yohan-compta-backup-'.bin2hex(random_bytes(6)).'.zip';
-            $zip = new ZipArchive();
-            $opened = $zip->open($archivePath, ZipArchive::CREATE | ZipArchive::OVERWRITE);
-            if ($opened !== true) {
-                @unlink($databaseCopy);
-                throw new RuntimeException('Impossible de créer l’archive de sauvegarde.');
+        return $this->databaseLock->exclusive(fn (): string => $this->createApplicationBackupLocked());
+    }
+
+    private function createApplicationBackupLocked(?string $archivePath = null): string
+    {
+        $databaseCopy = $this->createDownloadCopy();
+        $archivePath ??= rtrim(sys_get_temp_dir(), DIRECTORY_SEPARATOR)
+            .DIRECTORY_SEPARATOR.'yohan-compta-backup-'.bin2hex(random_bytes(6)).'.zip';
+        $zip = new ZipArchive();
+        $opened = $zip->open($archivePath, ZipArchive::CREATE | ZipArchive::OVERWRITE);
+        if ($opened !== true) {
+            @unlink($databaseCopy);
+            throw new RuntimeException('Impossible de créer l’archive de sauvegarde.');
+        }
+
+        try {
+            if (!$zip->addFile($databaseCopy, 'database.sqlite')) {
+                throw new RuntimeException('Impossible d’ajouter la base SQLite à la sauvegarde.');
             }
+            $manifest = json_encode([
+                'application' => 'yohan-compta',
+                'format' => 1,
+                'created_at' => now()->toIso8601String(),
+            ], JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT);
+            $zip->addFromString('manifest.json', $manifest);
 
-            try {
-                if (!$zip->addFile($databaseCopy, 'database.sqlite')) {
-                    throw new RuntimeException('Impossible d’ajouter la base SQLite à la sauvegarde.');
-                }
-                $manifest = json_encode([
-                    'application' => 'yohan-compta',
-                    'format' => 1,
-                    'created_at' => now()->toIso8601String(),
-                ], JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT);
-                $zip->addFromString('manifest.json', $manifest);
-
-                $libraryPath = $this->libraryPath();
-                if (is_dir($libraryPath)) {
-                    foreach (glob($libraryPath.DIRECTORY_SEPARATOR.'*') ?: [] as $path) {
-                        if (is_file($path) && !$zip->addFile($path, 'library/'.basename($path))) {
-                            throw new RuntimeException('Impossible d’ajouter un document à la sauvegarde.');
-                        }
+            $libraryPath = $this->libraryPath();
+            if (is_dir($libraryPath)) {
+                foreach (glob($libraryPath.DIRECTORY_SEPARATOR.'*') ?: [] as $path) {
+                    if (is_file($path) && !$zip->addFile($path, 'library/'.basename($path))) {
+                        throw new RuntimeException('Impossible d’ajouter un document à la sauvegarde.');
                     }
                 }
-
-                if (!$zip->close()) {
-                    throw new RuntimeException('Impossible de finaliser l’archive de sauvegarde.');
-                }
-            } catch (Throwable $error) {
-                $zip->close();
-                @unlink($archivePath);
-                throw $error;
-            } finally {
-                @unlink($databaseCopy);
             }
 
-            return $archivePath;
+            if (!$zip->close()) {
+                throw new RuntimeException('Impossible de finaliser l’archive de sauvegarde.');
+            }
+        } catch (Throwable $error) {
+            $zip->close();
+            @unlink($archivePath);
+            throw $error;
+        } finally {
+            @unlink($databaseCopy);
+        }
+
+        return $archivePath;
+    }
+
+    /** @return array<int,array{name:string,created_at:string,size_bytes:int}> */
+    public function safetyBackups(): array
+    {
+        File::ensureDirectoryExists($this->safetyBackupDirectory());
+        $backups = [];
+        foreach (glob($this->safetyBackupDirectory().DIRECTORY_SEPARATOR.'yohan-compta-before-restore-*.zip') ?: [] as $path) {
+            $name = basename($path);
+            if (!preg_match(self::SAFETY_BACKUP_FILENAME_PATTERN, $name) || !is_file($path)) {
+                continue;
+            }
+            $timestamp = filemtime($path) ?: 0;
+            $backups[] = [
+                'name' => $name,
+                'created_at' => date('d/m/Y H:i:s', $timestamp),
+                'size_bytes' => (int) (filesize($path) ?: 0),
+                '_timestamp' => $timestamp,
+            ];
+        }
+
+        usort($backups, static fn (array $left, array $right): int => $right['_timestamp'] <=> $left['_timestamp']);
+
+        return array_map(static function (array $backup): array {
+            unset($backup['_timestamp']);
+            return $backup;
+        }, $backups);
+    }
+
+    public function safetyBackupPath(string $filename): string
+    {
+        if ($filename !== basename($filename) || !preg_match(self::SAFETY_BACKUP_FILENAME_PATTERN, $filename)) {
+            throw new RuntimeException('Sauvegarde de sécurité introuvable.');
+        }
+        $path = $this->safetyBackupDirectory().DIRECTORY_SEPARATOR.$filename;
+        if (!is_file($path) || !is_readable($path)) {
+            throw new RuntimeException('Sauvegarde de sécurité introuvable.');
+        }
+
+        return $path;
+    }
+
+    public function restoreSafetyBackup(string $filename): string
+    {
+        return $this->restoreFrom($this->safetyBackupPath($filename));
+    }
+
+    public function deleteSafetyBackup(string $filename): void
+    {
+        if (!File::delete($this->safetyBackupPath($filename))) {
+            throw new RuntimeException('Impossible de supprimer cette sauvegarde de sécurité.');
+        }
+    }
+
+    public function restoreFrom(string $sourcePath): string
+    {
+        return $this->databaseLock->exclusive(function () use ($sourcePath): string {
+            if ($this->isSqliteFile($sourcePath)) {
+                $this->validateDatabaseFile($sourcePath);
+                $safetyBackup = $this->createSafetyBackupLocked();
+                $libraryState = $this->captureLibraryState();
+                $this->restoreDatabaseLocked($sourcePath, fn () => $this->restoreLibraryState($libraryState));
+                return $safetyBackup;
+            }
+
+            $safetyBackup = null;
+            $this->restoreArchiveLocked($sourcePath, function () use (&$safetyBackup): void {
+                $safetyBackup = $this->createSafetyBackupLocked();
+            });
+            if (!is_string($safetyBackup)) {
+                throw new RuntimeException('La sauvegarde de sécurité avant restauration n’a pas pu être créée.');
+            }
+
+            return $safetyBackup;
         });
     }
 
-    public function restoreFrom(string $sourcePath): void
+    private function createSafetyBackupLocked(): string
     {
-        $this->databaseLock->exclusive(function () use ($sourcePath): void {
-            if ($this->isSqliteFile($sourcePath)) {
-                $libraryState = $this->captureLibraryState();
-                $this->restoreDatabaseLocked($sourcePath, fn () => $this->restoreLibraryState($libraryState));
-                return;
-            }
+        File::ensureDirectoryExists($this->safetyBackupDirectory());
+        $path = $this->safetyBackupDirectory().DIRECTORY_SEPARATOR
+            .'yohan-compta-before-restore-'.now()->format('Ymd-His').'-'.bin2hex(random_bytes(3)).'.zip';
 
-            $this->restoreArchiveLocked($sourcePath);
-        });
+        return $this->createApplicationBackupLocked($path);
     }
 
     private function restoreDatabaseLocked(string $sourcePath, ?callable $afterRestore = null): void
@@ -214,7 +289,7 @@ final class DatabaseMaintenanceService
         });
     }
 
-    private function restoreArchiveLocked(string $sourcePath): void
+    private function restoreArchiveLocked(string $sourcePath, ?callable $beforeRestore = null): void
     {
         $currentLibrary = $this->libraryPath();
         File::ensureDirectoryExists(dirname($currentLibrary));
@@ -263,6 +338,9 @@ final class DatabaseMaintenanceService
             }
             $this->validateDatabaseFile($databaseSource);
             $this->validateArchiveLibrary($databaseSource, $librarySource);
+            if ($beforeRestore !== null) {
+                $beforeRestore();
+            }
 
             $rollbackLibrary = dirname($currentLibrary).DIRECTORY_SEPARATOR.'library.rollback-'.bin2hex(random_bytes(4));
             $hadLibrary = is_dir($currentLibrary);
@@ -345,6 +423,11 @@ final class DatabaseMaintenanceService
     private function libraryPath(): string
     {
         return rtrim((string) config('filesystems.disks.local.root'), DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR.'library';
+    }
+
+    private function safetyBackupDirectory(): string
+    {
+        return rtrim((string) config('filesystems.disks.local.root'), DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR.'backups';
     }
 
     public function validateDatabaseFile(string $path): void

@@ -57,4 +57,7 @@ Route::middleware('auth.local')->group(function (): void {
     Route::post('/parametres', [SettingsController::class, 'store'])->name('settings.store');
     Route::get('/parametres/base/sauvegarde', [DatabaseController::class, 'backup'])->name('settings.database.backup');
     Route::post('/parametres/base/restauration', [DatabaseController::class, 'restore'])->name('settings.database.restore');
+    Route::get('/parametres/base/sauvegardes/{backup}', [DatabaseController::class, 'downloadBackup'])->name('settings.database.backups.download');
+    Route::post('/parametres/base/sauvegardes/{backup}/restauration', [DatabaseController::class, 'restoreBackup'])->name('settings.database.backups.restore');
+    Route::delete('/parametres/base/sauvegardes/{backup}', [DatabaseController::class, 'deleteBackup'])->name('settings.database.backups.delete');
 });

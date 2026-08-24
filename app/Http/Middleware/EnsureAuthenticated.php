@@ -24,7 +24,11 @@ final class EnsureAuthenticated
         }
 
         $routeName = (string) $request->route()?->getName();
-        $managesLockItself = in_array($routeName, ['settings.database.backup', 'settings.database.restore'], true);
+        $managesLockItself = in_array($routeName, [
+            'settings.database.backup',
+            'settings.database.restore',
+            'settings.database.backups.restore',
+        ], true);
 
         $response = $managesLockItself ? $next($request) : $this->databaseLock->shared(fn (): Response => $next($request));
         $response->headers->set('Cache-Control', 'no-store, private');

@@ -68,7 +68,7 @@ final class DatabaseMaintenanceTest extends TestCase
             ->assertSee('Restaurer une sauvegarde')
             ->assertSee(route('settings.database.backup'), false)
             ->assertSee(route('settings.database.restore'), false)
-            ->assertDontSee('Sauvegardes de sécurité')
+            ->assertSee('Sauvegardes de sécurité')
             ->assertDontSee('Sauvegarde automatique')
             ->assertDontSee('Réinitialiser complètement le site')
             ->assertDontSee('Réinitialiser un mois');
@@ -108,7 +108,7 @@ final class DatabaseMaintenanceTest extends TestCase
         self::assertStringContainsString('.zip', (string) $response->headers->get('content-disposition'));
     }
 
-    public function test_restore_replaces_database_without_persisting_a_safety_backup(): void
+    public function test_restore_replaces_database_and_persists_a_complete_safety_backup(): void
     {
         WorkDay::query()->create([
             'date' => '2026-07-01',
@@ -125,11 +125,34 @@ final class DatabaseMaintenanceTest extends TestCase
             'warehouse_minutes' => 0,
             'meal_allowance_mode' => 'auto',
         ]);
+        $folder = DocumentFolder::query()->create(['name' => 'Avant restauration']);
+        $document = app(LibraryService::class)->storeDocument(
+            $folder->id,
+            UploadedFile::fake()->image('avant.png', 22, 22),
+        );
+        $expectedImage = file_get_contents(app(LibraryService::class)->documentPath($document));
 
         try {
-            app(DatabaseMaintenanceService::class)->restoreFrom($sourceBackup);
+            $safetyBackup = app(DatabaseMaintenanceService::class)->restoreFrom($sourceBackup);
             self::assertTrue(WorkDay::query()->whereDate('date', '2026-07-01')->exists());
             self::assertFalse(WorkDay::query()->whereDate('date', '2026-08-14')->exists());
+            self::assertFileExists($safetyBackup);
+
+            $zip = new ZipArchive();
+            self::assertTrue($zip->open($safetyBackup) === true);
+            self::assertNotFalse($zip->locateName('database.sqlite'));
+            self::assertNotFalse($zip->locateName('library/'.$document->storage_name));
+            self::assertSame($expectedImage, $zip->getFromName('library/'.$document->storage_name));
+            $zip->close();
+
+            $backups = app(DatabaseMaintenanceService::class)->safetyBackups();
+            self::assertSame(basename($safetyBackup), $backups[0]['name']);
+            $this->get('/parametres')->assertOk()->assertSee(basename($safetyBackup));
+            $download = $this->get(route('settings.database.backups.download', ['backup' => basename($safetyBackup)]))->assertOk();
+            self::assertStringContainsString(
+                basename($safetyBackup),
+                (string) $download->headers->get('content-disposition'),
+            );
         } finally {
             @unlink($sourceBackup);
         }
@@ -187,6 +210,7 @@ final class DatabaseMaintenanceTest extends TestCase
             @unlink($invalid);
         }
     }
+
     public function test_complete_backup_round_trip_restores_library_files(): void
     {
         $folder = DocumentFolder::query()->create(['name' => '2026']);
@@ -248,6 +272,100 @@ final class DatabaseMaintenanceTest extends TestCase
         } finally {
             @unlink($archive);
         }
+    }
+
+    public function test_safety_backup_can_restore_the_complete_pre_restore_state(): void
+    {
+        $targetFolder = DocumentFolder::query()->create(['name' => 'Etat cible']);
+        app(LibraryService::class)->storeDocument(
+            $targetFolder->id,
+            UploadedFile::fake()->image('cible.png', 28, 20),
+        );
+        WorkDay::query()->create([
+            'date' => '2026-08-20',
+            'driving_minutes' => 480,
+            'warehouse_minutes' => 0,
+            'meal_allowance_mode' => 'auto',
+        ]);
+
+        $replacement = app(DatabaseMaintenanceService::class)->createApplicationBackup();
+        try {
+            app(LibraryService::class)->trashFolder($targetFolder);
+            app(LibraryService::class)->forceDeleteFolder(DocumentFolder::onlyTrashed()->findOrFail($targetFolder->id));
+            WorkDay::query()->delete();
+
+            $currentParent = DocumentFolder::query()->create(['name' => 'Etat avant restauration']);
+            $currentChild = DocumentFolder::query()->create([
+                'parent_id' => $currentParent->id,
+                'name' => 'Sous-dossier',
+            ]);
+            $currentDocument = app(LibraryService::class)->storeDocument(
+                $currentChild->id,
+                UploadedFile::fake()->image('avant-restauration.png', 31, 23),
+            );
+            $expectedImage = file_get_contents(app(LibraryService::class)->documentPath($currentDocument));
+            WorkDay::query()->create([
+                'date' => '2026-08-21',
+                'driving_minutes' => 420,
+                'warehouse_minutes' => 30,
+                'meal_allowance_mode' => 'auto',
+            ]);
+
+            $safety = app(DatabaseMaintenanceService::class)->restoreFrom($replacement);
+            self::assertFileExists($safety);
+            self::assertTrue(WorkDay::query()->whereDate('date', '2026-08-20')->exists());
+            self::assertFalse(WorkDay::query()->whereDate('date', '2026-08-21')->exists());
+            self::assertTrue(DocumentFolder::query()->where('name', 'Etat cible')->exists());
+
+            $this->post(
+                route('settings.database.backups.restore', ['backup' => basename($safety)]),
+                ['confirmed' => '1'],
+            )->assertRedirect(route('settings.index'));
+
+            self::assertFalse(WorkDay::query()->whereDate('date', '2026-08-20')->exists());
+            self::assertTrue(WorkDay::query()->whereDate('date', '2026-08-21')->exists());
+            $restoredParent = DocumentFolder::query()->where('name', 'Etat avant restauration')->firstOrFail();
+            $restoredChild = DocumentFolder::query()->where('parent_id', $restoredParent->id)->where('name', 'Sous-dossier')->firstOrFail();
+            $restoredDocument = LibraryDocument::query()->where('folder_id', $restoredChild->id)->firstOrFail();
+            self::assertSame('avant-restauration.png', $restoredDocument->original_name);
+            self::assertSame(
+                $expectedImage,
+                file_get_contents(app(LibraryService::class)->documentPath($restoredDocument)),
+            );
+            self::assertSame($safety, app(DatabaseMaintenanceService::class)->safetyBackupPath(basename($safety)));
+            self::assertGreaterThanOrEqual(2, count(app(DatabaseMaintenanceService::class)->safetyBackups()));
+        } finally {
+            @unlink($replacement);
+        }
+    }
+
+    public function test_archive_restore_rejects_path_traversal_before_creating_a_safety_backup(): void
+    {
+        $archive = app(DatabaseMaintenanceService::class)->createApplicationBackup();
+        $escapePath = dirname($this->libraryRoot).DIRECTORY_SEPARATOR.'restore-escape-'.bin2hex(random_bytes(4)).'.txt';
+
+        $zip = new ZipArchive();
+        self::assertTrue($zip->open($archive) === true);
+        self::assertTrue($zip->addFromString('../'.basename($escapePath), 'escape'));
+        self::assertTrue($zip->close());
+
+        try {
+            app(DatabaseMaintenanceService::class)->restoreFrom($archive);
+            self::fail('A path-traversal archive should have been rejected.');
+        } catch (RuntimeException $error) {
+            self::assertStringContainsString('non sécurisé', $error->getMessage());
+            self::assertFileDoesNotExist($escapePath);
+            self::assertSame([], app(DatabaseMaintenanceService::class)->safetyBackups());
+        } finally {
+            @unlink($archive);
+            @unlink($escapePath);
+        }
+    }
+
+    public function test_safety_backup_path_rejects_traversal(): void
+    {
+        $this->expectException(RuntimeException::class);
+        app(DatabaseMaintenanceService::class)->safetyBackupPath('../database.sqlite');
     }
 
 }
