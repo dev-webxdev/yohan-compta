@@ -12,7 +12,6 @@ return new class extends Migration {
             $table->date('payment_date');
             $table->unsignedInteger('amount_cents');
             $table->unsignedInteger('hours_paid_minutes')->nullable();
-            $table->string('period_reference', 255)->nullable();
             $table->text('note')->nullable();
             $table->timestamps();
             $table->index('payment_date');

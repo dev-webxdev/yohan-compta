@@ -6,6 +6,7 @@ use App\Models\OvertimePayment;
 use App\Models\WorkDay;
 use App\Services\ReportService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 final class AuditImprovementTest extends TestCase
@@ -30,18 +31,16 @@ final class AuditImprovementTest extends TestCase
             ->assertSee('Montant invalide.');
     }
 
-    public function test_existing_payment_is_edited_from_modal_without_recreating_it_and_keeps_legacy_reference(): void
+    public function test_existing_payment_is_edited_from_modal_without_recreating_it(): void
     {
-        $payment = new OvertimePayment([
+        $payment = OvertimePayment::query()->create([
             'payment_date' => '2026-08-10',
             'amount_cents' => 1000,
         ]);
-        $payment->forceFill(['period_reference' => 'Ancienne référence'])->save();
 
         $this->get('/paiements')->assertOk()
             ->assertSee('Modifier')
-            ->assertDontSee('Référence période')
-            ->assertDontSee('Ancienne référence');
+            ->assertDontSee('Référence période');
 
         $this->patch(route('payments.update', $payment), [
             'payment_date' => '2026-08-14',
@@ -53,7 +52,7 @@ final class AuditImprovementTest extends TestCase
         self::assertSame('2026-08-14', $payment->payment_date->format('Y-m-d'));
         self::assertSame(1250, $payment->amount_cents);
         self::assertNull($payment->hours_paid_minutes);
-        self::assertSame('Ancienne référence', $payment->period_reference);
+        self::assertFalse(Schema::hasColumn('overtime_payments', 'period_reference'));
         self::assertSame(1, OvertimePayment::query()->count());
     }
 

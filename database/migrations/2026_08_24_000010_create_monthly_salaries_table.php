@@ -11,9 +11,7 @@ return new class extends Migration {
             $table->id();
             $table->string('month', 7)->unique();
             $table->unsignedInteger('net_amount_cents');
-            $table->text('note')->nullable();
             $table->timestamps();
-            $table->index('month');
         });
     }
 

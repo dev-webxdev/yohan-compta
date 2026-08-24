@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\MonthlySalary;
 use App\Services\SalaryReportService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 final class SalaryTrackingTest extends TestCase
@@ -39,6 +40,7 @@ final class SalaryTrackingTest extends TestCase
         ])->assertRedirect('/salaires');
 
         self::assertSame(185000, MonthlySalary::query()->where('month', '2026-06')->value('net_amount_cents'));
+        self::assertFalse(Schema::hasColumn('monthly_salaries', 'note'));
 
         $page = $this->get('/salaires')->assertOk();
         $page->assertSee('1 885,00 €')
