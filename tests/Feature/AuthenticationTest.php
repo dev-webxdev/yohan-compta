@@ -34,6 +34,7 @@ final class AuthenticationTest extends TestCase
     public function test_guests_cannot_access_pages_or_json_endpoints(): void
     {
         $this->get('/mois')->assertRedirect('/connexion');
+        $this->get('/bibliotheque')->assertRedirect('/connexion');
 
         $this->putJson('/jours/2026-08-15', [
             'start_time' => '07:45',

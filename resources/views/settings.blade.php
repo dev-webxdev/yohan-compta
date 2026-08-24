@@ -17,14 +17,14 @@
 </form></section>
 
 <section class="panel database-maintenance">
-<div class="panel-heading"><div><h2>Sauvegarde et restauration</h2><p>Gestion manuelle de la base SQLite.</p></div></div>
+<div class="panel-heading"><div><h2>Sauvegarde et restauration</h2><p>La sauvegarde complète inclut la base SQLite et les fichiers de la bibliothèque.</p></div></div>
 <div class="database-actions">
-<article class="maintenance-card"><div><h3>Sauvegarder la BDD</h3><p>Télécharger une copie complète et cohérente de la base SQLite actuelle.</p></div><a class="primary-button" href="{{ route('settings.database.backup') }}"><i class="fa-solid fa-download"></i> Télécharger la sauvegarde</a></article>
+<article class="maintenance-card"><div><h3>Sauvegarder toutes les données</h3><p>Télécharger une archive ZIP avec la base SQLite et tous les fichiers de la bibliothèque.</p></div><a class="primary-button" href="{{ route('settings.database.backup') }}"><i class="fa-solid fa-download"></i> Télécharger la sauvegarde</a></article>
 
-<article class="maintenance-card"><div><h3>Restaurer une BDD SQLite</h3><p>Le fichier est vérifié avant utilisation. Téléchargez d’abord une sauvegarde si vous souhaitez conserver l’état actuel.</p></div><form method="post" action="{{ route('settings.database.restore') }}" enctype="multipart/form-data" data-confirm data-confirm-title="Restaurer la base SQLite ?" data-confirm-message="La base actuelle sera remplacée par le fichier sélectionné." data-confirm-action="Restaurer">@csrf
+<article class="maintenance-card"><div><h3>Restaurer une sauvegarde</h3><p>Les ZIP restaurent toutes les données. Les anciennes sauvegardes SQLite restaurent la base en conservant la bibliothèque actuelle.</p></div><form method="post" action="{{ route('settings.database.restore') }}" enctype="multipart/form-data" data-confirm data-confirm-title="Restaurer cette sauvegarde ?" data-confirm-message="Les données actuelles et, pour une archive ZIP, la bibliothèque de fichiers seront remplacées." data-confirm-action="Restaurer">@csrf
 <input type="hidden" name="confirmed" value="1">
-<input type="file" name="database_file" accept=".sqlite,.db,application/vnd.sqlite3,application/octet-stream" required @error('database_file') aria-invalid="true" @enderror>@error('database_file')<span class="field-error">{{ $message }}</span>@enderror
-<button class="primary-button"><i class="fa-solid fa-upload"></i> Restaurer la BDD</button>
+<input type="file" name="database_file" accept=".zip,.sqlite,.db,application/zip,application/vnd.sqlite3,application/octet-stream" required @error('database_file') aria-invalid="true" @enderror>@error('database_file')<span class="field-error">{{ $message }}</span>@enderror
+<button class="primary-button"><i class="fa-solid fa-upload"></i> Restaurer la sauvegarde</button>
 </form></article>
 </div>
 </section>

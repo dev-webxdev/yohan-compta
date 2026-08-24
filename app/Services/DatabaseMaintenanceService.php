@@ -5,9 +5,11 @@ namespace App\Services;
 use App\Support\DateRange;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 use PDO;
 use RuntimeException;
 use Throwable;
+use ZipArchive;
 
 final class DatabaseMaintenanceService
 {
@@ -32,6 +34,8 @@ final class DatabaseMaintenanceService
             'id', 'payment_date', 'amount_cents', 'hours_paid_minutes', 'period_reference', 'created_at', 'updated_at',
         ],
         'monthly_salaries' => ['id', 'month', 'net_amount_cents', 'note', 'created_at', 'updated_at'],
+        'document_folders' => ['id', 'parent_id', 'name', 'created_at', 'updated_at'],
+        'library_documents' => ['id', 'folder_id', 'original_name', 'storage_name', 'mime_type', 'size_bytes', 'created_at', 'updated_at'],
     ];
 
     public function __construct(private readonly DatabaseAccessLock $databaseLock)
@@ -56,12 +60,68 @@ final class DatabaseMaintenanceService
         return $path;
     }
 
-    public function restoreFrom(string $sourcePath): void
+    public function createApplicationBackup(): string
     {
-        $this->databaseLock->exclusive(fn () => $this->restoreDatabaseLocked($sourcePath));
+        return $this->databaseLock->exclusive(function (): string {
+            $databaseCopy = $this->createDownloadCopy();
+            $archivePath = rtrim(sys_get_temp_dir(), DIRECTORY_SEPARATOR)
+                .DIRECTORY_SEPARATOR.'yohan-compta-backup-'.bin2hex(random_bytes(6)).'.zip';
+            $zip = new ZipArchive();
+            $opened = $zip->open($archivePath, ZipArchive::CREATE | ZipArchive::OVERWRITE);
+            if ($opened !== true) {
+                @unlink($databaseCopy);
+                throw new RuntimeException('Impossible de créer l’archive de sauvegarde.');
+            }
+
+            try {
+                if (!$zip->addFile($databaseCopy, 'database.sqlite')) {
+                    throw new RuntimeException('Impossible d’ajouter la base SQLite à la sauvegarde.');
+                }
+                $manifest = json_encode([
+                    'application' => 'yohan-compta',
+                    'format' => 1,
+                    'created_at' => now()->toIso8601String(),
+                ], JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT);
+                $zip->addFromString('manifest.json', $manifest);
+
+                $libraryPath = $this->libraryPath();
+                if (is_dir($libraryPath)) {
+                    foreach (glob($libraryPath.DIRECTORY_SEPARATOR.'*') ?: [] as $path) {
+                        if (is_file($path) && !$zip->addFile($path, 'library/'.basename($path))) {
+                            throw new RuntimeException('Impossible d’ajouter un document à la sauvegarde.');
+                        }
+                    }
+                }
+
+                if (!$zip->close()) {
+                    throw new RuntimeException('Impossible de finaliser l’archive de sauvegarde.');
+                }
+            } catch (Throwable $error) {
+                $zip->close();
+                @unlink($archivePath);
+                throw $error;
+            } finally {
+                @unlink($databaseCopy);
+            }
+
+            return $archivePath;
+        });
     }
 
-    private function restoreDatabaseLocked(string $sourcePath): void
+    public function restoreFrom(string $sourcePath): void
+    {
+        $this->databaseLock->exclusive(function () use ($sourcePath): void {
+            if ($this->isSqliteFile($sourcePath)) {
+                $libraryState = $this->captureLibraryState();
+                $this->restoreDatabaseLocked($sourcePath, fn () => $this->restoreLibraryState($libraryState));
+                return;
+            }
+
+            $this->restoreArchiveLocked($sourcePath);
+        });
+    }
+
+    private function restoreDatabaseLocked(string $sourcePath, ?callable $afterRestore = null): void
     {
         $this->validateDatabaseFile($sourcePath);
         $databasePath = $this->databasePath();
@@ -94,6 +154,11 @@ final class DatabaseMaintenanceService
             Artisan::call('migrate', ['--force' => true]);
             $this->assertLiveIntegrity();
             $this->assertLiveSchema();
+            if ($afterRestore !== null) {
+                $afterRestore();
+                $this->assertLiveIntegrity();
+                $this->assertLiveSchema();
+            }
 
             @unlink($rollbackPath);
         } catch (Throwable $error) {
@@ -115,6 +180,171 @@ final class DatabaseMaintenanceService
                 $error,
             );
         }
+    }
+
+    /** @return array{folders:list<array<string,mixed>>,documents:list<array<string,mixed>>} */
+    private function captureLibraryState(): array
+    {
+        $connection = DB::connection($this->connectionName());
+        $schema = $connection->getSchemaBuilder();
+        if (!$schema->hasTable('document_folders') || !$schema->hasTable('library_documents')) {
+            return ['folders' => [], 'documents' => []];
+        }
+
+        return [
+            'folders' => $connection->table('document_folders')->orderBy('id')->get()->map(fn ($row): array => (array) $row)->all(),
+            'documents' => $connection->table('library_documents')->orderBy('id')->get()->map(fn ($row): array => (array) $row)->all(),
+        ];
+    }
+
+    /** @param array{folders:list<array<string,mixed>>,documents:list<array<string,mixed>>} $state */
+    private function restoreLibraryState(array $state): void
+    {
+        $connection = DB::connection($this->connectionName());
+        $connection->transaction(function () use ($connection, $state): void {
+            $connection->table('library_documents')->delete();
+            $connection->table('document_folders')->delete();
+
+            foreach ($state['folders'] as $folder) {
+                $connection->table('document_folders')->insert($folder);
+            }
+            foreach ($state['documents'] as $document) {
+                $connection->table('library_documents')->insert($document);
+            }
+        });
+    }
+
+    private function restoreArchiveLocked(string $sourcePath): void
+    {
+        $currentLibrary = $this->libraryPath();
+        File::ensureDirectoryExists(dirname($currentLibrary));
+        $tempRoot = dirname($currentLibrary).DIRECTORY_SEPARATOR.'restore-temp-'.bin2hex(random_bytes(6));
+        $databaseSource = $tempRoot.DIRECTORY_SEPARATOR.'database.sqlite';
+        $librarySource = $tempRoot.DIRECTORY_SEPARATOR.'library';
+        File::ensureDirectoryExists($librarySource);
+
+        try {
+            $zip = new ZipArchive();
+            if ($zip->open($sourcePath) !== true) {
+                throw new RuntimeException('Le fichier fourni n’est ni une sauvegarde ZIP valide ni une base SQLite compatible.');
+            }
+
+            $hasDatabase = false;
+            try {
+                for ($index = 0; $index < $zip->numFiles; $index++) {
+                    $name = $zip->getNameIndex($index);
+                    if (!is_string($name)) {
+                        continue;
+                    }
+                    if ($name === 'manifest.json') {
+                        continue;
+                    }
+                    if ($name === 'database.sqlite') {
+                        $this->copyZipEntry($zip, $name, $databaseSource);
+                        $hasDatabase = true;
+                        continue;
+                    }
+                    if (preg_match('#^library/([A-Za-z0-9._-]+)$#', $name, $match) === 1) {
+                        $this->copyZipEntry($zip, $name, $librarySource.DIRECTORY_SEPARATOR.$match[1]);
+                        continue;
+                    }
+                    if ($name === 'library/') {
+                        continue;
+                    }
+
+                    throw new RuntimeException('La sauvegarde contient un élément inattendu ou non sécurisé.');
+                }
+            } finally {
+                $zip->close();
+            }
+
+            if (!$hasDatabase) {
+                throw new RuntimeException('La sauvegarde ne contient pas de base SQLite.');
+            }
+            $this->validateDatabaseFile($databaseSource);
+            $this->validateArchiveLibrary($databaseSource, $librarySource);
+
+            $rollbackLibrary = dirname($currentLibrary).DIRECTORY_SEPARATOR.'library.rollback-'.bin2hex(random_bytes(4));
+            $hadLibrary = is_dir($currentLibrary);
+
+            if ($hadLibrary && !rename($currentLibrary, $rollbackLibrary)) {
+                throw new RuntimeException('Impossible de mettre la bibliothèque actuelle en sécurité avant restauration.');
+            }
+
+            try {
+                if (!rename($librarySource, $currentLibrary)) {
+                    throw new RuntimeException('Impossible d’installer les fichiers de la bibliothèque restaurée.');
+                }
+                $this->restoreDatabaseLocked($databaseSource);
+                if ($hadLibrary) {
+                    File::deleteDirectory($rollbackLibrary);
+                }
+            } catch (Throwable $error) {
+                File::deleteDirectory($currentLibrary);
+                if ($hadLibrary && is_dir($rollbackLibrary)) {
+                    @rename($rollbackLibrary, $currentLibrary);
+                }
+                throw $error;
+            }
+        } finally {
+            File::deleteDirectory($tempRoot);
+        }
+    }
+
+    private function copyZipEntry(ZipArchive $zip, string $entry, string $target): void
+    {
+        $source = $zip->getStream($entry);
+        if (!is_resource($source)) {
+            throw new RuntimeException('Impossible de lire un élément de la sauvegarde.');
+        }
+        $destination = fopen($target, 'wb');
+        if ($destination === false) {
+            fclose($source);
+            throw new RuntimeException('Impossible de préparer un élément restauré.');
+        }
+
+        try {
+            if (stream_copy_to_stream($source, $destination) === false) {
+                throw new RuntimeException('Impossible d’extraire complètement un élément de la sauvegarde.');
+            }
+        } finally {
+            fclose($source);
+            fclose($destination);
+        }
+    }
+
+    private function validateArchiveLibrary(string $databasePath, string $libraryPath): void
+    {
+        $pdo = new PDO('sqlite:'.$databasePath, null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+        $tables = $pdo->query("SELECT name FROM sqlite_master WHERE type = 'table'")->fetchAll(PDO::FETCH_COLUMN);
+        if (!in_array('library_documents', $tables, true)) {
+            return;
+        }
+
+        foreach ($pdo->query('SELECT storage_name FROM library_documents')->fetchAll(PDO::FETCH_COLUMN) as $storageName) {
+            if (!is_string($storageName) || $storageName === '' || !is_file($libraryPath.DIRECTORY_SEPARATOR.basename($storageName))) {
+                throw new RuntimeException('La sauvegarde de bibliothèque est incomplète : au moins un fichier est manquant.');
+            }
+        }
+    }
+
+    private function isSqliteFile(string $path): bool
+    {
+        if (!is_file($path) || !is_readable($path) || filesize($path) < 16) {
+            return false;
+        }
+        $handle = fopen($path, 'rb');
+        $header = $handle ? fread($handle, 16) : false;
+        if (is_resource($handle)) {
+            fclose($handle);
+        }
+
+        return $header === "SQLite format 3\0";
+    }
+
+    private function libraryPath(): string
+    {
+        return rtrim((string) config('filesystems.disks.local.root'), DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR.'library';
     }
 
     public function validateDatabaseFile(string $path): void
@@ -230,6 +460,8 @@ final class DatabaseMaintenanceService
         $connection->table('work_days')->limit(1)->get();
         $connection->table('overtime_payments')->limit(1)->get();
         $connection->table('monthly_salaries')->limit(1)->get();
+        $connection->table('document_folders')->limit(1)->get();
+        $connection->table('library_documents')->limit(1)->get();
     }
 
     /** @param list<string> $requiredColumns */

@@ -72,6 +72,10 @@
         input.value = normalizeTime(input.value);
     }));
 
+    qa('.library-upload-form input[type="file"]').forEach(input => input.addEventListener('change', () => {
+        if (input.files?.length) input.form?.requestSubmit();
+    }));
+
     const confirmationDialog = q('#confirm-dialog');
     const confirmationTitle = q('#confirm-dialog-title');
     const confirmationMessage = q('#confirm-dialog-message');

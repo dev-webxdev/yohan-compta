@@ -12,17 +12,17 @@ final class DatabaseController
 {
     public function backup(DatabaseMaintenanceService $database): BinaryFileResponse
     {
-        $path = $database->createDownloadCopy();
+        $path = $database->createApplicationBackup();
 
         return response()
-            ->download($path, 'yohan-compta-sauvegarde-'.now()->format('Y-m-d-His').'.sqlite')
+            ->download($path, 'yohan-compta-sauvegarde-'.now()->format('Y-m-d-His').'.zip')
             ->deleteFileAfterSend(true);
     }
 
     public function restore(Request $request, DatabaseMaintenanceService $database): RedirectResponse
     {
         $data = $request->validate([
-            'database_file' => ['required', 'file', 'max:51200'],
+            'database_file' => ['required', 'file', 'max:524288'],
             'confirmed' => ['accepted'],
         ]);
 
@@ -32,6 +32,6 @@ final class DatabaseController
             throw ValidationException::withMessages(['database_file' => $error->getMessage()]);
         }
 
-        return redirect()->route('settings.index')->with('status', 'Base restaurée.');
+        return redirect()->route('settings.index')->with('status', 'Sauvegarde restaurée.');
     }
 }

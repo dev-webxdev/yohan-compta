@@ -23,6 +23,7 @@ final class BugFixRegressionTest extends TestCase
         $response->assertSee('Heures supplémentaires</span>', false);
         $response->assertSee('Heures sup</span>', false);
         $response->assertSee('Rapports</span>', false);
+        $response->assertSee('Bibliothèque</span>', false);
         $response->assertDontSee('Ajouter un jour');
         $response->assertDontSee('aria-label="Apparence"', false);
         $response->assertDontSee('aria-label="Notifications"', false);
@@ -186,7 +187,7 @@ final class BugFixRegressionTest extends TestCase
         self::assertStringNotContainsString("method: 'DELETE'", $javascript);
         self::assertStringContainsString('.confirm-dialog.is-danger', $css);
         self::assertStringContainsString('@media(max-width:720px)', $css);
-        self::assertStringContainsString('data-confirm-title="Restaurer la base SQLite ?"', $settings);
+        self::assertStringContainsString('data-confirm-title="Restaurer cette sauvegarde ?"', $settings);
         self::assertStringContainsString('data-confirm-danger="1"', $payments);
         self::assertStringNotContainsString('confirm(', $settings);
         self::assertStringNotContainsString('confirm(', $payments);

@@ -298,3 +298,66 @@ test('salary tracking works across responsive layouts', async ({page}, testInfo)
     ]);
     await expect(page.getByText(`E2E ${testInfo.project.name}`)).toHaveCount(0);
 });
+
+
+test('document library works across responsive layouts', async ({page}, testInfo) => {
+    const rootName = `E2E ${testInfo.project.name}`;
+
+    await page.goto('/bibliotheque');
+    await expect(page.getByRole('heading', {name: 'Bibliothèque'})).toBeVisible();
+    await expect(page.getByText('Aucun dossier n’est créé automatiquement.')).toBeVisible();
+
+    let overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    expect(overflow).toBeLessThanOrEqual(1);
+
+    await page.getByText('Nouveau dossier', {exact: true}).click();
+    const createForm = page.locator('.library-popover-form');
+    await createForm.locator('input[name="name"]').fill(rootName);
+    await Promise.all([
+        page.waitForURL(/\/bibliotheque$/),
+        createForm.getByRole('button', {name: 'Créer'}).click(),
+    ]);
+
+    const rootCard = page.locator('.library-folder-card').filter({hasText: rootName});
+    await expect(rootCard).toBeVisible();
+    await rootCard.locator('.library-folder-link').click();
+    await expect(page.locator('.library-current-folder')).toContainText(rootName);
+
+    await page.getByText('Nouveau dossier', {exact: true}).click();
+    await page.locator('.library-popover-form input[name="name"]').fill('Août');
+    await Promise.all([
+        page.waitForURL(/\/bibliotheque\/\d+$/),
+        page.locator('.library-popover-form').getByRole('button', {name: 'Créer'}).click(),
+    ]);
+
+    const child = page.locator('.library-folder-card').filter({hasText: 'Août'});
+    await expect(child).toBeVisible();
+    await child.locator('.library-folder-link').click();
+    await expect(page.locator('.library-breadcrumbs')).toContainText(rootName);
+    await expect(page.locator('.library-breadcrumbs')).toContainText('Août');
+
+    const uploadResponse = page.waitForResponse(response =>
+        response.url().endsWith('/bibliotheque/fichiers') && response.request().method() === 'POST',
+    );
+    await page.locator('.library-upload-form input[type="file"]').setInputFiles({
+        name: `bulletin-${testInfo.project.name}.txt`,
+        mimeType: 'text/plain',
+        buffer: Buffer.from(`document ${testInfo.project.name}`),
+    });
+    expect((await uploadResponse).status()).toBe(302);
+    await expect(page.getByText(`bulletin-${testInfo.project.name}.txt`, {exact: true})).toBeVisible();
+
+    overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    expect(overflow).toBeLessThanOrEqual(1);
+
+    await page.goto('/bibliotheque');
+    const cleanupCard = page.locator('.library-folder-card').filter({hasText: rootName});
+    await cleanupCard.locator('.library-item-menu summary').click();
+    await cleanupCard.getByRole('button', {name: 'Supprimer le dossier'}).click();
+    await expect(page.locator('#confirm-dialog')).toBeVisible();
+    await Promise.all([
+        page.waitForURL(/\/bibliotheque$/),
+        page.locator('#confirm-dialog-submit').click(),
+    ]);
+    await expect(page.getByText(rootName, {exact: true})).toHaveCount(0);
+});

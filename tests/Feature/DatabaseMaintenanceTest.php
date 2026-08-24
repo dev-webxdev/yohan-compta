@@ -2,25 +2,36 @@
 
 namespace Tests\Feature;
 
+use App\Models\DocumentFolder;
+use App\Models\LibraryDocument;
 use App\Models\MonthlySalary;
 use App\Models\WorkDay;
 use App\Services\DatabaseMaintenanceService;
+use App\Services\LibraryService;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 use PDO;
 use RuntimeException;
 use Tests\TestCase;
+use ZipArchive;
 
 final class DatabaseMaintenanceTest extends TestCase
 {
     private string $databasePath;
     private string $originalDatabase;
+    private string $libraryRoot;
+    private string $originalLocalRoot;
 
     protected function setUp(): void
     {
         parent::setUp();
 
         $this->originalDatabase = (string) config('database.connections.sqlite.database');
+        $this->originalLocalRoot = (string) config('filesystems.disks.local.root');
+        $this->libraryRoot = storage_path('framework/testing/maintenance-library-'.bin2hex(random_bytes(5)));
+        config(['filesystems.disks.local.root' => $this->libraryRoot]);
         $directory = storage_path('framework/testing');
         if (!is_dir($directory)) {
             mkdir($directory, 0775, true);
@@ -40,7 +51,11 @@ final class DatabaseMaintenanceTest extends TestCase
             @unlink($path);
         }
 
-        config(['database.connections.sqlite.database' => $this->originalDatabase]);
+        File::deleteDirectory($this->libraryRoot);
+        config([
+            'database.connections.sqlite.database' => $this->originalDatabase,
+            'filesystems.disks.local.root' => $this->originalLocalRoot,
+        ]);
         DB::purge('sqlite');
         parent::tearDown();
     }
@@ -49,8 +64,8 @@ final class DatabaseMaintenanceTest extends TestCase
     {
         $response = $this->get('/parametres')->assertOk();
 
-        $response->assertSee('Sauvegarder la BDD')
-            ->assertSee('Restaurer une BDD SQLite')
+        $response->assertSee('Sauvegarder toutes les données')
+            ->assertSee('Restaurer une sauvegarde')
             ->assertSee(route('settings.database.backup'), false)
             ->assertSee(route('settings.database.restore'), false)
             ->assertDontSee('Sauvegardes de sécurité')
@@ -90,7 +105,7 @@ final class DatabaseMaintenanceTest extends TestCase
 
         $response = $this->get('/parametres/base/sauvegarde')->assertOk();
         self::assertStringContainsString('attachment;', (string) $response->headers->get('content-disposition'));
-        self::assertStringContainsString('.sqlite', (string) $response->headers->get('content-disposition'));
+        self::assertStringContainsString('.zip', (string) $response->headers->get('content-disposition'));
     }
 
     public function test_restore_replaces_database_without_persisting_a_safety_backup(): void
@@ -120,6 +135,36 @@ final class DatabaseMaintenanceTest extends TestCase
         }
     }
 
+    public function test_sqlite_restore_preserves_current_library(): void
+    {
+        WorkDay::query()->create([
+            'date' => '2026-07-01',
+            'driving_minutes' => 420,
+            'warehouse_minutes' => 0,
+            'meal_allowance_mode' => 'auto',
+        ]);
+        $sourceBackup = app(DatabaseMaintenanceService::class)->createDownloadCopy();
+
+        $folder = DocumentFolder::query()->create(['name' => 'Documents actuels']);
+        $document = app(LibraryService::class)->storeDocument(
+            $folder->id,
+            UploadedFile::fake()->createWithContent('actuel.txt', 'a-conserver'),
+        );
+        WorkDay::query()->delete();
+
+        try {
+            app(DatabaseMaintenanceService::class)->restoreFrom($sourceBackup);
+
+            self::assertTrue(WorkDay::query()->whereDate('date', '2026-07-01')->exists());
+            self::assertSame('Documents actuels', DocumentFolder::query()->findOrFail($folder->id)->name);
+            $restoredDocument = LibraryDocument::query()->findOrFail($document->id);
+            self::assertSame('actuel.txt', $restoredDocument->original_name);
+            self::assertSame('a-conserver', file_get_contents(app(LibraryService::class)->documentPath($restoredDocument)));
+        } finally {
+            @unlink($sourceBackup);
+        }
+    }
+
     public function test_invalid_restore_file_is_rejected_before_current_database_is_touched(): void
     {
         WorkDay::query()->create([
@@ -141,4 +186,37 @@ final class DatabaseMaintenanceTest extends TestCase
             @unlink($invalid);
         }
     }
+    public function test_complete_backup_round_trip_restores_library_files(): void
+    {
+        $folder = DocumentFolder::query()->create(['name' => '2026']);
+        $document = app(LibraryService::class)->storeDocument(
+            $folder->id,
+            UploadedFile::fake()->createWithContent('bulletin.txt', 'contenu-sauvegarde'),
+        );
+        $archive = app(DatabaseMaintenanceService::class)->createApplicationBackup();
+
+        try {
+            self::assertFileExists($archive);
+            $zip = new ZipArchive();
+            self::assertTrue($zip->open($archive) === true);
+            self::assertNotFalse($zip->locateName('database.sqlite'));
+            self::assertNotFalse($zip->locateName('library/'.$document->storage_name));
+            $zip->close();
+
+            app(LibraryService::class)->deleteFolder($folder);
+            self::assertDatabaseCount('document_folders', 0);
+            self::assertDatabaseCount('library_documents', 0);
+
+            app(DatabaseMaintenanceService::class)->restoreFrom($archive);
+
+            $restoredFolder = DocumentFolder::query()->where('name', '2026')->firstOrFail();
+            $restored = LibraryDocument::query()->where('folder_id', $restoredFolder->id)->firstOrFail();
+            $path = app(LibraryService::class)->libraryPath().DIRECTORY_SEPARATOR.$restored->storage_name;
+            self::assertFileExists($path);
+            self::assertSame('contenu-sauvegarde', file_get_contents($path));
+        } finally {
+            @unlink($archive);
+        }
+    }
+
 }

@@ -4,6 +4,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DatabaseController;
 use App\Http\Controllers\ExportController;
 use App\Http\Controllers\MonthController;
+use App\Http\Controllers\LibraryController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\SalaryController;
@@ -29,6 +30,14 @@ Route::middleware('auth.local')->group(function (): void {
     Route::post('/paiements', [PaymentController::class, 'store'])->name('payments.store');
     Route::patch('/paiements/{payment}', [PaymentController::class, 'update'])->name('payments.update');
     Route::delete('/paiements/{payment}', [PaymentController::class, 'destroy'])->name('payments.destroy');
+
+    Route::post('/bibliotheque/dossiers', [LibraryController::class, 'storeFolder'])->name('library.folders.store');
+    Route::patch('/bibliotheque/dossiers/{folder}', [LibraryController::class, 'updateFolder'])->name('library.folders.update');
+    Route::delete('/bibliotheque/dossiers/{folder}', [LibraryController::class, 'destroyFolder'])->name('library.folders.destroy');
+    Route::post('/bibliotheque/fichiers', [LibraryController::class, 'storeDocument'])->name('library.documents.store');
+    Route::get('/bibliotheque/fichiers/{document}/telecharger', [LibraryController::class, 'download'])->name('library.documents.download');
+    Route::delete('/bibliotheque/fichiers/{document}', [LibraryController::class, 'destroyDocument'])->name('library.documents.destroy');
+    Route::get('/bibliotheque/{folder?}', [LibraryController::class, 'index'])->whereNumber('folder')->name('library.index');
 
     Route::get('/salaires', [SalaryController::class, 'index'])->name('salaries.index');
     Route::post('/salaires', [SalaryController::class, 'store'])->name('salaries.store');
