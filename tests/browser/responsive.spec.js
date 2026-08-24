@@ -270,33 +270,36 @@ test('salary tracking works across responsive layouts', async ({page}, testInfo)
     };
     const month = months[testInfo.project.name];
 
-    await page.goto('/salaires?year=2026');
-    await expect(page.getByRole('heading', {name: 'Suivi des salaires'})).toBeVisible();
+    await page.goto('/salaires');
     await expect(page.getByRole('heading', {name: 'Enregistrer un salaire'})).toBeVisible();
+    await expect(page.getByRole('heading', {name: 'Évolution des salaires'})).toBeVisible();
+    await expect(page.getByRole('heading', {name: 'Historique des salaires'})).toBeVisible();
+    await expect(page.locator('.salary-filters')).toHaveCount(0);
+    await expect(page.locator('textarea[name="note"]')).toHaveCount(0);
 
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     expect(overflow).toBeLessThanOrEqual(1);
+    const chartPointsBefore = await page.locator('.salary-chart-point').count();
 
     await page.locator('input[name="month"]').fill(month);
     await page.locator('input[name="net_amount"]').fill('1850,50');
-    await page.locator('textarea[name="note"]').fill(`E2E ${testInfo.project.name}`);
     await Promise.all([
-        page.waitForURL(/\/salaires\?year=2026$/),
+        page.waitForURL(/\/salaires$/),
         page.getByRole('button', {name: /Enregistrer le salaire/}).click(),
     ]);
 
     await expect(page.getByText('1 850,50 €').first()).toBeVisible();
-    await expect(page.locator('.salary-chart-point')).toHaveCount(1);
+    await expect(page.locator('.salary-chart-point')).toHaveCount(chartPointsBefore + 1);
 
-    const salaryRow = page.locator('.salary-table tbody tr').filter({hasText: `E2E ${testInfo.project.name}`});
+    const salaryRow = page.locator('.salary-table tbody tr').filter({has: page.locator(`a[href$="/mois/${month}"]`)});
     await expect(salaryRow).toBeVisible();
     await salaryRow.getByRole('button', {name: /Supprimer/}).click();
     await expect(page.locator('#confirm-dialog')).toBeVisible();
     await Promise.all([
-        page.waitForURL(/\/salaires\?year=2026$/),
+        page.waitForURL(/\/salaires$/),
         page.locator('#confirm-dialog-submit').click(),
     ]);
-    await expect(page.getByText(`E2E ${testInfo.project.name}`)).toHaveCount(0);
+    await expect(page.locator(`.salary-table a[href$="/mois/${month}"]`)).toHaveCount(0);
 });
 
 

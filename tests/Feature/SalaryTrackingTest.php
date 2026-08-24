@@ -3,8 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\MonthlySalary;
-use App\Models\OvertimePayment;
-use App\Models\WorkDay;
+use App\Services\SalaryReportService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
@@ -13,113 +12,103 @@ final class SalaryTrackingTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_salary_page_exposes_crud_statistics_chart_and_navigation(): void
+    public function test_salary_page_is_simple_and_exposes_crud_useful_stats_graph_history_and_navigation(): void
     {
-        $this->get('/salaires?year=2026')
+        $this->get('/salaires')
             ->assertOk()
-            ->assertSee('Suivi des salaires')
             ->assertSee('Enregistrer un salaire')
             ->assertSee('Salaire moyen')
-            ->assertSee('Évolution du salaire net')
-            ->assertSee('Détail et comparaison mensuelle')
-            ->assertSee('Salaires</span>', false);
+            ->assertSee('Salaire le plus élevé')
+            ->assertSee('Salaire le plus faible')
+            ->assertSee('Évolution des salaires')
+            ->assertSee('Historique des salaires')
+            ->assertSee('Salaires</span>', false)
+            ->assertDontSee('Suivi des salaires')
+            ->assertDontSee('name="note"', false)
+            ->assertDontSee('Total des salaires')
+            ->assertDontSee('Différence premier / dernier')
+            ->assertDontSee('Détail et comparaison mensuelle');
 
         $this->post('/salaires', [
-            'month' => '2026-08',
+            'month' => '2026-06',
             'net_amount' => '1850,00',
-            'note' => 'Prime été',
-        ])->assertRedirect('/salaires?year=2026');
+        ])->assertRedirect('/salaires');
 
         $this->post('/salaires', [
-            'month' => '2026-09',
+            'month' => '2026-07',
             'net_amount' => '1920',
-            'note' => '',
-        ])->assertRedirect('/salaires?year=2026');
+        ])->assertRedirect('/salaires');
 
-        self::assertSame(185000, MonthlySalary::query()->where('month', '2026-08')->value('net_amount_cents'));
-        self::assertSame('Prime été', MonthlySalary::query()->where('month', '2026-08')->value('note'));
+        self::assertSame(185000, MonthlySalary::query()->where('month', '2026-06')->value('net_amount_cents'));
+        self::assertNull(MonthlySalary::query()->where('month', '2026-06')->value('note'));
 
-        $page = $this->get('/salaires?year=2026')->assertOk();
+        $page = $this->get('/salaires')->assertOk();
         $page->assertSee('1 885,00 €')
             ->assertSee('1 920,00 €')
             ->assertSee('1 850,00 €')
-            ->assertSee('3 770,00 €')
-            ->assertSee('+70,00 €')
-            ->assertSee('salary-chart-line', false);
+            ->assertSee('salary-chart-area', false)
+            ->assertSee('salary-chart-line', false)
+            ->assertDontSee('3 770,00 €')
+            ->assertDontSee('+70,00 €');
 
-        $salary = MonthlySalary::query()->where('month', '2026-08')->firstOrFail();
+        $salary = MonthlySalary::query()->where('month', '2026-06')->firstOrFail();
         $this->patch('/salaires/'.$salary->id, [
-            'month' => '2026-08',
+            'month' => '2026-06',
             'net_amount' => '1875,50',
-            'note' => 'Corrigé',
-        ])->assertRedirect('/salaires?year=2026');
+        ])->assertRedirect('/salaires');
         self::assertSame(187550, $salary->fresh()->net_amount_cents);
-        self::assertSame('Corrigé', $salary->fresh()->note);
 
-        $september = MonthlySalary::query()->where('month', '2026-09')->firstOrFail();
-        $this->delete('/salaires/'.$september->id)->assertRedirect('/salaires?year=2026');
-        self::assertFalse(MonthlySalary::query()->where('month', '2026-09')->exists());
+        $july = MonthlySalary::query()->where('month', '2026-07')->firstOrFail();
+        $this->delete('/salaires/'.$july->id)->assertRedirect('/salaires');
+        self::assertFalse(MonthlySalary::query()->where('month', '2026-07')->exists());
     }
 
     public function test_salary_month_is_unique_and_future_salary_is_rejected(): void
     {
         MonthlySalary::query()->create(['month' => '2026-08', 'net_amount_cents' => 185000]);
 
-        $this->from('/salaires?year=2026')->post('/salaires', [
+        $this->from('/salaires')->post('/salaires', [
             'month' => '2026-08',
             'net_amount' => '1900',
-        ])->assertRedirect('/salaires?year=2026')->assertSessionHasErrors('month');
+        ])->assertRedirect('/salaires')->assertSessionHasErrors('month');
 
-        $this->from('/salaires?year=2026')->post('/salaires', [
+        $this->from('/salaires')->post('/salaires', [
             'month' => '2026-12',
             'net_amount' => '1900',
-        ])->assertRedirect('/salaires?year=2026')->assertSessionHasErrors('month');
+        ])->assertRedirect('/salaires')->assertSessionHasErrors('month');
     }
 
-    public function test_salary_report_compares_work_overtime_and_received_overtime_payments(): void
+    public function test_history_is_simple_and_ignores_old_notes_and_obsolete_filter_parameters(): void
     {
-        MonthlySalary::query()->create(['month' => '2026-08', 'net_amount_cents' => 185000, 'note' => 'Prime été']);
+        MonthlySalary::query()->create(['month' => '2026-06', 'net_amount_cents' => 180000, 'note' => 'Ancienne note']);
+        MonthlySalary::query()->create(['month' => '2026-07', 'net_amount_cents' => 185000]);
 
-        foreach (['2026-08-03', '2026-08-04', '2026-08-05', '2026-08-06', '2026-08-07'] as $date) {
-            WorkDay::query()->create([
-                'date' => $date,
-                'start_time_minutes' => 465,
-                'driving_minutes' => 480,
-                'warehouse_minutes' => 0,
-                'is_rest' => false,
-                'meal_allowance_mode' => 'auto',
+        $response = $this->get('/salaires?year=2025&from=2026-07&to=2026-07')->assertOk();
+        $response->assertSee('1 800,00 €')
+            ->assertSee('1 850,00 €')
+            ->assertDontSee('Ancienne note')
+            ->assertDontSee('Heures travaillées')
+            ->assertDontSee('Heures sup effectuées')
+            ->assertDontSee('Écart mois précédent')
+            ->assertDontSee('salary-filters', false);
+    }
+
+    public function test_chart_keeps_only_the_twelve_latest_salaries(): void
+    {
+        for ($index = 0; $index < 13; $index++) {
+            $date = now()->startOfMonth()->subMonths(12 - $index);
+            MonthlySalary::query()->create([
+                'month' => $date->format('Y-m'),
+                'net_amount_cents' => 170000 + ($index * 1000),
             ]);
         }
-        OvertimePayment::query()->create([
-            'payment_date' => '2026-08-31',
-            'amount_cents' => 10000,
-            'hours_paid_minutes' => 120,
-            'period_reference' => 'Août',
-        ]);
 
-        $this->get('/salaires?from=2026-08&to=2026-08')
-            ->assertOk()
-            ->assertSee('40:00')
-            ->assertSee('05:00')
-            ->assertSee('100,00 €')
-            ->assertSee('02:00')
-            ->assertSee('Prime été', false, false);
-    }
+        $report = app(SalaryReportService::class)->build();
 
-    public function test_custom_period_filter_limits_salary_rows(): void
-    {
-        MonthlySalary::query()->create(['month' => '2026-07', 'net_amount_cents' => 180000]);
-        MonthlySalary::query()->create(['month' => '2026-08', 'net_amount_cents' => 185000]);
-        MonthlySalary::query()->create(['month' => '2026-09', 'net_amount_cents' => 190000]);
-
-        $response = $this->get('/salaires?year=2025&from=2026-08&to=2026-09')->assertOk();
-        $response->assertDontSee('1 800,00 €')
-            ->assertSee('1 850,00 €')
-            ->assertSee('1 900,00 €');
-
-        $this->from('/salaires')->get('/salaires?from=2026-09&to=2026-08')
-            ->assertRedirect('/salaires')
-            ->assertSessionHasErrors('to');
+        self::assertCount(13, $report['rows']);
+        self::assertCount(12, $report['chart']['points']);
+        self::assertSame(13, $report['chart']['total_count']);
+        self::assertSame(now()->startOfMonth()->subMonths(11)->format('Y-m'), $report['chart']['points'][0]['month']);
     }
 
     public function test_salary_table_is_migrated_and_part_of_current_backup_schema(): void

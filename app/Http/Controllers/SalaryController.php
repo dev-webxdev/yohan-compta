@@ -17,29 +17,12 @@ final class SalaryController
     public function index(Request $request, SalaryReportService $reports): View
     {
         $filters = $request->validate([
-            'year' => ['nullable', 'integer', 'between:'.DateRange::MIN_YEAR.','.DateRange::MAX_YEAR],
-            'from' => ['nullable', 'regex:/^\d{4}-(0[1-9]|1[0-2])$/'],
-            'to' => ['nullable', 'regex:/^\d{4}-(0[1-9]|1[0-2])$/'],
             'edit' => ['nullable', 'integer', 'min:1'],
         ]);
-
-        foreach (['from', 'to'] as $field) {
-            if (isset($filters[$field]) && !DateRange::isMonth($filters[$field])) {
-                throw ValidationException::withMessages([$field => 'Période invalide.']);
-            }
-        }
-        if (isset($filters['from'], $filters['to']) && $filters['from'] > $filters['to']) {
-            throw ValidationException::withMessages(['to' => 'La fin de période doit être postérieure ou égale au début.']);
-        }
-
         $editId = isset($filters['edit']) ? (int) $filters['edit'] : 0;
 
         return view('salaries', [
-            'report' => $reports->build(
-                isset($filters['year']) ? (int) $filters['year'] : null,
-                $filters['from'] ?? null,
-                $filters['to'] ?? null,
-            ),
+            'report' => $reports->build(),
             'editingSalary' => $editId > 0 ? MonthlySalary::query()->find($editId) : null,
         ]);
     }
@@ -48,27 +31,24 @@ final class SalaryController
     {
         MonthlySalary::query()->create($this->salaryPayload($request));
 
-        return redirect()->route('salaries.index', ['year' => substr($request->string('month')->toString(), 0, 4)])
-            ->with('status', 'Salaire enregistré.');
+        return redirect()->route('salaries.index')->with('status', 'Salaire enregistré.');
     }
 
     public function update(Request $request, MonthlySalary $salary): RedirectResponse
     {
         $salary->update($this->salaryPayload($request, $salary));
 
-        return redirect()->route('salaries.index', ['year' => substr($salary->fresh()->month, 0, 4)])
-            ->with('status', 'Salaire modifié.');
+        return redirect()->route('salaries.index')->with('status', 'Salaire modifié.');
     }
 
     public function destroy(MonthlySalary $salary): RedirectResponse
     {
-        $year = substr($salary->month, 0, 4);
         $salary->delete();
 
-        return redirect()->route('salaries.index', ['year' => $year])->with('status', 'Salaire supprimé.');
+        return redirect()->route('salaries.index')->with('status', 'Salaire supprimé.');
     }
 
-    /** @return array{month:string,net_amount_cents:int,note:?string} */
+    /** @return array{month:string,net_amount_cents:int} */
     private function salaryPayload(Request $request, ?MonthlySalary $salary = null): array
     {
         $data = $request->validate([
@@ -78,7 +58,6 @@ final class SalaryController
                 Rule::unique('monthly_salaries', 'month')->ignore($salary?->id),
             ],
             'net_amount' => ['required', 'string', 'max:30'],
-            'note' => ['nullable', 'string', 'max:1000'],
         ]);
 
         if (!DateRange::isMonth($data['month'])) {
@@ -100,7 +79,6 @@ final class SalaryController
         return [
             'month' => $data['month'],
             'net_amount_cents' => $amountCents,
-            'note' => trim((string) ($data['note'] ?? '')) ?: null,
         ];
     }
 }
