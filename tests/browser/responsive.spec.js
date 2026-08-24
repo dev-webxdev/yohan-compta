@@ -254,10 +254,63 @@ test('weekly summary metrics stay inside their cards without overlap', async ({p
     }
 });
 
-test('payment history is shown without filter controls', async ({page}) => {
+test('payment history is simplified and editing uses a modal', async ({page}, testInfo) => {
+    const dates = {
+        'mobile-390': '2026-01-15',
+        'tablet-768': '2026-02-15',
+        'desktop-1440': '2026-03-15',
+        'wide-2560': '2026-04-15',
+    };
+    const paymentDate = dates[testInfo.project.name];
+
     await page.goto('/paiements');
     await expect(page.getByRole('heading', {name: 'Historique des paiements d’heures supplémentaires'})).toBeVisible();
     await expect(page.locator('.payment-filters')).toHaveCount(0);
+    await expect(page.getByText('Référence période')).toHaveCount(0);
+    await expect(page.locator('.allocation-tags')).toHaveCount(0);
+
+    const createForm = page.locator('.payment-form');
+    await createForm.locator('input[name="payment_date"]').fill(paymentDate);
+    await createForm.locator('input[name="amount"]').fill('12,34');
+    await createForm.locator('input[name="hours_paid"]').fill('01:30');
+    await Promise.all([
+        page.waitForURL(/\/paiements$/),
+        createForm.getByRole('button', {name: /Enregistrer le paiement/}).click(),
+    ]);
+
+    let paymentRow = page.locator('.payment-row').filter({hasText: '12,34 €'}).first();
+    await expect(paymentRow).toBeVisible();
+    await paymentRow.getByRole('button', {name: 'Modifier'}).click();
+
+    const dialog = page.locator('#payment-edit-dialog');
+    await expect(dialog).toBeVisible();
+    await expect(dialog.locator('input[name="payment_date"]')).toHaveValue(paymentDate);
+    await expect(dialog.locator('input[name="amount"]')).toHaveValue('12,34');
+    await expect(dialog.locator('input[name="hours_paid"]')).toHaveValue('01:30');
+    await dialog.getByRole('button', {name: 'Annuler'}).click();
+    await expect(dialog).not.toBeVisible();
+
+    await paymentRow.getByRole('button', {name: 'Modifier'}).click();
+    await dialog.locator('input[name="amount"]').fill('13,45');
+    await dialog.locator('input[name="hours_paid"]').fill('02:15');
+    await Promise.all([
+        page.waitForURL(/\/paiements$/),
+        dialog.getByRole('button', {name: 'Enregistrer'}).click(),
+    ]);
+
+    paymentRow = page.locator('.payment-row').filter({hasText: '13,45 €'}).first();
+    await expect(paymentRow).toBeVisible();
+    await expect(paymentRow).toContainText('02:15');
+    await expect(page.getByText('Référence période')).toHaveCount(0);
+    await expect(page.locator('.allocation-tags')).toHaveCount(0);
+
+    await paymentRow.getByRole('button', {name: 'Supprimer'}).click();
+    await expect(page.locator('#confirm-dialog')).toBeVisible();
+    await Promise.all([
+        page.waitForURL(/\/paiements$/),
+        page.locator('#confirm-dialog-submit').click(),
+    ]);
+    await expect(page.locator('.payment-row').filter({hasText: '13,45 €'})).toHaveCount(0);
 });
 
 

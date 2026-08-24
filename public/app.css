@@ -247,3 +247,39 @@ a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible,
 @media(max-width:1150px){.library-folder-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:850px){.library-folder-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.library-trash-grid{grid-template-columns:1fr}}
 @media(max-width:720px){.library-page{gap:10px}.library-toolbar-panel,.library-content-panel{padding:11px}.library-heading{display:block}.library-title-block{align-items:flex-start}.library-title-icon{width:38px;height:38px;flex-basis:38px}.library-heading h2{font-size:14px}.library-toolbar-actions{display:grid;grid-template-columns:1fr 1fr;margin-top:12px}.library-toolbar-actions>*{min-width:0}.library-toolbar-actions .primary-button,.library-toolbar-actions .library-trash-link{width:100%;min-height:39px}.library-upload-form{grid-column:1/-1}.library-upload-button{width:100%}.library-popover-form{left:0;right:auto;width:min(310px,calc(100vw - 42px))}.library-breadcrumbs{margin-top:11px;padding-top:9px}.library-current-folder{margin-bottom:13px}.library-folder-grid{grid-template-columns:1fr;gap:8px}.library-folder-link{padding:10px 6px 10px 10px}.library-folder-icon{width:38px;height:38px;flex-basis:38px;font-size:19px}.library-folder-copy strong{font-size:10.5px}.library-item-menu{margin-right:3px}.library-item-menu-content{right:0;width:min(300px,calc(100vw - 34px))}.library-file-row{grid-template-columns:36px minmax(0,1fr) auto;padding:8px}.library-file-icon{width:34px;height:34px}.library-file-actions .secondary-button{width:34px;height:34px;padding:0;font-size:0}.library-file-actions .secondary-button i{font-size:11px}.library-file-name small{max-width:165px}.library-empty{min-height:220px;padding:18px 10px}.library-trash-card{padding:10px}.library-trash-actions{display:grid;grid-template-columns:1fr 1fr}.library-trash-actions>form,.library-trash-actions>details{width:100%}.library-restore-button,.library-permanent-delete-trigger{width:100%;min-height:37px}.library-permanent-delete-form{left:auto;right:0;width:min(290px,calc(100vw - 42px))}.library-trash-file-row{grid-template-columns:34px minmax(0,1fr)}.library-trash-file-row .library-file-actions{grid-column:1/-1;justify-content:flex-end}.library-trash-file-row .library-file-actions .library-restore-button{width:auto}.mobile-nav a{font-size:7px}}
+
+/* Payment history UX */
+.payment-entry-panel{padding:17px}
+.payment-form{margin-top:14px}
+.payment-primary-button,.payment-action-button,.payment-dialog-button{min-height:40px;border-radius:9px;font-weight:700;transition:background .15s ease,border-color .15s ease,box-shadow .15s ease,transform .15s ease,opacity .15s ease}
+.payment-primary-button{padding:0 17px;border:1px solid #2d78f6;box-shadow:0 5px 14px #2678ff26}
+.payment-primary-button:hover{transform:translateY(-1px);box-shadow:0 7px 18px #2678ff33}
+.payment-primary-button:disabled,.payment-action-button:disabled,.payment-dialog-button:disabled{opacity:.48;cursor:not-allowed;transform:none;box-shadow:none}
+.payment-history-panel{overflow:hidden}
+.payment-row{grid-template-columns:minmax(150px,190px) minmax(220px,1fr) minmax(224px,auto);gap:18px;min-height:64px;padding:12px 2px}
+.payment-date{display:flex;align-items:center;gap:7px;min-width:0;flex-wrap:wrap}
+.payment-date strong{font-size:12px}
+.payment-future-note{width:100%;color:var(--muted);font-size:9px}
+.payment-amount{justify-self:end;min-width:0}
+.payment-actions{justify-content:flex-end;gap:8px;flex-wrap:nowrap}
+.payment-actions form{margin:0}
+.payment-action-button{min-width:104px;padding:0 13px;display:inline-flex;align-items:center;justify-content:center;gap:7px;border:1px solid;font:inherit;font-size:11px;cursor:pointer}
+.payment-action-button:hover{transform:translateY(-1px)}
+.payment-edit-button{color:#315b91;background:#fff;border-color:#cfdaea}.payment-edit-button:hover{background:#f3f7fd;border-color:#abc3e5}
+.payment-delete-button{color:#b42f3a;background:#fff;border-color:#efc8cc}.payment-delete-button:hover{background:#fff1f2;border-color:#e6a9ae}
+.payment-edit-dialog{width:min(560px,calc(100vw - 28px));max-height:calc(100vh - 28px);overflow:hidden;border:0;border-radius:14px;padding:0;background:#fff;color:var(--text);box-shadow:0 24px 72px #17213b4d}
+.payment-edit-dialog::backdrop{background:#17213b66;backdrop-filter:blur(3px)}
+.payment-edit-dialog form{max-height:calc(100vh - 28px);overflow-y:auto}
+.payment-dialog-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;padding:20px 22px 17px;border-bottom:1px solid #e8ecf2;background:linear-gradient(180deg,#fbfdff,#fff)}
+.payment-dialog-head h2{margin:0;font-size:18px}.payment-dialog-head p{margin:5px 0 0!important;font-size:11px;line-height:1.45}
+.payment-dialog-close{width:38px;height:38px;flex:0 0 38px;border:0;border-radius:9px;background:transparent;color:#526078;cursor:pointer;font-size:16px;transition:background .15s ease,color .15s ease}.payment-dialog-close:hover{background:#eef3f9;color:#26344d}
+.payment-dialog-fields{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:20px 22px}.payment-dialog-fields label:last-child{grid-column:1/-1}
+.payment-dialog-fields label{display:flex;flex-direction:column;gap:7px;color:#43516a;font-size:12px;font-weight:650}
+.payment-dialog-fields input{width:100%;min-height:42px;border:1px solid #d9e0e8;border-radius:7px;background:#fff;color:#25334c;outline:0;padding:9px 10px;font-size:14px}.payment-dialog-fields input:focus{border-color:#72a8ff;box-shadow:0 0 0 2px #2678ff1c}
+.payment-dialog-actions{display:flex;justify-content:flex-end;gap:9px;padding:14px 22px 18px;border-top:1px solid #e8ecf2;background:#fafbfd}
+.payment-dialog-button{min-width:112px;padding:0 15px;display:inline-flex;align-items:center;justify-content:center;gap:7px;font:inherit;cursor:pointer}
+.payment-dialog-cancel{border:1px solid #d4dbe5;background:#fff;color:#41506a}.payment-dialog-cancel:hover{background:#f2f5f9;border-color:#bcc7d5}
+.payment-dialog-save{border:1px solid #2d78f6;background:#2d78f6;color:#fff;box-shadow:0 5px 14px #2678ff26}.payment-dialog-save:hover{background:#1f6fed;border-color:#1f6fed;transform:translateY(-1px);box-shadow:0 7px 18px #2678ff33}
+@media(max-width:720px){
+  .payment-entry-panel{padding:12px}.payment-row{grid-template-columns:1fr auto;gap:8px 12px;padding:11px 0}.payment-date{align-self:start}.payment-amount{justify-self:end}.payment-actions{grid-column:1/-1;justify-content:flex-start}.payment-action-button{min-width:104px;font-size:10px}.payment-edit-dialog{width:calc(100vw - 20px);max-height:calc(100vh - 20px)}.payment-edit-dialog form{max-height:calc(100vh - 20px)}.payment-dialog-head{padding:17px 16px 14px}.payment-dialog-head h2{font-size:17px}.payment-dialog-fields{grid-template-columns:1fr;padding:16px}.payment-dialog-fields label:last-child{grid-column:auto}.payment-dialog-actions{padding:13px 16px 16px}.payment-dialog-button{flex:1;min-width:0}
+}

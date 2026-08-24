@@ -31,7 +31,7 @@ final class AuditImprovementTest extends TestCase
             ->assertSee('Montant invalide.');
     }
 
-    public function test_existing_payment_can_be_edited_without_recreating_it(): void
+    public function test_existing_payment_is_edited_from_modal_without_recreating_it_and_keeps_legacy_reference(): void
     {
         $payment = OvertimePayment::query()->create([
             'payment_date' => '2026-08-10',
@@ -39,25 +39,28 @@ final class AuditImprovementTest extends TestCase
             'period_reference' => 'Ancienne référence',
         ]);
 
-        $this->get('/paiements?edit='.$payment->id)
-            ->assertOk()
-            ->assertSee('Modifier le paiement')
+        $page = $this->get('/paiements')->assertOk();
+        $page->assertSee('id="payment-edit-dialog"', false)
+            ->assertSee('data-payment-edit', false)
+            ->assertSee('data-payment-id="'.$payment->id.'"', false)
+            ->assertSee('data-payment-amount="10"', false)
             ->assertSee(route('payments.update', $payment), false)
-            ->assertSee('value="10"', false)
-            ->assertSee('Ancienne référence');
+            ->assertDontSee('Référence période')
+            ->assertDontSee('Ancienne référence')
+            ->assertDontSee('allocation-tags', false);
 
         $this->patch(route('payments.update', $payment), [
+            '_payment_edit' => (string) $payment->id,
             'payment_date' => '2026-08-14',
             'amount' => '12,50',
             'hours_paid' => '',
-            'period_reference' => 'Août 2026',
         ])->assertRedirect('/paiements');
 
         $payment->refresh();
         self::assertSame('2026-08-14', $payment->payment_date->format('Y-m-d'));
         self::assertSame(1250, $payment->amount_cents);
         self::assertNull($payment->hours_paid_minutes);
-        self::assertSame('Août 2026', $payment->period_reference);
+        self::assertSame('Ancienne référence', $payment->period_reference);
         self::assertFalse(Schema::hasColumn('overtime_payments', 'note'));
         self::assertSame(1, OvertimePayment::query()->count());
     }
@@ -84,7 +87,6 @@ final class AuditImprovementTest extends TestCase
             'payment_date' => '2026-08-14',
             'amount' => (string) ($debt / 100),
             'hours_paid' => '05:00',
-            'period_reference' => '',
             'note' => '',
         ])->assertRedirect('/paiements')->assertSessionHasNoErrors();
 

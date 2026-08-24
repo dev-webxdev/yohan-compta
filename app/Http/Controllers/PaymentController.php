@@ -14,11 +14,9 @@ use Illuminate\View\View;
 
 final class PaymentController
 {
-    public function index(Request $request, ReportService $reports): View
+    public function index(ReportService $reports): View
     {
         $payments = OvertimePayment::query()->orderByDesc('payment_date')->orderByDesc('id')->paginate(50);
-        $editId = $request->integer('edit');
-        $editingPayment = $editId > 0 ? OvertimePayment::query()->find($editId) : null;
         $hourAllocations = $reports->paymentHourAllocations();
 
         $paymentHours = [];
@@ -32,10 +30,7 @@ final class PaymentController
 
         return view('payments', [
             'payments' => $payments,
-            'editingPayment' => $editingPayment,
             'paymentHours' => $paymentHours,
-            'allocations' => $reports->paymentAllocations(),
-            'hourAllocations' => $hourAllocations,
             'balance' => $reports->balance(),
         ]);
     }
@@ -50,7 +45,7 @@ final class PaymentController
 
     public function update(Request $request, OvertimePayment $payment): RedirectResponse
     {
-        $payment->update($this->paymentPayload($request));
+        $payment->update($this->paymentPayload($request, $payment));
 
         return redirect()->route('payments.index')->with('status', 'Paiement modifié. Les soldes ont été recalculés automatiquement.');
     }
@@ -62,7 +57,7 @@ final class PaymentController
     }
 
     /** @return array{payment_date:string,amount_cents:int,hours_paid_minutes:?int,period_reference:?string} */
-    private function paymentPayload(Request $request): array
+    private function paymentPayload(Request $request, ?OvertimePayment $payment = null): array
     {
         $data = $request->validate([
             'payment_date' => [
@@ -73,7 +68,6 @@ final class PaymentController
             ],
             'amount' => ['required', 'string', 'max:30'],
             'hours_paid' => ['nullable', 'regex:/^\d{1,3}(?::[0-5]\d)?$/'],
-            'period_reference' => ['nullable', 'string', 'max:255'],
         ]);
 
         try {
@@ -95,7 +89,7 @@ final class PaymentController
             'payment_date' => $data['payment_date'],
             'amount_cents' => $amountCents,
             'hours_paid_minutes' => $hoursMinutes,
-            'period_reference' => trim((string) ($data['period_reference'] ?? '')) ?: null,
+            'period_reference' => $payment?->period_reference,
         ];
     }
 }

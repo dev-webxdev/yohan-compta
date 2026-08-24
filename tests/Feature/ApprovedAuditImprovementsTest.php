@@ -102,9 +102,12 @@ final class ApprovedAuditImprovementsTest extends TestCase
 
         $this->get('/paiements?month=2026-08')
             ->assertOk()
-            ->assertSee('Août camion')
-            ->assertSee('Juillet camion')
-            ->assertSee('Ancien paiement')
+            ->assertSee('10/08/2026')
+            ->assertSee('10/07/2026')
+            ->assertSee('10/08/2025')
+            ->assertDontSee('Août camion')
+            ->assertDontSee('Juillet camion')
+            ->assertDontSee('Ancien paiement')
             ->assertDontSee('payment-filters');
     }
 

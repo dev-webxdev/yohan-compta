@@ -157,6 +157,49 @@
         else confirmForm.requestSubmit();
     }));
 
+    const paymentEditDialog = q('#payment-edit-dialog');
+    if (paymentEditDialog) {
+        const paymentEditForm = q('#payment-edit-form', paymentEditDialog);
+        const paymentEditId = q('#payment-edit-id', paymentEditDialog);
+        const paymentEditDate = q('#payment-edit-date', paymentEditDialog);
+        const paymentEditAmount = q('#payment-edit-amount', paymentEditDialog);
+        const paymentEditHours = q('#payment-edit-hours', paymentEditDialog);
+        let paymentEditTrigger = null;
+
+        const closePaymentEditDialog = () => {
+            if (paymentEditDialog.open) paymentEditDialog.close();
+        };
+
+        const openPaymentEditDialog = (button, preserveValues = false) => {
+            if (!paymentEditForm || !paymentEditId || !paymentEditDate || !paymentEditAmount || !paymentEditHours) return;
+            paymentEditTrigger = button;
+            paymentEditForm.action = button.dataset.paymentUpdateUrl || '#';
+            paymentEditId.value = button.dataset.paymentId || '';
+            if (!preserveValues) {
+                paymentEditDate.value = button.dataset.paymentDate || '';
+                paymentEditAmount.value = button.dataset.paymentAmount || '';
+                paymentEditHours.value = button.dataset.paymentHours || '';
+                qa('.field-error', paymentEditDialog).forEach(error => error.remove());
+                qa('[aria-invalid="true"]', paymentEditDialog).forEach(input => input.removeAttribute('aria-invalid'));
+            }
+            paymentEditDialog.showModal();
+            paymentEditDate.focus();
+        };
+
+        qa('[data-payment-edit]').forEach(button => button.addEventListener('click', () => openPaymentEditDialog(button)));
+        qa('[data-payment-dialog-close]', paymentEditDialog).forEach(button => button.addEventListener('click', closePaymentEditDialog));
+        paymentEditDialog.addEventListener('click', event => {
+            if (event.target === paymentEditDialog) closePaymentEditDialog();
+        });
+        paymentEditDialog.addEventListener('close', () => paymentEditTrigger?.focus());
+
+        const reopenId = paymentEditDialog.dataset.reopenId;
+        if (reopenId) {
+            const reopenButton = q(`[data-payment-edit][data-payment-id="${CSS.escape(reopenId)}"]`);
+            if (reopenButton) openPaymentEditDialog(reopenButton, true);
+        }
+    }
+
     const settingsForm = q('[data-settings-form]');
     if (settingsForm) {
         const dateInput = q('[name="effective_from"]', settingsForm);
