@@ -92,6 +92,49 @@
         if (event.key === 'Escape') dismissableDetails.forEach(details => { details.open = false; });
     });
 
+    const documentAssociateDialog = q('#document-associate-dialog');
+    if (documentAssociateDialog) {
+        const documentAssociateForm = q('#document-associate-form', documentAssociateDialog);
+        const documentAssociateName = q('#document-associate-name', documentAssociateDialog);
+        let documentAssociateTrigger = null;
+
+        const syncDocumentAssociationType = () => {
+            const type = q('[data-association-kind]:checked', documentAssociateDialog)?.value;
+            qa('[data-association-options]', documentAssociateDialog).forEach(group => {
+                group.hidden = group.dataset.associationOptions !== type;
+            });
+            qa('[data-association-target]', documentAssociateDialog).forEach(select => {
+                select.disabled = select.dataset.associationTarget !== type;
+            });
+        };
+
+        const closeDocumentAssociateDialog = () => {
+            if (documentAssociateDialog.open) documentAssociateDialog.close();
+        };
+
+        qa('[data-document-associate]').forEach(button => button.addEventListener('click', () => {
+            if (!documentAssociateForm) return;
+            documentAssociateTrigger = button;
+            documentAssociateForm.action = button.dataset.associateUrl || '#';
+            documentAssociateForm.reset();
+            if (documentAssociateName) documentAssociateName.textContent = button.dataset.documentName || '';
+            syncDocumentAssociationType();
+            documentAssociateDialog.showModal();
+            q('[data-association-kind]:checked', documentAssociateDialog)?.focus();
+        }));
+
+        qa('[data-association-kind]', documentAssociateDialog).forEach(radio => radio.addEventListener('change', syncDocumentAssociationType));
+        qa('[data-document-associate-close]', documentAssociateDialog).forEach(button => button.addEventListener('click', closeDocumentAssociateDialog));
+        documentAssociateDialog.addEventListener('click', event => {
+            if (event.target === documentAssociateDialog) closeDocumentAssociateDialog();
+        });
+        documentAssociateDialog.addEventListener('cancel', event => {
+            event.preventDefault();
+            closeDocumentAssociateDialog();
+        });
+        documentAssociateDialog.addEventListener('close', () => documentAssociateTrigger?.focus());
+    }
+
     const confirmationDialog = q('#confirm-dialog');
     const confirmationTitle = q('#confirm-dialog-title');
     const confirmationMessage = q('#confirm-dialog-message');

@@ -22,7 +22,7 @@ final class BugFixRegressionTest extends TestCase
         $response->assertSee('Heures sup</span>', false);
         $response->assertSee('Rapports</span>', false);
         $response->assertSee('Documents</span>', false);
-        $response->assertSee('Planning</span>', false);
+        $response->assertDontSee('Planning</span>', false);
         $response->assertDontSee('Ajouter un jour');
         $response->assertDontSee('aria-label="Apparence"', false);
         $response->assertDontSee('aria-label="Notifications"', false);

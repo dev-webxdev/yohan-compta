@@ -23,7 +23,6 @@
     <div class="sidebar-head"><button type="button" class="bare-icon sidebar-toggle" aria-label="Réduire le menu" aria-expanded="true"><i class="fa-solid fa-bars"></i></button></div>
     <nav class="sidebar-nav">
         <a class="{{ request()->routeIs('month.*') ? 'active' : '' }}" href="{{ $dashboardUrl }}" @if(request()->routeIs('month.*')) aria-current="page" @endif><i class="fa-solid fa-table-columns"></i><span>Tableau de bord</span></a>
-        <a class="{{ request()->routeIs('planning.*') ? 'active' : '' }}" href="{{ route('planning.index') }}" @if(request()->routeIs('planning.*')) aria-current="page" @endif><i class="fa-regular fa-calendar-days"></i><span>Planning</span></a>
         <a class="{{ request()->routeIs('payments.*') ? 'active' : '' }}" href="{{ route('payments.index') }}" @if(request()->routeIs('payments.*')) aria-current="page" @endif><i class="fa-solid fa-money-check-dollar"></i><span>Heures supplémentaires</span></a>
         <a class="{{ request()->routeIs('salaries.*') ? 'active' : '' }}" href="{{ route('salaries.index') }}" @if(request()->routeIs('salaries.*')) aria-current="page" @endif><i class="fa-solid fa-wallet"></i><span>Salaires</span></a>
         <a class="{{ request()->routeIs('library.*') ? 'active' : '' }}" href="{{ route('library.index') }}" @if(request()->routeIs('library.*')) aria-current="page" @endif><i class="fa-solid fa-folder-tree"></i><span>Documents</span></a>
@@ -38,7 +37,6 @@
     <div class="mobile-top-menu"><button type="button" class="bare-icon mobile-menu-toggle" aria-label="Ouvrir le menu" aria-expanded="false"><i class="fa-solid fa-bars"></i></button></div>
     <div class="topbar-title">Suivi Heures &amp; Salaire</div>
     <div class="topbar-actions">
-        <a class="mobile-calendar" href="{{ route('planning.index') }}" aria-label="Planning"><i class="fa-regular fa-calendar-days"></i></a>
         <form method="post" action="{{ route('logout') }}">
             @csrf
             <button type="submit" class="bare-icon" aria-label="Se déconnecter" title="Se déconnecter"><i class="fa-solid fa-right-from-bracket"></i></button>
@@ -53,7 +51,6 @@
 </div>
 <nav class="mobile-nav" aria-label="Navigation mobile">
     <a class="{{ request()->routeIs('month.*') ? 'active' : '' }}" href="{{ $dashboardUrl }}" @if(request()->routeIs('month.*')) aria-current="page" @endif><i class="fa-solid fa-house"></i><span>Tableau</span></a>
-    <a class="{{ request()->routeIs('planning.*') ? 'active' : '' }}" href="{{ route('planning.index') }}" @if(request()->routeIs('planning.*')) aria-current="page" @endif><i class="fa-regular fa-calendar-days"></i><span>Planning</span></a>
     <a class="{{ request()->routeIs('payments.*') ? 'active' : '' }}" href="{{ route('payments.index') }}" @if(request()->routeIs('payments.*')) aria-current="page" @endif><i class="fa-solid fa-money-check-dollar"></i><span>Heures sup</span></a>
     <a class="{{ request()->routeIs('salaries.*') ? 'active' : '' }}" href="{{ route('salaries.index') }}" @if(request()->routeIs('salaries.*')) aria-current="page" @endif><i class="fa-solid fa-wallet"></i><span>Salaires</span></a>
     <a class="{{ request()->routeIs('library.*') ? 'active' : '' }}" href="{{ route('library.index') }}" @if(request()->routeIs('library.*')) aria-current="page" @endif><i class="fa-solid fa-folder-tree"></i><span>Documents</span></a>
