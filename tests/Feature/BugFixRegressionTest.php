@@ -29,6 +29,21 @@ final class BugFixRegressionTest extends TestCase
         $response->assertDontSee('aria-label="Profil"', false);
     }
 
+    public function test_topbar_title_changes_with_the_current_page(): void
+    {
+        $this->get('/mois/2026-08')
+            ->assertOk()
+            ->assertSee('<div class="topbar-title">Tableau de bord</div>', false);
+
+        $this->get('/salaires')
+            ->assertOk()
+            ->assertSee('<div class="topbar-title">Salaires</div>', false);
+
+        $this->get('/parametres')
+            ->assertOk()
+            ->assertSee('<div class="topbar-title">Paramètres</div>', false);
+    }
+
     public function test_past_days_are_locked_until_explicitly_unlocked_without_database_state(): void
     {
         Carbon::setTestNow('2026-08-17 12:00:00');

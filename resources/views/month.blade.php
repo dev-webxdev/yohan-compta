@@ -1,4 +1,5 @@
 @extends('layouts.app')
+@section('title', 'Tableau de bord')
 @php
 use App\Support\FrenchDate; use App\Support\Money; use App\Support\Time;
 $monthlyBalances=array_slice(array_filter($balance['by_month'],fn($i)=>($i['remaining']??0)>0),-2,2,true);
