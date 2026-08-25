@@ -1,0 +1,16 @@
+services:
+  app:
+    build:
+      context: .
+    restart: unless-stopped
+    env_file:
+      - .env.docker
+    environment:
+      DB_CONNECTION: sqlite
+      DB_DATABASE: /data/database.sqlite
+      LOCAL_FILESYSTEM_ROOT: /data/files
+    ports:
+      - "8080:80"
+    volumes:
+      - ./docker-data:/data
+    init: true

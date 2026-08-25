@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use RuntimeException;
 
 final class AuthController
 {
@@ -45,7 +46,14 @@ final class AuthController
 
         $identityMatches = $configuredEmail !== '' && hash_equals($configuredEmail, $email);
 
-        $passwordMatches = $passwordHash !== '' && Hash::check($data['password'], $passwordHash);
+        $passwordMatches = false;
+        if ($passwordHash !== '') {
+            try {
+                $passwordMatches = Hash::check($data['password'], $passwordHash);
+            } catch (RuntimeException) {
+                $passwordMatches = false;
+            }
+        }
 
         if (!$identityMatches || !$passwordMatches) {
             RateLimiter::hit($throttleKey, 60);

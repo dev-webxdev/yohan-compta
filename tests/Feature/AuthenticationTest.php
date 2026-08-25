@@ -83,6 +83,18 @@ final class AuthenticationTest extends TestCase
         $this->get('/mois')->assertRedirect('/connexion');
     }
 
+    public function test_invalid_configured_password_hash_never_causes_a_500(): void
+    {
+        config(['access.password_hash' => 'not-a-valid-bcrypt-hash']);
+
+        $this->from('/connexion')->post('/connexion', [
+            'email' => 'yohan@example.com',
+            'password' => 'correct-horse-battery',
+        ])
+            ->assertRedirect('/connexion')
+            ->assertSessionHasErrors(['email' => 'Identifiants incorrects.']);
+    }
+
     public function test_repeated_failures_are_rate_limited(): void
     {
         for ($attempt = 0; $attempt < 5; $attempt++) {

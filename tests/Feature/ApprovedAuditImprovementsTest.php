@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\WorkDay;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Middleware\TrustProxies;
 use Tests\TestCase;
 
 final class ApprovedAuditImprovementsTest extends TestCase
@@ -77,6 +78,25 @@ final class ApprovedAuditImprovementsTest extends TestCase
         self::assertStringContainsString("frame-ancestors 'none'", (string) $response->headers->get('Content-Security-Policy'));
         self::assertStringContainsString('max-age=31536000', (string) $response->headers->get('Strict-Transport-Security'));
         self::assertSame('strict', config('session.same_site'));
+    }
+
+    public function test_trusted_reverse_proxy_keeps_generated_urls_on_https(): void
+    {
+        TrustProxies::at('*');
+
+        try {
+            $this->withSession(['auth.authenticated' => false])
+                ->withHeaders([
+                    'X-Forwarded-Host' => 'compta.example.test',
+                    'X-Forwarded-Port' => '443',
+                    'X-Forwarded-Proto' => 'https',
+                ])->get('/connexion')
+                ->assertOk()
+                ->assertSee('action="https://compta.example.test/connexion"', false)
+                ->assertHeader('Strict-Transport-Security');
+        } finally {
+            TrustProxies::flushState();
+        }
     }
 
     public function test_future_reports_explain_when_the_global_balance_becomes_effective(): void

@@ -1,0 +1,16 @@
+.git
+.github
+.idea
+.vscode
+.env
+.env.*
+!.env.docker.example
+docker-data
+node_modules
+vendor
+bootstrap/cache/*.php
+playwright-report
+test-results
+database/*.sqlite
+storage/logs/*.log
+.phpunit.cache

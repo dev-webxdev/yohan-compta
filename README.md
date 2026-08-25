@@ -1,16 +1,97 @@
-# Suivi Heures & Salaire
+# Yohan Compta
 
-Application personnelle pour suivre les heures travaillées, heures supplémentaires, paniers et paiements différés.
+Application personnelle de suivi des heures, heures supplémentaires, paniers, salaires et paiements.
 
-## Stack
+## Installation sur Synology
 
-- PHP 8.4+
-- Laravel 13
-- SQLite (un seul fichier `database/database.sqlite`)
-- Blade + CSS + JavaScript natif, sans Node/npm au runtime
-- Playwright/Node uniquement pour les tests navigateur
+Prérequis : **Container Manager**. Les commandes ci-dessous se lancent en SSH dans le dossier du projet.
 
-## Installation
+### 1. Préparer la configuration
+
+```bash
+cp .env.docker.example .env.docker
+```
+
+Modifier ensuite `.env.docker` :
+
+```dotenv
+APP_URL=http://IP_DU_NAS:8080
+AUTH_EMAIL=yohan@example.com
+```
+
+### 2. Générer le mot de passe
+
+```bash
+docker compose build
+docker compose run --rm app php artisan auth:password-hash
+```
+
+La commande demande le mot de passe sans l'afficher. Copier la ligne `AUTH_PASSWORD_HASH='...'` obtenue dans `.env.docker`.
+
+### 3. Lancer l'application
+
+```bash
+docker compose up -d
+```
+
+Ouvrir :
+
+```text
+http://IP_DU_NAS:8080
+```
+
+Le conteneur redémarre automatiquement avec le NAS. La clé Laravel, la base SQLite et les documents sont conservés dans `docker-data/`.
+
+Une fois installé, le projet peut aussi être démarré, arrêté et consulté depuis **Container Manager > Projet**.
+
+### Mise à jour
+
+Après récupération d'une nouvelle version :
+
+```bash
+git pull
+docker compose up -d --build
+```
+
+Les données dans `docker-data/` sont conservées et les migrations sont exécutées automatiquement.
+
+### Sauvegarde
+
+Utiliser de préférence **Paramètres > Sauvegarde** dans Yohan Compta. L'archive contient la base SQLite et les documents.
+
+Pour sauvegarder directement `docker-data/` avec Hyper Backup, arrêter d'abord l'application :
+
+```bash
+docker compose down
+```
+
+Puis la relancer après la sauvegarde avec `docker compose up -d`.
+
+### HTTPS
+
+Si l'application passe par le reverse proxy HTTPS de Synology, mettre dans `.env.docker` :
+
+```dotenv
+APP_URL=https://votre-domaine.example
+SESSION_SECURE_COOKIE=true
+TRUSTED_PROXIES=*
+```
+
+Puis reconstruire :
+
+```bash
+docker compose up -d --build
+```
+
+Dans ce mode, garder le port `8080` privé au NAS/réseau local et exposer uniquement le reverse proxy HTTPS.
+
+### Logs
+
+```bash
+docker compose logs -f
+```
+
+## Développement local
 
 ```bash
 composer install
@@ -19,55 +100,10 @@ touch database/database.sqlite
 php artisan key:generate
 php artisan migrate
 php artisan auth:password-hash
-```
-
-La dernière commande demande le mot de passe sans l'afficher et fournit uniquement son hash. Renseigner ensuite dans `.env` :
-
-```dotenv
-AUTH_EMAIL=yohan@example.com
-AUTH_PASSWORD_HASH='le_hash_genere'
-```
-
-Le hash du mot de passe est le seul secret d'authentification conservé par l'application : aucun mot de passe en clair n'est stocké dans SQLite ou dans le dépôt.
-
-Démarrer ensuite l'application :
-
-```bash
 php artisan serve
 ```
 
-Puis ouvrir `http://127.0.0.1:8000` en développement.
-
-## Production Internet
-
-Le fichier `.env.example` est volontairement durci pour un déploiement HTTPS. En production :
-
-```dotenv
-APP_ENV=production
-APP_DEBUG=false
-APP_URL=https://votre-domaine.example
-SESSION_SECURE_COOKIE=true
-```
-
-Terminer TLS au niveau du serveur web/reverse proxy, conserver `storage/` accessible en écriture par PHP, puis exécuter `php artisan migrate --force` à chaque déploiement. L'application ajoute automatiquement CSP, HSTS sur une URL HTTPS, anti-clickjacking, `nosniff`, une politique de référent stricte et une limitation renforcée des tentatives de connexion.
-
-## Principes métier
-
-- semaine : lundi → dimanche, mais coupée au dernier jour du mois ;
-- le compteur repart à zéro au 1er de chaque mois, même au milieu d’une semaine ;
-- seuil par défaut : 35:00 par segment de semaine ainsi obtenu ;
-- journée : début prérempli à 07:45 par défaut et configurable par date d’effet, fin calculée automatiquement depuis début + conduite + entrepôt ;
-- tous les montants de salaire et d’heures supplémentaires sont suivis en net ;
-- taux par défaut : 9,74 € net/h ;
-- panier par défaut : 16 € si l'heure de fin calculée est au moins 14:15, avec forçage manuel possible ;
-- paramètres historisés par date d'effet ;
-- paiements indépendants des journées, modifiables et répartis FIFO sur les plus anciennes dettes mensuelles nettes ;
-- le nombre d’heures indiqué sur un paiement reste informatif et n’est pas plafonné par le solde calculé ;
-- la dette globale et le détail par mois sont suivis en net ;
-- les données calculées (semaines, totaux, soldes) sont recalculées depuis les données sources ;
-- export CSV disponible pour le détail mensuel et le rapport annuel ;
-- sauvegarde manuelle à télécharger et restauration SQLite disponibles dans les paramètres ;
-- aucune suppression complète d’une journée : une journée peut être modifiée, mise en repos ou recopiée depuis la veille.
+Renseigner `AUTH_EMAIL` et `AUTH_PASSWORD_HASH` dans `.env`, puis ouvrir `http://127.0.0.1:8000`.
 
 ## Tests
 
@@ -77,5 +113,3 @@ npm ci
 npx playwright install chromium
 npm run test:e2e
 ```
-
-Les tests Playwright couvrent Chromium en 390 px, 768 px, 1440 px et 2560 px. Le workflow GitHub Actions exécute la suite PHP, l'audit Composer et ces tests navigateur.

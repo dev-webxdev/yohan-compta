@@ -1,5 +1,7 @@
 /.env
 /.env.testing
+/.env.docker
+/docker-data/
 /vendor/
 /node_modules/
 /playwright-report/
