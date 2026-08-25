@@ -7,7 +7,6 @@ use App\Services\DocumentLinkService;
 use App\Services\PayrollMath;
 use App\Services\ReportService;
 use App\Services\SettingsService;
-use App\Services\WeekCalculator;
 use App\Support\DateRange;
 use App\Support\FrenchDate;
 use DateTimeImmutable;
@@ -66,15 +65,8 @@ final class MonthController
         }
 
         $current = new DateTimeImmutable($month.'-01');
-        $dates = array_map(fn (array $row): string => $row['date']->format('Y-m-d'), $calendarDays);
-        $weekKeys = array_values(array_unique(array_map(
-            fn (array $week): string => WeekCalculator::monday($week['start'])->format('Y-m-d'),
-            $report['weeks'],
-        )));
         $documentCounts = [
             'month' => (int) (($links->counts('month', [$month]))[$month] ?? 0),
-            'week' => $links->counts('week', $weekKeys),
-            'day' => $links->counts('day', $dates),
         ];
 
         return view('month', [

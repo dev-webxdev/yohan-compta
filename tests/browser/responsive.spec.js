@@ -355,33 +355,6 @@ test('salary tracking works across responsive layouts', async ({page}, testInfo)
     await expect(page.locator(`.salary-table a[href$="/mois/${month}"]`)).toHaveCount(0);
 });
 
-
-test('planning works across responsive layouts', async ({page}) => {
-    await page.goto('/planning?view=month&date=2026-09-01');
-    await expect(page.getByRole('heading', {name: 'Planning', exact: true})).toBeVisible();
-    await expect(page.locator('.planning-view-switch a')).toHaveCount(3);
-    await expect(page.locator('.mobile-nav a')).toHaveCount(7);
-
-    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
-    expect(overflow).toBeLessThanOrEqual(1);
-
-    const day = page.locator('.planning-day[data-date="2026-09-14"]');
-    await expect(day).toBeVisible();
-    await day.locator('.planning-edit summary').click();
-    const form = day.locator('.planning-edit form');
-    await form.locator('input[name="planned"]').fill('07:30');
-    await Promise.all([
-        page.waitForURL(/\/planning\?view=month&date=2026-09-01$/),
-        form.getByRole('button', {name: 'Enregistrer'}).click(),
-    ]);
-    await expect(day.locator('.planning-hours')).toContainText('07:30');
-
-    await page.getByRole('link', {name: 'Semaine', exact: true}).click();
-    await expect(page).toHaveURL(/\/planning\?view=week&date=2026-09-01$/);
-    await expect(page.locator('.planning-grid-week')).toBeVisible();
-});
-
-
 test('document library works across responsive layouts', async ({page}, testInfo) => {
     const rootName = `E2E ${testInfo.project.name}`;
     const imageName = `photo-${testInfo.project.name}.png`;
@@ -389,6 +362,8 @@ test('document library works across responsive layouts', async ({page}, testInfo
 
     await page.goto('/bibliotheque');
     await expect(page.getByRole('heading', {name: 'Documents', exact: true})).toBeVisible();
+    await expect(page.getByRole('link', {name: 'Planning'})).toHaveCount(0);
+    await expect(page.locator('.mobile-nav a')).toHaveCount(6);
     await expect(page.getByText('Aucun dossier n’est créé automatiquement.')).toBeVisible();
     await expect(page.locator('.library-upload-form')).toHaveCount(0);
     await expect(page.getByText('Corbeille', {exact: true})).toBeVisible();
@@ -470,6 +445,8 @@ test('document library works across responsive layouts', async ({page}, testInfo
     });
     expect((await uploadResponse).status()).toBe(302);
     await expect(page.getByText(imageName, {exact: true})).toBeVisible();
+    const uploadedRow = page.locator('.library-file-row').filter({hasText: imageName});
+    await expect(uploadedRow.getByRole('link', {name: 'Voir'})).toHaveAttribute('href', /\/voir$/);
 
     overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     expect(overflow).toBeLessThanOrEqual(1);

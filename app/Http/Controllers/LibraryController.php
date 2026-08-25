@@ -121,6 +121,23 @@ final class LibraryController
         return $this->backToFolder($data['folder_id'])->with('status', 'Document ajouté.');
     }
 
+    public function preview(LibraryDocument $document, LibraryService $library): BinaryFileResponse
+    {
+        try {
+            $path = $library->documentPath($document);
+        } catch (\RuntimeException $error) {
+            abort(404, $error->getMessage());
+        }
+
+        $response = response()->file($path, [
+            'Content-Type' => $document->mime_type ?: 'application/octet-stream',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
+        $response->setContentDisposition('inline', $document->original_name);
+
+        return $response;
+    }
+
     public function download(LibraryDocument $document, LibraryService $library): BinaryFileResponse
     {
         try {

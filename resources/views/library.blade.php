@@ -7,6 +7,10 @@
         if ($bytes < 1048576) return number_format($bytes / 1024, 1, ',', ' ').' Ko';
         return number_format($bytes / 1048576, 1, ',', ' ').' Mo';
     };
+    $salaryAssociationTargets = $associationTargets['salary'] ?? [];
+    $monthAssociationTargets = $associationTargets['month'] ?? [];
+    $hasAssociationTargets = $salaryAssociationTargets !== [] || $monthAssociationTargets !== [];
+    $defaultAssociationType = $salaryAssociationTargets !== [] ? 'salary' : 'month';
 @endphp
 <div class="library-page">
 <section class="panel library-toolbar-panel">
@@ -50,7 +54,12 @@
     <div class="panel-heading"><div><h2><i class="fa-solid fa-paperclip"></i> Documents associés</h2><p>Documents rattachés à la donnée depuis laquelle vous êtes arrivé.</p></div><a class="primary-button secondary-button compact-button" href="{{ route('library.index') }}">Afficher tous les documents</a></div>
     <div class="linked-document-list">
     @forelse($linkedDocuments as $linked)
-        <article><span class="library-file-icon"><i class="{{ $linked->mime_type === 'application/pdf' ? 'fa-regular fa-file-pdf' : 'fa-regular fa-image' }}"></i></span><div><strong>{{ $linked->original_name }}</strong><small>{{ $linked->folder?->name ?? 'Sans dossier' }}</small></div><a class="primary-button secondary-button compact-button" href="{{ route('library.documents.download', $linked) }}"><i class="fa-solid fa-download"></i> Télécharger</a></article>
+        <article><span class="library-file-icon"><i class="{{ $linked->mime_type === 'application/pdf' ? 'fa-regular fa-file-pdf' : 'fa-regular fa-image' }}"></i></span><div><strong>{{ $linked->original_name }}</strong><small>{{ $linked->folder?->name ?? 'Sans dossier' }}</small></div>
+            <div class="linked-document-actions">
+                <a class="primary-button secondary-button compact-button" href="{{ route('library.documents.preview', $linked) }}" target="_blank" rel="noopener"><i class="fa-regular fa-eye"></i> Voir</a>
+                <a class="primary-button secondary-button compact-button" href="{{ route('library.documents.download', $linked) }}"><i class="fa-solid fa-download"></i> Télécharger</a>
+            </div>
+        </article>
     @empty
         <p class="muted">Aucun document n’est actuellement associé à cette donnée.</p>
     @endforelse
@@ -102,7 +111,8 @@
                         @if($document->links->isNotEmpty())<div class="document-link-tags">@foreach($document->links as $link)<span><i class="fa-solid fa-paperclip"></i>{{ $linkLabels[$document->id][$link->id] ?? $link->token() }}<form method="post" action="{{ route('library.documents.links.destroy', ['document'=>$document,'link'=>$link]) }}">@csrf @method('DELETE')<button aria-label="Supprimer l’association"><i class="fa-solid fa-xmark"></i></button></form></span>@endforeach</div>@endif
                     </div>
                     <div class="library-file-actions">
-                        @if($associationTargets)<details class="document-associate-menu" data-dismissable-details><summary class="primary-button secondary-button compact-button"><i class="fa-solid fa-link"></i> Associer</summary><form method="post" action="{{ route('library.documents.links.store', $document) }}">@csrf<label>Associer à<select name="target" required><option value="">Choisir…</option>@foreach($associationTargets as $target)<option value="{{ $target['value'] }}">{{ $target['label'] }}</option>@endforeach</select></label><button class="primary-button compact-button">Associer</button></form></details>@endif
+                        @if($hasAssociationTargets)<button type="button" class="primary-button secondary-button compact-button" data-document-associate data-associate-url="{{ route('library.documents.links.store', $document) }}" data-document-name="{{ $document->original_name }}"><i class="fa-solid fa-link"></i> Associer</button>@endif
+                        <a class="primary-button secondary-button compact-button" href="{{ route('library.documents.preview', $document) }}" target="_blank" rel="noopener"><i class="fa-regular fa-eye"></i> Voir</a>
                         <a class="primary-button secondary-button compact-button" href="{{ route('library.documents.download', $document) }}"><i class="fa-solid fa-download"></i> Télécharger</a>
                         <form method="post" action="{{ route('library.documents.destroy', $document) }}" data-confirm data-confirm-title="Mettre ce document dans la corbeille ?" data-confirm-message="« {{ $document->original_name }} » sera déplacé dans la corbeille et pourra être restauré." data-confirm-action="Mettre à la corbeille" data-confirm-danger="1">@csrf @method('DELETE')<button class="library-file-trash-button" aria-label="Mettre {{ $document->original_name }} à la corbeille"><i class="fa-regular fa-trash-can"></i></button></form>
                     </div>
@@ -120,4 +130,39 @@
     @endif
 </section>
 </div>
+
+@if($hasAssociationTargets)
+<dialog id="document-associate-dialog" class="document-associate-dialog" aria-labelledby="document-associate-title">
+    <form method="post" action="#" id="document-associate-form">
+        @csrf
+        <div class="document-associate-head">
+            <div><h2 id="document-associate-title">Associer le document</h2><p id="document-associate-name"></p></div>
+            <button type="button" class="document-associate-close" data-document-associate-close aria-label="Fermer"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="document-associate-body">
+            <fieldset class="document-associate-types">
+                <legend>Associer à</legend>
+                <label class="document-associate-type">
+                    <input type="radio" name="association_kind" value="salary" data-association-kind {{ $defaultAssociationType === 'salary' ? 'checked' : '' }} {{ $salaryAssociationTargets === [] ? 'disabled' : '' }}>
+                    <span><i class="fa-solid fa-wallet"></i><strong>Salaire</strong><small>{{ $salaryAssociationTargets === [] ? 'Aucun salaire enregistré' : count($salaryAssociationTargets).' mois disponible'.(count($salaryAssociationTargets) > 1 ? 's' : '') }}</small></span>
+                </label>
+                <label class="document-associate-type">
+                    <input type="radio" name="association_kind" value="month" data-association-kind {{ $defaultAssociationType === 'month' ? 'checked' : '' }} {{ $monthAssociationTargets === [] ? 'disabled' : '' }}>
+                    <span><i class="fa-regular fa-clock"></i><strong>Heures du mois</strong><small>{{ $monthAssociationTargets === [] ? 'Aucun mois avec des heures' : count($monthAssociationTargets).' mois disponible'.(count($monthAssociationTargets) > 1 ? 's' : '') }}</small></span>
+                </label>
+            </fieldset>
+            <div class="document-associate-options" data-association-options="salary" {{ $defaultAssociationType !== 'salary' ? 'hidden' : '' }}>
+                <label>Salaire<select name="target" data-association-target="salary" required {{ $defaultAssociationType !== 'salary' ? 'disabled' : '' }}>@foreach($salaryAssociationTargets as $target)<option value="{{ $target['value'] }}">{{ $target['label'] }}</option>@endforeach</select></label>
+            </div>
+            <div class="document-associate-options" data-association-options="month" {{ $defaultAssociationType !== 'month' ? 'hidden' : '' }}>
+                <label>Mois avec des heures enregistrées<select name="target" data-association-target="month" required {{ $defaultAssociationType !== 'month' ? 'disabled' : '' }}>@foreach($monthAssociationTargets as $target)<option value="{{ $target['value'] }}">{{ $target['label'] }}</option>@endforeach</select></label>
+            </div>
+        </div>
+        <div class="document-associate-actions">
+            <button type="button" class="document-associate-cancel" data-document-associate-close>Annuler</button>
+            <button class="primary-button"><i class="fa-solid fa-link"></i> Associer</button>
+        </div>
+    </form>
+</dialog>
+@endif
 @endsection

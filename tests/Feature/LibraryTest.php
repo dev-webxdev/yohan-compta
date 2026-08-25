@@ -6,7 +6,7 @@ use App\Models\DocumentFolder;
 use App\Models\DocumentLink;
 use App\Models\LibraryDocument;
 use App\Models\MonthlySalary;
-use App\Models\OvertimePayment;
+use App\Models\WorkDay;
 use App\Services\LibraryService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -163,6 +163,11 @@ final class LibraryTest extends TestCase
         self::assertSame('bulletin.pdf', $document->original_name);
         self::assertFileExists(app(LibraryService::class)->libraryPath().DIRECTORY_SEPARATOR.$document->storage_name);
         $this->get('/bibliotheque/'.$folder->id)->assertOk()->assertSee('PDF');
+        $preview = $this->get('/bibliotheque/fichiers/'.$document->id.'/voir')
+            ->assertOk()
+            ->assertHeader('content-type', 'application/pdf');
+        self::assertStringContainsString('inline', (string) $preview->headers->get('content-disposition'));
+        self::assertStringContainsString('bulletin.pdf', (string) $preview->headers->get('content-disposition'));
     }
 
     public function test_document_can_be_associated_with_salary_and_opened_from_salary_page(): void
@@ -200,35 +205,58 @@ final class LibraryTest extends TestCase
         self::assertDatabaseCount('document_links', 0);
     }
 
-    public function test_document_association_is_visible_from_overtime_payment(): void
+    public function test_document_association_only_offers_existing_salaries_and_months_with_recorded_hours(): void
     {
-        $payment = OvertimePayment::query()->create([
-            'payment_date' => '2026-08-20',
-            'amount_cents' => 12500,
+        $salary = MonthlySalary::query()->create([
+            'month' => '2025-07',
+            'net_amount_cents' => 185000,
         ]);
-        $folder = DocumentFolder::query()->create(['name' => 'Paiements']);
+        WorkDay::query()->create([
+            'date' => '2025-08-12',
+            'driving_minutes' => 120,
+            'warehouse_minutes' => 30,
+            'meal_allowance_mode' => 'auto',
+        ]);
+        WorkDay::query()->create([
+            'date' => '2025-09-12',
+            'driving_minutes' => 0,
+            'warehouse_minutes' => 0,
+            'meal_allowance_mode' => 'auto',
+        ]);
+        $folder = DocumentFolder::query()->create(['name' => 'Associations']);
         $this->post('/bibliotheque/fichiers', [
             'folder_id' => $folder->id,
-            'document' => UploadedFile::fake()->image('virement.png', 28, 20),
+            'document' => UploadedFile::fake()->image('justificatif.png', 28, 20),
         ])->assertRedirect('/bibliotheque/'.$folder->id);
         $document = LibraryDocument::query()->firstOrFail();
 
-        $this->post('/bibliotheque/fichiers/'.$document->id.'/associations', [
-            'target' => 'payment:'.$payment->id,
-        ])->assertRedirect();
+        $this->get('/bibliotheque/'.$folder->id)
+            ->assertOk()
+            ->assertSee('Salaire')
+            ->assertSee('Heures du mois')
+            ->assertSee('Salaire Juillet 2025')
+            ->assertSee('Août 2025')
+            ->assertDontSee('Septembre 2025')
+            ->assertDontSee('Paiement heures sup');
 
+        $this->post('/bibliotheque/fichiers/'.$document->id.'/associations', [
+            'target' => 'month:2025-08',
+        ])->assertRedirect();
         self::assertDatabaseHas('document_links', [
             'document_id' => $document->id,
-            'target_type' => 'payment',
-            'target_key' => (string) $payment->id,
+            'target_type' => 'month',
+            'target_key' => '2025-08',
         ]);
-        $this->get('/paiements')
-            ->assertOk()
-            ->assertSee('Documents associés : 1')
-            ->assertSee('target=payment%3A'.$payment->id, false);
-        $this->get('/bibliotheque?target=payment%3A'.$payment->id)
-            ->assertOk()
-            ->assertSee('virement.png');
+
+        $this->from('/bibliotheque/'.$folder->id)->post('/bibliotheque/fichiers/'.$document->id.'/associations', [
+            'target' => 'month:2025-09',
+        ])->assertRedirect('/bibliotheque/'.$folder->id)->assertSessionHasErrors('target');
+        $this->from('/bibliotheque/'.$folder->id)->post('/bibliotheque/fichiers/'.$document->id.'/associations', [
+            'target' => 'payment:1',
+        ])->assertRedirect('/bibliotheque/'.$folder->id)->assertSessionHasErrors('target');
+
+        self::assertSame(1, DocumentLink::query()->count());
+        self::assertSame($salary->id, MonthlySalary::query()->firstOrFail()->id);
     }
 
     public function test_document_trash_restore_and_permanent_delete_preserve_file_until_final_deletion(): void

@@ -112,7 +112,7 @@ final class LibraryService
         $storageName = (string) Str::uuid();
         $target = $this->filePath($storageName);
         if (!$file->move($this->libraryPath(), $storageName)) {
-            throw new RuntimeException('Impossible d’enregistrer l’image importée.');
+            throw new RuntimeException('Impossible d’enregistrer le document importé.');
         }
 
         try {
