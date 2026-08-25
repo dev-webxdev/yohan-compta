@@ -3,13 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Models\SettingPeriod;
+use App\Models\WorkDay;
 use App\Services\DatabaseMaintenanceService;
 use App\Services\WeekCalculator;
 use App\Services\SettingsService;
 use App\Support\DateRange;
 use App\Support\Money;
 use App\Support\Time;
-use DateTimeImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -115,11 +115,15 @@ final class SettingsController
                 ->orderBy('effective_from')
                 ->get();
             $futureUpdates = [];
+            $defaultStartBoundary = null;
 
             foreach ($changedFields as $field) {
                 $expected = (int) $baseline->{$field};
                 foreach ($futurePeriods as $future) {
                     if ((int) $future->{$field} !== $expected) {
+                        if ($field === 'default_start_time_minutes') {
+                            $defaultStartBoundary = $future->effective_from->format('Y-m-d');
+                        }
                         break;
                     }
                     $futureUpdates[$future->id][$field] = $payload[$field];
@@ -130,6 +134,20 @@ final class SettingsController
 
             foreach ($futureUpdates as $id => $update) {
                 SettingPeriod::query()->whereKey($id)->update($update);
+            }
+
+            if (in_array('default_start_time_minutes', $changedFields, true)) {
+                $workDays = WorkDay::query()
+                    ->whereDate('date', '>=', $effectiveFrom)
+                    ->where('start_time_minutes', (int) $baseline->default_start_time_minutes);
+
+                if ($defaultStartBoundary !== null) {
+                    $workDays->whereDate('date', '<', $defaultStartBoundary);
+                }
+
+                $workDays->update([
+                    'start_time_minutes' => $payload['default_start_time_minutes'],
+                ]);
             }
 
             return count($futureUpdates);
