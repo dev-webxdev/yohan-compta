@@ -20,17 +20,15 @@ final class ExportController
 
         return response()->streamDownload(function () use ($report, $settings): void {
             $overtime25ByDate = [];
-            $overtime50ByDate = [];
             $overtimeNetByDate = [];
             foreach ($report['weeks'] as $week) {
                 $overtime25ByDate += $week['overtime_25_by_date'];
-                $overtime50ByDate += $week['overtime_50_by_date'];
                 $overtimeNetByDate += $week['overtime_net_by_date'];
             }
 
             $output = fopen('php://output', 'wb');
             fwrite($output, "\xEF\xBB\xBF");
-            fputcsv($output, ['Date', 'Jour', 'Début', 'Conduite', 'Entrepôt', 'Total', 'Repos', 'Fin', 'Panier (€)', 'HS +25 %', 'HS +50 %', 'Taux net (€)', 'Montant HS net (€)'], ';', '"', '');
+            fputcsv($output, ['Date', 'Jour', 'Début', 'Conduite', 'Entrepôt', 'Total', 'Repos', 'Fin', 'Panier (€)', 'HS +25 %', 'Taux net (€)', 'Montant HS net (€)'], ';', '"', '');
 
             for ($cursor = $report['start']; $cursor <= $report['end']; $cursor = $cursor->modify('+1 day')) {
                 $date = $cursor->format('Y-m-d');
@@ -62,7 +60,6 @@ final class ExportController
                     $isRest ? '' : Time::formatClockWithDayOffset($end),
                     Money::formatInput($meal),
                     Time::formatDuration($overtime25ByDate[$date] ?? 0),
-                    Time::formatDuration($overtime50ByDate[$date] ?? 0),
                     Money::formatInput($setting->hourly_net_rate_cents),
                     Money::formatInput($overtimeNetByDate[$date] ?? 0),
                 ], ';', '"', '');

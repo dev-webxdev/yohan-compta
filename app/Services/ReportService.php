@@ -153,8 +153,7 @@ final class ReportService
                 continue;
             }
             $setting = $this->settings->forDate($date);
-            $dateNumerator = Money::wagePercentNumerator($result['overtime_25_by_date'][$date], $setting->hourly_net_rate_cents, 125)
-                + Money::wagePercentNumerator($result['overtime_50_by_date'][$date], $setting->hourly_net_rate_cents, 150);
+            $dateNumerator = Money::wagePercentNumerator($minutes, $setting->hourly_net_rate_cents, 125);
             $netNumeratorByDate[$date] = $dateNumerator;
             $netPercentNumerator += $dateNumerator;
         }

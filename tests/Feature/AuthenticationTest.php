@@ -64,6 +64,16 @@ final class AuthenticationTest extends TestCase
         $this->get('/mois')->assertOk();
     }
 
+    public function test_login_always_redirects_to_current_month_even_with_a_stale_intended_url(): void
+    {
+        $this->withSession(['url.intended' => url('/connexion')])
+            ->post('/connexion', [
+                'email' => 'yohan@example.com',
+                'password' => 'correct-horse-battery',
+            ])
+            ->assertRedirect('/mois');
+    }
+
     public function test_invalid_credentials_return_a_clear_generic_error(): void
     {
         $this->from('/connexion')->post('/connexion', [

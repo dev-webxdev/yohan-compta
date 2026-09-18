@@ -75,7 +75,7 @@ final class ApplicationFlowTest extends TestCase
         self::assertSame(0, $reports->week('2026-09-01')['overtime_50_minutes']);
     }
 
-    public function test_overtime_amount_applies_25_then_50_percent_each_week(): void
+    public function test_overtime_amount_applies_25_percent_to_all_overtime(): void
     {
         $this->post('/parametres', [
             'effective_from' => '2026-08-01',
@@ -97,20 +97,20 @@ final class ApplicationFlowTest extends TestCase
 
         $reports = app(ReportService::class);
         $week = $reports->week('2026-08-03');
-        self::assertSame(480, $week['overtime_25_minutes']);
-        self::assertSame(120, $week['overtime_50_minutes']);
-        self::assertSame(13000, $week['overtime_net_cents']);
+        self::assertSame(600, $week['overtime_25_minutes']);
+        self::assertSame(0, $week['overtime_50_minutes']);
+        self::assertSame(12500, $week['overtime_net_cents']);
 
         $month = $reports->month('2026-08');
         self::assertSame(35000, $month['normal_net_cents']);
         self::assertSame(45000, $month['work_net_cents']);
-        self::assertSame(13000, $month['overtime_net_cents']);
+        self::assertSame(12500, $month['overtime_net_cents']);
 
         $this->get('/mois/2026-08')
             ->assertOk()
             ->assertSee('Heures sup +25 %')
-            ->assertSee('Heures sup +50 %')
-            ->assertSee('130,00 €');
+            ->assertDontSee('Heures sup +50 %')
+            ->assertSee('125,00 €');
     }
 
     public function test_meal_validation_and_forced_override(): void

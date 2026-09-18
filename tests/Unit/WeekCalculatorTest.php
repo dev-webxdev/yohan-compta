@@ -23,7 +23,7 @@ final class WeekCalculatorTest extends TestCase
         return [[1920, 0], [2100, 0], [2400, 300]];
     }
 
-    public function test_overtime_is_split_between_25_and_50_percent_tiers(): void
+    public function test_all_overtime_is_increased_by_25_percent(): void
     {
         $minutes = [];
         foreach (['2026-08-03', '2026-08-04', '2026-08-05', '2026-08-06', '2026-08-07'] as $date) {
@@ -32,10 +32,10 @@ final class WeekCalculatorTest extends TestCase
 
         $result = WeekCalculator::calculate('2026-08-03', $minutes);
         self::assertSame(600, $result['overtime']);
-        self::assertSame(480, $result['overtime_25']);
-        self::assertSame(120, $result['overtime_50']);
-        self::assertSame(480, array_sum($result['overtime_25_by_date']));
-        self::assertSame(120, array_sum($result['overtime_50_by_date']));
+        self::assertSame(600, $result['overtime_25']);
+        self::assertSame(0, $result['overtime_50']);
+        self::assertSame(600, array_sum($result['overtime_25_by_date']));
+        self::assertSame(0, array_sum($result['overtime_50_by_date']));
     }
 
     public function test_month_boundary_splits_the_week_segment(): void

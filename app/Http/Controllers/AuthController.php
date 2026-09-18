@@ -69,7 +69,7 @@ final class AuthController
         $request->session()->put('auth.authenticated', true);
         $request->session()->regenerate();
 
-        return redirect()->intended(route('month.current'));
+        return redirect()->route('month.current');
     }
 
     public function destroy(Request $request): RedirectResponse

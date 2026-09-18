@@ -212,7 +212,7 @@ final class Issue66AuditFixesTest extends TestCase
         ]);
 
         $csv = $this->get('/mois/2026-08/export.csv')->assertOk()->streamedContent();
-        self::assertStringContainsString('"HS +25 %";"HS +50 %";"Taux net (€)";"Montant HS net (€)"', $csv);
+        self::assertStringContainsString('"HS +25 %";"Taux net (€)";"Montant HS net (€)"', $csv);
         self::assertStringContainsString('02:00 (+1 j)', $csv);
     }
 

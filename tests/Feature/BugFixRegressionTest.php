@@ -101,11 +101,11 @@ final class BugFixRegressionTest extends TestCase
         $response->assertSee('id="dialog-heading-prefix"', false);
     }
 
-    public function test_week_totals_show_overtime_tiers_and_net_amount(): void
+    public function test_week_totals_show_25_percent_overtime_and_net_amount(): void
     {
         $this->get('/mois/2026-08')->assertOk()
             ->assertSee('Heures sup +25 %')
-            ->assertSee('Heures sup +50 %')
+            ->assertDontSee('Heures sup +50 %')
             ->assertSee('Montant heures sup :');
     }
 
